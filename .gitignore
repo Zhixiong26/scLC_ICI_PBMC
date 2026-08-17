@@ -20,14 +20,30 @@
 !/*/[0-9]*/Scripts/**/*.ipynb
 !/*/[0-9]*/Scripts/**/*.Rmd
 !/*/[0-9]*/Scripts/**/*.qmd
+!/*/Archive/[0-9]*/Scripts/**/*.py
+!/*/Archive/[0-9]*/Scripts/**/*.R
+!/*/Archive/[0-9]*/Scripts/**/*.r
+!/*/Archive/[0-9]*/Scripts/**/*.sh
+!/*/Archive/[0-9]*/Scripts/**/*.bash
+!/*/Archive/[0-9]*/Scripts/**/*.zsh
+!/*/Archive/[0-9]*/Scripts/**/*.pl
+!/*/Archive/[0-9]*/Scripts/**/*.jl
+!/*/Archive/[0-9]*/Scripts/**/*.ipynb
+!/*/Archive/[0-9]*/Scripts/**/*.Rmd
+!/*/Archive/[0-9]*/Scripts/**/*.qmd
 
 # Result artifacts are restricted to PNG files below Results directories.
 !/*/[0-9]*/Results/**/*.png
 !/*/[0-9]*/Results/**/*.PNG
+!/*/Archive/[0-9]*/Results/**/*.png
+!/*/Archive/[0-9]*/Results/**/*.PNG
 
 # Keep currently empty Results or Scripts directories visible in Git.
 !/*/[0-9]*/Results/.gitkeep
 !/*/[0-9]*/Scripts/.gitkeep
+!/*/Archive/[0-9]*/Results/.gitkeep
+!/*/Archive/[0-9]*/Scripts/.gitkeep
 
 # Keep empty supplementary-material directories visible in Git.
 !/*/[0-9]*/Supplementary_materials/.gitkeep
+!/*/Archive/[0-9]*/Supplementary_materials/.gitkeep
