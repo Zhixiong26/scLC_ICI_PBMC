@@ -58,7 +58,7 @@ process_sample() {
             return 1
         }
         echo "[$short 1/2 RUN] Top200 hypo-DMR selection"
-        python "$RESULT_SCRIPT_DIR/05a_extract_celltype_hypo_dmrs_top1500.py" \
+        python "$RESULT_SCRIPT_DIR/05a_extract_celltype_hypo_dmrs.py" \
             "${input_args[@]}" \
             --output-dir "$hypo_dir" \
             --raw-p 0.01 \

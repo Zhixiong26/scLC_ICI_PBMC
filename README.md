@@ -16,11 +16,11 @@
 - **MethylVI**：最新批次 `20260816`；归档批次 `20260810`、`20260813`。
 - **Scanpy**：最新批次 `20260815`；归档批次 `20260810`。
 
-仓库当前包含 176 个分析脚本和 223 张 PNG 结果图。三个原始子仓库不在本仓库的跟踪范围内，其远程仓库配置保持不变。
+仓库当前包含 175 个分析脚本和 223 张 PNG 结果图。三个原始子仓库不在本仓库的跟踪范围内，其远程仓库配置保持不变。
 
 ### Methscan 当前流程顺序
 
-`Methscan/20260815/Scripts/01_Upstream` 使用 `00–08` 表示执行顺序：`00` 为公共配置，`01–03` 完成 cov 检查、概率去重和上游处理，`04` 运行逐样本 DMR，`05–07` 完成 Top200 DMR 选择、矩阵计算和绘图，`08` 处理无 null DMR 时的 raw-p 回退。带 `a/b` 后缀的文件是同一步骤调用的辅助程序，不需要单独调整执行顺序。`01` 和 `02` 均通过单一入口提供 `all` 批处理模式与 `one` 单样本模式；原单样本实现已并入对应主脚本。原 `04_run_all_samples_to_smooth.sh` 已合并为 `03_run_upstream_pipeline.sh smooth-all [sample_jobs]` 和 `smooth-status`。
+`Methscan/20260815/Scripts/01_Upstream` 使用 `00–08` 表示执行顺序：`00` 为公共配置，`01–03` 完成 cov 检查、概率去重和上游处理，`04` 运行逐样本 DMR，`05–07` 完成 Top200 DMR 选择、矩阵计算和绘图，`08` 处理无 null DMR 时的 raw-p 回退。带 `a/b` 后缀的文件是同一步骤调用的辅助程序，不需要单独调整执行顺序。`01`、`02` 和 `04` 均通过单一入口同时提供批处理与单样本模式，不再保留单独的单样本 Shell 实现。原 `04_run_all_samples_to_smooth.sh` 已合并为 `03_run_upstream_pipeline.sh smooth-all [sample_jobs]` 和 `smooth-status`。
 
 ## 服务器部署与路径配置
 
@@ -65,10 +65,9 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
 │   │   │   │   ├── 02_deduplicate_cov_by_probability.sh
 │   │   │   │   ├── 03_run_upstream_pipeline.sh
 │   │   │   │   ├── 03a_build_scanpy_clean_cell_list.py
-│   │   │   │   ├── 04_run_all_samples_dmr.sh
-│   │   │   │   ├── 04a_run_single_sample_dmr.sh
+│   │   │   │   ├── 04_run_celltype_dmr.sh
 │   │   │   │   ├── 05_select_top200_dmrs.sh
-│   │   │   │   ├── 05a_extract_celltype_hypo_dmrs_top1500.py
+│   │   │   │   ├── 05a_extract_celltype_hypo_dmrs.py
 │   │   │   │   ├── 05b_merge_sample_dmrs.py
 │   │   │   │   ├── 06_compute_top200_dmr_matrix.sh
 │   │   │   │   ├── 06a_compute_dmr_mean_of_cpg_ratios.py

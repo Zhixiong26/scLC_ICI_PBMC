@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ==============================================================================
-# 通用单样本细胞类型两两 DMR 流程
+# 细胞类型两两 DMR 流程：十样本批处理与单样本共用一个入口
 #
 # 输入：指定样本概率去重 cov 的 filtered/smoothed MethSCAn 数据
 # 分组：Scanpy cell-type 注释，仅限当前样本，细胞类型两两比较
@@ -12,7 +12,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-THRESHOLD="${THRESHOLD:-30k}"
+THRESHOLD="${THRESHOLD:-300k}"
 source "$SCRIPT_DIR/00_workflow_common.sh"
 
 SAMPLE_NAME="${SAMPLE_NAME:-25110891_IR01_Met}"
@@ -36,6 +36,10 @@ MAX_UNMATCHED_CELLS="${MAX_UNMATCHED_CELLS:-2000}"
 EXCLUDED_CELL_TYPES="${EXCLUDED_CELL_TYPES:-Platelet_erythroid_contamination}"
 DEFAULT_MAX_JOBS="${DEFAULT_MAX_JOBS:-1}"
 DEFAULT_THREADS="${DEFAULT_THREADS:-92}"
+DEFAULT_PREPARE_JOBS="${DEFAULT_PREPARE_JOBS:-2}"
+DEFAULT_SAMPLE_JOBS="${DEFAULT_SAMPLE_JOBS:-2}"
+DEFAULT_COMPARISON_JOBS="${DEFAULT_COMPARISON_JOBS:-2}"
+DEFAULT_BATCH_THREADS="${DEFAULT_BATCH_THREADS:-24}"
 
 METADATA_DIR="$OUTPUT_ROOT/metadata"
 GROUP_DIR="$OUTPUT_ROOT/groups"
@@ -57,19 +61,19 @@ ANNOTATION_SHA256=""
 FILTER_PROVENANCE_SHA256=""
 EXPECTED_FILTERED_CELLS=""
 
-usage() {
+single_usage() {
     cat <<'EOF'
 Usage:
-  SAMPLE_NAME=25110891_IR01_Met bash 04a_run_single_sample_dmr.sh prepare
-  SAMPLE_NAME=25110891_IR01_Met bash 04a_run_single_sample_dmr.sh status
-  SAMPLE_NAME=25110891_IR01_Met bash 04a_run_single_sample_dmr.sh run [max_jobs] [threads]
-  SAMPLE_NAME=25110891_IR01_Met bash 04a_run_single_sample_dmr.sh run-one <comparison> [threads]
-  SAMPLE_NAME=25110891_IR01_Met bash 04a_run_single_sample_dmr.sh summarize
+  bash 04_run_celltype_dmr.sh one <sample_name> prepare
+  bash 04_run_celltype_dmr.sh one <sample_name> status
+  bash 04_run_celltype_dmr.sh one <sample_name> run [comparison_jobs] [threads]
+  bash 04_run_celltype_dmr.sh one <sample_name> run-one <comparison> [threads]
+  bash 04_run_celltype_dmr.sh one <sample_name> summarize
 
 Examples:
-  SAMPLE_NAME=25110891_IR01_Met THRESHOLD=300k bash 04a_run_single_sample_dmr.sh prepare
-  SAMPLE_NAME=25110891_IR01_Met THRESHOLD=300k bash 04a_run_single_sample_dmr.sh run 1 24
-  SAMPLE_NAME=25110891_IR01_Met THRESHOLD=300k bash 04a_run_single_sample_dmr.sh status
+  bash 04_run_celltype_dmr.sh one 25110891_IR01_Met prepare
+  bash 04_run_celltype_dmr.sh one 25110891_IR01_Met run 1 24
+  bash 04_run_celltype_dmr.sh one 25110891_IR01_Met status
 EOF
 }
 
@@ -796,7 +800,7 @@ run_named_comparison() {
     die "comparison not found: $requested"
 }
 
-main() {
+run_one() {
     local action="${1:-}"
     local max_jobs threads comparison
 
@@ -831,10 +835,104 @@ main() {
             summarize_results
             ;;
         -h|--help|help)
-            usage
+            single_usage
             ;;
         *)
-            usage >&2
+            single_usage >&2
+            exit 1
+            ;;
+    esac
+}
+
+batch_usage() {
+    cat <<'EOF'
+Usage:
+  bash 04_run_celltype_dmr.sh prepare [sample_jobs]
+  bash 04_run_celltype_dmr.sh run [sample_jobs] [comparison_jobs] [threads]
+  bash 04_run_celltype_dmr.sh status
+  bash 04_run_celltype_dmr.sh summarize
+  bash 04_run_celltype_dmr.sh one <sample_name> <action> [action_args...]
+
+Single-sample actions: prepare, run, run-one, status, summarize.
+EOF
+}
+
+run_sample_batch() {
+    local sample_dir="$1" action="$2"
+    shift 2
+    local name="${sample_dir##*/}" short
+    short="$(sample_short "$name")"
+    echo ">>> $short $action"
+    env SAMPLE_NAME="$name" SAMPLE_SHORT="$short" THRESHOLD="$THRESHOLD" \
+        ANNOTATION_CSV="$ANNOTATION_CSV" \
+        bash "$SCRIPT_DIR/04_run_celltype_dmr.sh" __one "$action" "$@"
+}
+
+run_all_samples() {
+    local action="$1"
+    shift
+
+    [[ "$THRESHOLD" == 300k ]] || die "current batch workflow requires THRESHOLD=300k"
+    collect_samples
+    case "$action" in
+        prepare)
+            run_sample_batches "${1:-$DEFAULT_PREPARE_JOBS}" run_sample_batch prepare ||
+                die "one or more samples failed DMR preparation"
+            ;;
+        run)
+            local sample_jobs="${1:-$DEFAULT_SAMPLE_JOBS}"
+            local comparison_jobs="${2:-$DEFAULT_COMPARISON_JOBS}"
+            local threads="${3:-$DEFAULT_BATCH_THREADS}"
+            is_positive_integer "$comparison_jobs" || die "comparison_jobs must be positive"
+            is_positive_integer "$threads" || die "threads must be positive"
+            echo "DMR concurrency: samples=$sample_jobs comparisons=$comparison_jobs threads=$threads"
+            run_sample_batches "$sample_jobs" run_sample_batch run \
+                "$comparison_jobs" "$threads" ||
+                die "one or more samples failed DMR analysis"
+            ;;
+        status)
+            local sample_dir
+            for sample_dir in "${SAMPLE_DIRS[@]}"; do
+                run_sample_batch "$sample_dir" status
+            done
+            ;;
+        summarize)
+            run_sample_batches 1 run_sample_batch summarize ||
+                die "one or more sample summaries failed"
+            ;;
+    esac
+    echo "[ALL SAMPLES OK] $action complete"
+}
+
+main() {
+    local action="${1:-}"
+    case "$action" in
+        prepare|run|status|summarize)
+            shift
+            run_all_samples "$action" "$@"
+            ;;
+        one)
+            local requested_sample="${2:-}"
+            local single_action="${3:-}"
+            [[ -n "$requested_sample" ]] || die "one requires a sample name"
+            [[ -n "$single_action" ]] || die "one requires an action"
+            local requested_short
+            requested_short="$(sample_short "$requested_sample")" ||
+                die "unsupported sample name: $requested_sample"
+            shift 3
+            env SAMPLE_NAME="$requested_sample" SAMPLE_SHORT="$requested_short" \
+                THRESHOLD="$THRESHOLD" ANNOTATION_CSV="$ANNOTATION_CSV" \
+                bash "$SCRIPT_DIR/04_run_celltype_dmr.sh" __one "$single_action" "$@"
+            ;;
+        __one)
+            shift
+            run_one "$@"
+            ;;
+        -h|--help|help)
+            batch_usage
+            ;;
+        *)
+            batch_usage >&2
             exit 1
             ;;
     esac
