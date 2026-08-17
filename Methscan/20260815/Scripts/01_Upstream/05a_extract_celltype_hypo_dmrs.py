@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Extract the top 1500 cell-type hypomethylated DMRs per sample and cell type.
+"""Extract configurable Top-N hypomethylated DMRs per sample and cell type.
+
+The current Step 05 entry point requests Top200; the standalone CLI keeps a
+configurable ``--top-dmrs-per-cell`` option for other analyses.
 
 The default input directory below ``SCLC_ALLCOOLS_ROOT`` is::
 
