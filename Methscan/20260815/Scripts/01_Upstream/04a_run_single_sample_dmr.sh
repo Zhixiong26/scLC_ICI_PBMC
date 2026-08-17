@@ -13,7 +13,7 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THRESHOLD="${THRESHOLD:-30k}"
-source "$SCRIPT_DIR/workflow_common.sh"
+source "$SCRIPT_DIR/00_workflow_common.sh"
 
 SAMPLE_NAME="${SAMPLE_NAME:-25110891_IR01_Met}"
 DERIVED_SAMPLE_SHORT="$(sample_short "$SAMPLE_NAME")" ||
@@ -60,16 +60,16 @@ EXPECTED_FILTERED_CELLS=""
 usage() {
     cat <<'EOF'
 Usage:
-  SAMPLE_NAME=25110891_IR01_Met bash run_single_sample_dmr.sh prepare
-  SAMPLE_NAME=25110891_IR01_Met bash run_single_sample_dmr.sh status
-  SAMPLE_NAME=25110891_IR01_Met bash run_single_sample_dmr.sh run [max_jobs] [threads]
-  SAMPLE_NAME=25110891_IR01_Met bash run_single_sample_dmr.sh run-one <comparison> [threads]
-  SAMPLE_NAME=25110891_IR01_Met bash run_single_sample_dmr.sh summarize
+  SAMPLE_NAME=25110891_IR01_Met bash 04a_run_single_sample_dmr.sh prepare
+  SAMPLE_NAME=25110891_IR01_Met bash 04a_run_single_sample_dmr.sh status
+  SAMPLE_NAME=25110891_IR01_Met bash 04a_run_single_sample_dmr.sh run [max_jobs] [threads]
+  SAMPLE_NAME=25110891_IR01_Met bash 04a_run_single_sample_dmr.sh run-one <comparison> [threads]
+  SAMPLE_NAME=25110891_IR01_Met bash 04a_run_single_sample_dmr.sh summarize
 
 Examples:
-  SAMPLE_NAME=25110891_IR01_Met THRESHOLD=300k bash run_single_sample_dmr.sh prepare
-  SAMPLE_NAME=25110891_IR01_Met THRESHOLD=300k bash run_single_sample_dmr.sh run 1 24
-  SAMPLE_NAME=25110891_IR01_Met THRESHOLD=300k bash run_single_sample_dmr.sh status
+  SAMPLE_NAME=25110891_IR01_Met THRESHOLD=300k bash 04a_run_single_sample_dmr.sh prepare
+  SAMPLE_NAME=25110891_IR01_Met THRESHOLD=300k bash 04a_run_single_sample_dmr.sh run 1 24
+  SAMPLE_NAME=25110891_IR01_Met THRESHOLD=300k bash 04a_run_single_sample_dmr.sh status
 EOF
 }
 

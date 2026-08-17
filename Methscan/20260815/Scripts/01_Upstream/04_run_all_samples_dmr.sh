@@ -5,8 +5,8 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/workflow_common.sh"
-DMR_SCRIPT="${DMR_SCRIPT:-$SCRIPT_DIR/run_single_sample_dmr.sh}"
+source "$SCRIPT_DIR/00_workflow_common.sh"
+DMR_SCRIPT="${DMR_SCRIPT:-$SCRIPT_DIR/04a_run_single_sample_dmr.sh}"
 DEFAULT_PREPARE_JOBS="${DEFAULT_PREPARE_JOBS:-2}"
 DEFAULT_SAMPLE_JOBS="${DEFAULT_SAMPLE_JOBS:-2}"
 DEFAULT_COMPARISON_JOBS="${DEFAULT_COMPARISON_JOBS:-2}"
@@ -15,10 +15,10 @@ DEFAULT_THREADS="${DEFAULT_THREADS:-24}"
 usage() {
     cat <<'EOF'
 Usage:
-  bash 05_run_all_samples_dmr.sh prepare [sample_jobs]
-  bash 05_run_all_samples_dmr.sh run [sample_jobs] [comparison_jobs] [threads]
-  bash 05_run_all_samples_dmr.sh status
-  bash 05_run_all_samples_dmr.sh summarize
+  bash 04_run_all_samples_dmr.sh prepare [sample_jobs]
+  bash 04_run_all_samples_dmr.sh run [sample_jobs] [comparison_jobs] [threads]
+  bash 04_run_all_samples_dmr.sh status
+  bash 04_run_all_samples_dmr.sh summarize
 EOF
 }
 

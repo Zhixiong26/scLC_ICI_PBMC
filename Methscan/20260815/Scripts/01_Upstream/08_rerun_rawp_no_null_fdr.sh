@@ -18,7 +18,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/workflow_common.sh"
+source "$SCRIPT_DIR/00_workflow_common.sh"
 MIN_CELLS="${MIN_CELLS:-10}"
 FALLBACK_PACKAGE_ROOT="${FALLBACK_PACKAGE_ROOT:-$SCRIPT_DIR/.rawp_fallback_methscan}"
 PATCH_REVISION="rawp_no_null_dmrs_v2"
@@ -26,14 +26,14 @@ PATCH_REVISION="rawp_no_null_dmrs_v2"
 usage() {
     cat <<'EOF'
 Usage:
-  bash 09_rerun_rawp_no_null_fdr.sh status
-  bash 09_rerun_rawp_no_null_fdr.sh pilot [sample] [comparison] [threads]
-  bash 09_rerun_rawp_no_null_fdr.sh run [max_jobs] [threads]
+  bash 08_rerun_rawp_no_null_fdr.sh status
+  bash 08_rerun_rawp_no_null_fdr.sh pilot [sample] [comparison] [threads]
+  bash 08_rerun_rawp_no_null_fdr.sh run [max_jobs] [threads]
 
 Examples:
-  bash 09_rerun_rawp_no_null_fdr.sh pilot
-  bash 09_rerun_rawp_no_null_fdr.sh pilot 25110891_IR02_Met IR02__B_cells_vs_B_cells_unresolved 16
-  bash 09_rerun_rawp_no_null_fdr.sh run 8 16
+  bash 08_rerun_rawp_no_null_fdr.sh pilot
+  bash 08_rerun_rawp_no_null_fdr.sh pilot 25110891_IR02_Met IR02__B_cells_vs_B_cells_unresolved 16
+  bash 08_rerun_rawp_no_null_fdr.sh run 8 16
 
 Only comparisons whose original log explicitly contains the known
 ZeroDivisionError at calc_fdr are eligible for this fallback.

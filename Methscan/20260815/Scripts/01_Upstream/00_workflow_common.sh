@@ -2,8 +2,8 @@
 
 # Shared configuration and small orchestration helpers for the 01–09 workflow.
 
-WORKFLOW_LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-SCLC_PROJECT_CONFIG="${SCLC_PROJECT_CONFIG:-$(cd "${WORKFLOW_LIB_DIR}/../../../.." && pwd)/project_config.sh}"
+WORKFLOW_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCLC_PROJECT_CONFIG="${SCLC_PROJECT_CONFIG:-$(cd "${WORKFLOW_DIR}/../../../.." && pwd)/project_config.sh}"
 [[ -s "$SCLC_PROJECT_CONFIG" ]] || {
     echo "ERROR: project configuration missing: $SCLC_PROJECT_CONFIG" >&2
     return 1 2>/dev/null || exit 1

@@ -7,7 +7,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/workflow_common.sh"
+source "$SCRIPT_DIR/00_workflow_common.sh"
 
 DATA_TAG="${DATA_TAG:-covdedupprob}"
 COV_SUBDIR="${COV_SUBDIR:-cov_dedup_probability}"
@@ -16,11 +16,12 @@ PROFILE_BASENAME="${PROFILE_BASENAME:-TSS_profile_dedup_probability}"
 TSS_BED="${TSS_BED:-${SCLC_REF_ROOT}/human_hg38_TSS.bed}"
 DEFAULT_MAX_JOBS="${DEFAULT_MAX_JOBS:-1}"
 DEFAULT_THREADS="${DEFAULT_THREADS:-20}"
+DEFAULT_SMOOTH_SAMPLE_JOBS="${DEFAULT_SMOOTH_SAMPLE_JOBS:-10}"
 FILTER_MIN_METH="${FILTER_MIN_METH:-55}"
 FILTER_MAX_METH="${FILTER_MAX_METH:-}"
 FILTER_MAX_SITES="${FILTER_MAX_SITES:-1200000}"
 SCANPY_FILTER_LABEL="${SCANPY_FILTER_LABEL:-scanpy0814clean}"
-SCANPY_KEEP_SCRIPT="${SCANPY_KEEP_SCRIPT:-${SCRIPT_DIR}/build_scanpy_clean_cell_list.py}"
+SCANPY_KEEP_SCRIPT="${SCANPY_KEEP_SCRIPT:-${SCRIPT_DIR}/03a_build_scanpy_clean_cell_list.py}"
 VALID_THRESHOLDS=(10k 20k 30k 50k 300k)
 
 FILTER_MAX_METH_LABEL="${FILTER_MAX_METH:-none}"
@@ -38,6 +39,8 @@ Usage:
   bash 03_run_upstream_pipeline.sh run <threshold> [max_jobs] [threads] [sample|all]
   bash 03_run_upstream_pipeline.sh run-to-compact <threshold> [max_jobs] [threads] [sample|all]
   bash 03_run_upstream_pipeline.sh run-to-smooth <threshold> [max_jobs] [threads] [sample|all]
+  bash 03_run_upstream_pipeline.sh smooth-all [sample_jobs]
+  bash 03_run_upstream_pipeline.sh smooth-status
 EOF
 }
 
@@ -421,6 +424,19 @@ main() {
             [[ "$action" != run-to-compact ]] || STOP_AFTER_PREPARE=1
             [[ "$action" != run-to-smooth ]] || STOP_AFTER_SMOOTH=1
             run_samples "$threshold" "$max_jobs" "$threads" "$selected"
+            ;;
+        smooth-all)
+            max_jobs="${2:-$DEFAULT_SMOOTH_SAMPLE_JOBS}"
+            is_positive_integer "$max_jobs" || die "sample_jobs must be positive"
+            initialize_provenance
+            STOP_AFTER_SMOOTH=1
+            echo "Running all samples independently to smooth: threshold=300k sample_jobs=$max_jobs"
+            echo "No cross-sample merge will be created."
+            run_samples 300k "$max_jobs" 1 all
+            ;;
+        smooth-status)
+            initialize_provenance
+            show_status 300k
             ;;
         -h|--help|help) usage ;;
         *) usage >&2; return 1 ;;

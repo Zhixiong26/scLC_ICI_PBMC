@@ -7,8 +7,8 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/workflow_common.sh"
-IMPLEMENTATION="$SCRIPT_DIR/check_cov_duplicates_one_sample.sh"
+source "$SCRIPT_DIR/00_workflow_common.sh"
+IMPLEMENTATION="$SCRIPT_DIR/01_check_cov_duplicates_one_sample.sh"
 
 run_sample() {
     local sample_dir="$1" file_jobs="$2"

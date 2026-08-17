@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-# Step 06: independently select Top200 hypo-DMRs for every sample.
+# Step 05: independently select Top200 hypo-DMRs for every sample.
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/workflow_common.sh"
+source "$SCRIPT_DIR/00_workflow_common.sh"
 RESULT_SCRIPT_DIR="${RESULT_SCRIPT_DIR:-${SCRIPT_DIR}}"
 SAMPLE_JOBS="${SAMPLE_JOBS:-10}"
 
@@ -58,7 +58,7 @@ process_sample() {
             return 1
         }
         echo "[$short 1/2 RUN] Top200 hypo-DMR selection"
-        python "$RESULT_SCRIPT_DIR/05_extract_celltype_hypo_dmrs_top1500.py" \
+        python "$RESULT_SCRIPT_DIR/05a_extract_celltype_hypo_dmrs_top1500.py" \
             "${input_args[@]}" \
             --output-dir "$hypo_dir" \
             --raw-p 0.01 \
@@ -76,7 +76,7 @@ process_sample() {
             return 1
         }
         echo "[$short 2/2 RUN] merge duplicate/overlapping DMR intervals"
-        python "$RESULT_SCRIPT_DIR/02_merge_sample_dmrs.py" \
+        python "$RESULT_SCRIPT_DIR/05b_merge_sample_dmrs.py" \
             --input-dir "$hypo_dir" \
             --output-dir "$merged_dmr_dir" \
             --jobs 1 || return 1

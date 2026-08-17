@@ -15,7 +15,7 @@ half-open intervals: start <= CpG position < end.  A DMR-cell pair with no
 observed CpG is written as NA.
 
 The output is one gzip-compressed DMR x single-cell wide table per sample and
-is compatible with ``04_plot_single_cell_dmr_heatmaps.py``.
+is compatible with ``07a_plot_single_cell_dmr_heatmaps.py``.
 """
 
 from __future__ import annotations

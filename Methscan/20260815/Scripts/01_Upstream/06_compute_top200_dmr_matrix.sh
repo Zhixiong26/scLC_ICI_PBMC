@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-# Step 07: compute a separate single-cell x Top200-DMR matrix for every sample.
+# Step 06: compute a separate single-cell x Top200-DMR matrix for every sample.
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/workflow_common.sh"
+source "$SCRIPT_DIR/00_workflow_common.sh"
 RESULT_SCRIPT_DIR="${RESULT_SCRIPT_DIR:-${SCRIPT_DIR}}"
 SAMPLE_JOBS="${SAMPLE_JOBS:-1}"
 CELL_JOBS="${CELL_JOBS:-64}"
@@ -45,7 +45,7 @@ process_sample() {
     }
 
     echo "[$short RUN] mean of unique CpG ratios; cell_workers=$CELL_JOBS"
-    python "$RESULT_SCRIPT_DIR/06_compute_dmr_mean_of_cpg_ratios.py" \
+    python "$RESULT_SCRIPT_DIR/06a_compute_dmr_mean_of_cpg_ratios.py" \
         --cov-base-dir "$BASE_DIR" \
         --cov-dir "$cov_dir" \
         --metadata "$metadata" \

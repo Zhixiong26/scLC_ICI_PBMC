@@ -6,7 +6,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/workflow_common.sh"
+source "$SCRIPT_DIR/00_workflow_common.sh"
 RESULT_SCRIPT_DIR="${RESULT_SCRIPT_DIR:-${SCRIPT_DIR}}"
 SAMPLE_JOBS="${SAMPLE_JOBS:-2}"
 PLOT_DPI="${PLOT_DPI:-300}"
@@ -20,12 +20,12 @@ ACTION="${1:-all}"
 usage() {
     cat <<'EOF'
 Usage:
-  bash 08_plot_all_top200_heatmaps.sh all
-  bash 08_plot_all_top200_heatmaps.sh raw
-  bash 08_plot_all_top200_heatmaps.sh dmrwise
-  bash 08_plot_all_top200_heatmaps.sh dmrtype
-  bash 08_plot_all_top200_heatmaps.sh status
-  bash 08_plot_all_top200_heatmaps.sh links
+  bash 07_plot_all_top200_heatmaps.sh all
+  bash 07_plot_all_top200_heatmaps.sh raw
+  bash 07_plot_all_top200_heatmaps.sh dmrwise
+  bash 07_plot_all_top200_heatmaps.sh dmrtype
+  bash 07_plot_all_top200_heatmaps.sh status
+  bash 07_plot_all_top200_heatmaps.sh links
 
 Modes:
   all       Generate/reuse all eight official heatmap types.
@@ -220,7 +220,7 @@ run_variant() {
     fi
 
     command=(
-        python "$RESULT_SCRIPT_DIR/04_plot_single_cell_dmr_heatmaps.py"
+        python "$RESULT_SCRIPT_DIR/07a_plot_single_cell_dmr_heatmaps.py"
         --input-dir "$matrix_dir"
         --dmr-annotation-dir "$merged_dmr_dir"
         --output-dir "$figure_dir"
