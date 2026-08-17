@@ -1,6 +1,7 @@
 # The aggregate repository publishes only the normalized project trees.
 *
 !/.gitignore
+!/README.md
 !/Methscan/
 !/Methscan/**/
 !/MethylVI/
