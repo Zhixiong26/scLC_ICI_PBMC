@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""将新版QC剔除的细胞标记回旧版MethylVI监督式UMAP。"""
+"""将 Scanpy clean 和新版 MethSCAn QC 剔除的细胞分类标记回旧版 UMAP。"""
 
 from __future__ import annotations
 
@@ -13,6 +13,21 @@ import numpy as np
 import pandas as pd
 
 from mvi_utils import canonical_cell_id, env_path, save_json
+
+
+STATUS_RETAINED = "retained_after_both_filters"
+STATUS_SCANPY_REMOVED = "removed_by_scanpy_clean"
+STATUS_QC_REMOVED = "removed_by_methscan_qc_after_scanpy_clean"
+STATUS_COLORS = {
+    STATUS_RETAINED: "#bdbdbd",
+    STATUS_SCANPY_REMOVED: "#d73027",
+    STATUS_QC_REMOVED: "#4575b4",
+}
+STATUS_LABELS = {
+    STATUS_RETAINED: "Retained after both filters",
+    STATUS_SCANPY_REMOVED: "Removed by Scanpy clean",
+    STATUS_QC_REMOVED: "Removed by MethSCAn QC after Scanpy clean",
+}
 
 
 def _weight_tag(weight: float) -> str:
@@ -59,6 +74,43 @@ def _load_weights(reference_results: Path) -> list[float]:
     return [0.2, 0.5, 0.7, 0.9]
 
 
+def _read_scanpy_clean_cells(path: Path) -> set[str]:
+    if not path.is_file():
+        raise FileNotFoundError(f"Scanpy clean 注释表不存在: {path}")
+    table = pd.read_csv(path)
+    if "cell_id" not in table.columns:
+        raise ValueError(f"Scanpy clean 注释表缺少 cell_id 列: {path}")
+    cells = [canonical_cell_id(value) for value in table["cell_id"].astype(str)]
+    if len(cells) != len(set(cells)):
+        raise ValueError(f"Scanpy clean 注释表的细胞 ID 标准化后存在重复: {path}")
+    return set(cells)
+
+
+def _classify_cells(
+    reference_cells: set[str],
+    current_cells: set[str],
+    scanpy_clean_cells: set[str],
+) -> dict[str, str]:
+    """按流程顺序划分互斥类别，避免同一细胞重复计数。"""
+    current_not_clean = current_cells - scanpy_clean_cells
+    if current_not_clean:
+        preview = ", ".join(sorted(current_not_clean)[:5])
+        raise ValueError(
+            f"新版QC结果中有{len(current_not_clean):,}个细胞不在Scanpy clean名单中: "
+            f"{preview}"
+        )
+
+    status: dict[str, str] = {}
+    for cell in reference_cells:
+        if cell in current_cells:
+            status[cell] = STATUS_RETAINED
+        elif cell not in scanpy_clean_cells:
+            status[cell] = STATUS_SCANPY_REMOVED
+        else:
+            status[cell] = STATUS_QC_REMOVED
+    return status
+
+
 def _read_reference_coordinates(reference_results: Path, weight: float) -> pd.DataFrame:
     tag = _weight_tag(weight)
     path = (
@@ -90,7 +142,6 @@ def _draw_depth_overlay(
         values = np.log1p(values)
         colorbar_label = "log1p(total coverage)"
 
-    removed = table["qc_status"].eq("removed_after_new_qc").to_numpy()
     fig, axis = plt.subplots(figsize=(7, 6))
     scatter = axis.scatter(
         table["UMAP1"],
@@ -101,31 +152,35 @@ def _draw_depth_overlay(
         cmap="viridis",
         linewidths=0,
     )
-    axis.scatter(
-        table.loc[removed, "UMAP1"],
-        table.loc[removed, "UMAP2"],
-        s=10,
-        facecolors="none",
-        edgecolors="#e31a1c",
-        linewidths=0.45,
-        alpha=0.9,
-        zorder=3,
-    )
-    colorbar = fig.colorbar(scatter, ax=axis, pad=0.02)
-    colorbar.set_label(colorbar_label)
-    axis.legend(
-        handles=[
+    legend_handles: list[Line2D] = []
+    for status in (STATUS_SCANPY_REMOVED, STATUS_QC_REMOVED):
+        removed = table["qc_status"].eq(status)
+        axis.scatter(
+            table.loc[removed, "UMAP1"],
+            table.loc[removed, "UMAP2"],
+            s=10,
+            facecolors="none",
+            edgecolors=STATUS_COLORS[status],
+            linewidths=0.55,
+            alpha=0.95,
+            zorder=3,
+        )
+        legend_handles.append(
             Line2D(
                 [0],
                 [0],
                 marker="o",
                 linestyle="none",
                 markerfacecolor="none",
-                markeredgecolor="#e31a1c",
+                markeredgecolor=STATUS_COLORS[status],
                 markersize=5,
-                label=f"Removed by new QC (n={int(removed.sum()):,})",
+                label=f"{STATUS_LABELS[status]} (n={int(removed.sum()):,})",
             )
-        ],
+        )
+    colorbar = fig.colorbar(scatter, ax=axis, pad=0.02)
+    colorbar.set_label(colorbar_label)
+    axis.legend(
+        handles=legend_handles,
         loc="best",
         frameon=True,
         fontsize=8,
@@ -140,27 +195,18 @@ def _draw_depth_overlay(
 
 
 def _draw_status(table: pd.DataFrame, output: Path, title: str) -> None:
-    removed = table["qc_status"].eq("removed_after_new_qc")
-    kept = ~removed
     fig, axis = plt.subplots(figsize=(7, 6))
-    axis.scatter(
-        table.loc[kept, "UMAP1"],
-        table.loc[kept, "UMAP2"],
-        c="#bdbdbd",
-        s=2,
-        alpha=0.55,
-        linewidths=0,
-        label=f"Retained (n={int(kept.sum()):,})",
-    )
-    axis.scatter(
-        table.loc[removed, "UMAP1"],
-        table.loc[removed, "UMAP2"],
-        c="#e31a1c",
-        s=3,
-        alpha=0.85,
-        linewidths=0,
-        label=f"Removed by new QC (n={int(removed.sum()):,})",
-    )
+    for status in (STATUS_RETAINED, STATUS_SCANPY_REMOVED, STATUS_QC_REMOVED):
+        selected = table["qc_status"].eq(status)
+        axis.scatter(
+            table.loc[selected, "UMAP1"],
+            table.loc[selected, "UMAP2"],
+            c=STATUS_COLORS[status],
+            s=2 if status == STATUS_RETAINED else 4,
+            alpha=0.55 if status == STATUS_RETAINED else 0.85,
+            linewidths=0,
+            label=f"{STATUS_LABELS[status]} (n={int(selected.sum()):,})",
+        )
     axis.set_xlabel("UMAP1")
     axis.set_ylabel("UMAP2")
     axis.set_title(title)
@@ -190,6 +236,7 @@ def main() -> None:
     reference_results = env_path("MVI_QC_REFERENCE_RESULTS")
     current_results = env_path("MVI_QC_CURRENT_RESULTS", os.environ.get("MVI_RESULTS"))
     output_root = env_path("MVI_QC_COMPARISON_DIR")
+    scanpy_clean_path = env_path("MVI_SCANPY_CLEAN_ANNOTATION")
 
     reference_depth = _read_depth(reference_results, "旧版参考结果")
     current_depth = _read_depth(current_results, "新版QC结果")
@@ -203,12 +250,20 @@ def main() -> None:
             f"不能视为旧版子集。示例: {preview}"
         )
 
-    removed_cells = reference_cells - current_cells
-    reference_depth["qc_status"] = np.where(
-        reference_depth.index.isin(current_cells),
-        "retained_in_new_qc",
-        "removed_after_new_qc",
+    scanpy_clean_cells = _read_scanpy_clean_cells(scanpy_clean_path)
+    status_by_cell = _classify_cells(
+        reference_cells,
+        current_cells,
+        scanpy_clean_cells,
     )
+    removed_cells = reference_cells - current_cells
+    scanpy_removed_cells = {
+        cell for cell, status in status_by_cell.items() if status == STATUS_SCANPY_REMOVED
+    }
+    qc_removed_cells = {
+        cell for cell, status in status_by_cell.items() if status == STATUS_QC_REMOVED
+    }
+    reference_depth["qc_status"] = reference_depth.index.map(status_by_cell)
     reference_depth["present_in_new_qc"] = reference_depth.index.isin(current_cells)
     output_root.mkdir(parents=True, exist_ok=True)
     reference_depth.to_csv(
@@ -248,21 +303,21 @@ def main() -> None:
         _draw_depth_overlay(
             table,
             log_output,
-            f"Reference UMAP — log sequencing depth; removed cells outlined "
+            f"Reference UMAP — log sequencing depth; filtered cells outlined "
             f"(target_weight={weight:g})",
             absolute=False,
         )
         _draw_depth_overlay(
             table,
             absolute_output,
-            f"Reference UMAP — absolute sequencing depth; removed cells outlined "
+            f"Reference UMAP — absolute sequencing depth; filtered cells outlined "
             f"(target_weight={weight:g})",
             absolute=True,
         )
         _draw_status(
             table,
             status_output,
-            f"Reference UMAP — cells retained vs removed by new QC "
+            f"Reference UMAP — Scanpy clean vs MethSCAn QC filtering "
             f"(target_weight={weight:g})",
         )
         figure_files.extend(map(str, (log_output, absolute_output, status_output)))
@@ -270,11 +325,14 @@ def main() -> None:
     summary = {
         "reference_results": str(reference_results),
         "current_results": str(current_results),
+        "scanpy_clean_annotation": str(scanpy_clean_path),
         "coordinate_space": "reference supervised UMAP",
         "reference_cells": int(len(reference_cells)),
         "current_cells": int(len(current_cells)),
         "retained_reference_cells": int(len(reference_cells & current_cells)),
         "removed_reference_cells": int(len(removed_cells)),
+        "removed_by_scanpy_clean_cells": int(len(scanpy_removed_cells)),
+        "removed_by_methscan_qc_after_scanpy_clean_cells": int(len(qc_removed_cells)),
         "current_only_cells": 0,
         "target_weights": weights,
         "depth_summary": _depth_summary(reference_depth),

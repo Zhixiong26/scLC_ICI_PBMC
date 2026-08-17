@@ -73,6 +73,10 @@ export MVI_ALLC_DIR="${MVI_ALLC_DIR:-${MVI_ALLCOOLS_OUTPUT}/input_allc}"
 # cell_type_integrated 标准化为 sample_id、condition 和 cell_type。
 export MVI_ANNOTATION="${MVI_ANNOTATION:-${SCLC_SCANPY_ANNOTATION}}"
 
+# Scanpy clean 细胞名单；QC 对比图用它区分“Scanpy clean 筛除”
+# 和“通过 Scanpy clean 后又被 MethSCAn QC 筛除”的细胞。
+export MVI_SCANPY_CLEAN_ANNOTATION="${MVI_SCANPY_CLEAN_ANNOTATION:-${SCLC_SCANPY_CLEAN_ANNOTATION}}"
+
 # 10 个样本的 sample_id/condition 元数据表。
 export MVI_SAMPLE_METADATA="${MVI_SAMPLE_METADATA:-${SCLC_METHYLVI_SUPPLEMENTARY}/01_sample_metadata.tsv}"
 
