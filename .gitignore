@@ -1,22 +1,29 @@
-# The aggregate repository publishes only the normalized supplementary tree.
+# The aggregate repository publishes only the normalized project trees.
 *
 !/.gitignore
-!/Supplementary_materials/
-!/Supplementary_materials/**/
+!/Methscan/
+!/Methscan/**/
+!/MethylVI/
+!/MethylVI/**/
+!/Scanpy/
+!/Scanpy/**/
 
 # Analysis and workflow scripts must live below a Scripts directory.
-!/Supplementary_materials/**/Scripts/**/*.py
-!/Supplementary_materials/**/Scripts/**/*.R
-!/Supplementary_materials/**/Scripts/**/*.r
-!/Supplementary_materials/**/Scripts/**/*.sh
-!/Supplementary_materials/**/Scripts/**/*.bash
-!/Supplementary_materials/**/Scripts/**/*.zsh
-!/Supplementary_materials/**/Scripts/**/*.pl
-!/Supplementary_materials/**/Scripts/**/*.jl
-!/Supplementary_materials/**/Scripts/**/*.ipynb
-!/Supplementary_materials/**/Scripts/**/*.Rmd
-!/Supplementary_materials/**/Scripts/**/*.qmd
+!/*/[0-9]*/Scripts/**/*.py
+!/*/[0-9]*/Scripts/**/*.R
+!/*/[0-9]*/Scripts/**/*.r
+!/*/[0-9]*/Scripts/**/*.sh
+!/*/[0-9]*/Scripts/**/*.bash
+!/*/[0-9]*/Scripts/**/*.zsh
+!/*/[0-9]*/Scripts/**/*.pl
+!/*/[0-9]*/Scripts/**/*.jl
+!/*/[0-9]*/Scripts/**/*.ipynb
+!/*/[0-9]*/Scripts/**/*.Rmd
+!/*/[0-9]*/Scripts/**/*.qmd
 
 # Result artifacts are restricted to PNG files below Results directories.
-!/Supplementary_materials/**/Results/**/*.png
-!/Supplementary_materials/**/Results/**/*.PNG
+!/*/[0-9]*/Results/**/*.png
+!/*/[0-9]*/Results/**/*.PNG
+
+# Keep empty supplementary-material directories visible in Git.
+!/*/[0-9]*/Supplementary_materials/.gitkeep
