@@ -18,7 +18,9 @@
 
 仓库当前包含 177 个分析脚本和 223 张 PNG 结果图。三个原始子仓库不在本仓库的跟踪范围内，其远程仓库配置保持不变。
 
-## 完整文件树
+## 文件树
+
+为便于阅读，`Results/` 目录仅显示目录节点，不展开其中的 PNG 文件和子目录。
 
 ```text
 .
@@ -27,77 +29,6 @@
 ├── Methscan/
 │   ├── 20260815/
 │   │   ├── Results/
-│   │   │   ├── 01_Upstream/
-│   │   │   │   ├── DMRtypeMean_Zscore/
-│   │   │   │   │   ├── DMRtypeMean_Zscore__IR01.png
-│   │   │   │   │   ├── DMRtypeMean_Zscore__IR02.png
-│   │   │   │   │   ├── DMRtypeMean_Zscore__IR03.png
-│   │   │   │   │   ├── DMRtypeMean_Zscore__IR04.png
-│   │   │   │   │   ├── DMRtypeMean_Zscore__IR05.png
-│   │   │   │   │   ├── DMRtypeMean_Zscore__NR01.png
-│   │   │   │   │   ├── DMRtypeMean_Zscore__NR02.png
-│   │   │   │   │   ├── DMRtypeMean_Zscore__NR03.png
-│   │   │   │   │   ├── DMRtypeMean_Zscore__NR04.png
-│   │   │   │   │   └── DMRtypeMean_Zscore__NR05.png
-│   │   │   │   ├── DMRwise_Zscore/
-│   │   │   │   │   ├── DMRwise_Zscore__IR01.png
-│   │   │   │   │   ├── DMRwise_Zscore__IR02.png
-│   │   │   │   │   ├── DMRwise_Zscore__IR03.png
-│   │   │   │   │   ├── DMRwise_Zscore__IR04.png
-│   │   │   │   │   ├── DMRwise_Zscore__IR05.png
-│   │   │   │   │   ├── DMRwise_Zscore__NR01.png
-│   │   │   │   │   ├── DMRwise_Zscore__NR02.png
-│   │   │   │   │   ├── DMRwise_Zscore__NR03.png
-│   │   │   │   │   ├── DMRwise_Zscore__NR04.png
-│   │   │   │   │   └── DMRwise_Zscore__NR05.png
-│   │   │   │   ├── DMRwise_Zscore_ColorClip1/
-│   │   │   │   │   ├── DMRwise_Zscore_ColorClip1__IR01.png
-│   │   │   │   │   ├── DMRwise_Zscore_ColorClip1__IR02.png
-│   │   │   │   │   ├── DMRwise_Zscore_ColorClip1__IR03.png
-│   │   │   │   │   ├── DMRwise_Zscore_ColorClip1__IR04.png
-│   │   │   │   │   ├── DMRwise_Zscore_ColorClip1__IR05.png
-│   │   │   │   │   ├── DMRwise_Zscore_ColorClip1__NR01.png
-│   │   │   │   │   ├── DMRwise_Zscore_ColorClip1__NR02.png
-│   │   │   │   │   ├── DMRwise_Zscore_ColorClip1__NR03.png
-│   │   │   │   │   ├── DMRwise_Zscore_ColorClip1__NR04.png
-│   │   │   │   │   └── DMRwise_Zscore_ColorClip1__NR05.png
-│   │   │   │   └── MeanRatio/
-│   │   │   │       ├── MeanRatio__IR01.png
-│   │   │   │       ├── MeanRatio__IR02.png
-│   │   │   │       ├── MeanRatio__IR03.png
-│   │   │   │       ├── MeanRatio__IR04.png
-│   │   │   │       ├── MeanRatio__IR05.png
-│   │   │   │       ├── MeanRatio__NR01.png
-│   │   │   │       ├── MeanRatio__NR02.png
-│   │   │   │       ├── MeanRatio__NR03.png
-│   │   │   │       ├── MeanRatio__NR04.png
-│   │   │   │       └── MeanRatio__NR05.png
-│   │   │   └── Archive/
-│   │   │       └── root_workflows/
-│   │   │           └── Meth diff/
-│   │   │               └── result/
-│   │   │                   └── clean_celltype_IR_vs_NR/
-│   │   │                       ├── top1/
-│   │   │                       │   ├── top1_PCA.png
-│   │   │                       │   ├── top1_UMAP_by_cell_type.png
-│   │   │                       │   ├── top1_UMAP_by_leiden.png
-│   │   │                       │   ├── top1_UMAP_by_response.png
-│   │   │                       │   ├── top1_UMAP_by_sample.png
-│   │   │                       │   └── top1_UMAP_response_by_cell_type.png
-│   │   │                       ├── top2/
-│   │   │                       │   ├── top2_PCA.png
-│   │   │                       │   ├── top2_UMAP_by_cell_type.png
-│   │   │                       │   ├── top2_UMAP_by_leiden.png
-│   │   │                       │   ├── top2_UMAP_by_response.png
-│   │   │                       │   ├── top2_UMAP_by_sample.png
-│   │   │                       │   └── top2_UMAP_response_by_cell_type.png
-│   │   │                       └── top5/
-│   │   │                           ├── top5_PCA.png
-│   │   │                           ├── top5_UMAP_by_cell_type.png
-│   │   │                           ├── top5_UMAP_by_leiden.png
-│   │   │                           ├── top5_UMAP_by_response.png
-│   │   │                           ├── top5_UMAP_by_sample.png
-│   │   │                           └── top5_UMAP_response_by_cell_type.png
 │   │   ├── Scripts/
 │   │   │   ├── 01_Upstream/
 │   │   │   │   ├── 01_check_cov_duplicates.sh
@@ -211,16 +142,6 @@
 │   └── Archive/
 │       ├── 20260716/
 │       │   ├── Results/
-│       │   │   ├── .gitkeep
-│       │   │   └── Annotation/
-│       │   │       └── result/
-│       │   │           └── plots/
-│       │   │               ├── ALL_PCA_200k.png
-│       │   │               ├── ALL_umap_plot_by_cell_type_200k.png
-│       │   │               ├── ALL_umap_plot_by_leiden_200k.png
-│       │   │               ├── ALL_umap_plot_by_response_200k.png
-│       │   │               ├── ALL_umap_plot_by_sample_200k.png
-│       │   │               └── ALL_umap_plot_response_by_cell_type_200k.png
 │       │   ├── Scripts/
 │       │   │   ├── Annotation/
 │       │   │   │   └── scripts/
@@ -258,35 +179,6 @@
 │       │       └── .gitkeep
 │       └── 20260718/
 │           ├── Results/
-│           │   └── Meth_diff/
-│           │       └── result/
-│           │           └── UMAP_before_after_all/
-│           │               ├── cell_type/
-│           │               │   ├── IR_threshold001_after_UMAP_by_cell_type.png
-│           │               │   ├── IR_threshold001_before_UMAP_by_cell_type.png
-│           │               │   ├── IR_threshold002_after_UMAP_by_cell_type.png
-│           │               │   ├── IR_threshold002_before_UMAP_by_cell_type.png
-│           │               │   ├── IR_threshold005_after_UMAP_by_cell_type.png
-│           │               │   ├── IR_threshold005_before_UMAP_by_cell_type.png
-│           │               │   ├── NR_threshold001_after_UMAP_by_cell_type.png
-│           │               │   ├── NR_threshold001_before_UMAP_by_cell_type.png
-│           │               │   ├── NR_threshold002_after_UMAP_by_cell_type.png
-│           │               │   ├── NR_threshold002_before_UMAP_by_cell_type.png
-│           │               │   ├── NR_threshold005_after_UMAP_by_cell_type.png
-│           │               │   └── NR_threshold005_before_UMAP_by_cell_type.png
-│           │               └── sample/
-│           │                   ├── IR_threshold001_after_UMAP_by_sample.png
-│           │                   ├── IR_threshold001_before_UMAP_by_sample.png
-│           │                   ├── IR_threshold002_after_UMAP_by_sample.png
-│           │                   ├── IR_threshold002_before_UMAP_by_sample.png
-│           │                   ├── IR_threshold005_after_UMAP_by_sample.png
-│           │                   ├── IR_threshold005_before_UMAP_by_sample.png
-│           │                   ├── NR_threshold001_after_UMAP_by_sample.png
-│           │                   ├── NR_threshold001_before_UMAP_by_sample.png
-│           │                   ├── NR_threshold002_after_UMAP_by_sample.png
-│           │                   ├── NR_threshold002_before_UMAP_by_sample.png
-│           │                   ├── NR_threshold005_after_UMAP_by_sample.png
-│           │                   └── NR_threshold005_before_UMAP_by_sample.png
 │           ├── Scripts/
 │           │   └── Meth_diff/
 │           │       ├── 01_prepare_response_data.sh
@@ -335,137 +227,6 @@
 ├── MethylVI/
 │   ├── 20260816/
 │   │   ├── Results/
-│   │   │   ├── blacklist_f0p2/
-│   │   │   │   └── 01_before_methylvi/
-│   │   │   │       ├── allcools_5kb_tsne_L1.png
-│   │   │   │       └── allcools_5kb_umap_L1.png
-│   │   │   ├── blacklist_f0p2_100k/
-│   │   │   │   └── 01_before_methylvi/
-│   │   │   │       ├── allcools_5kb_tsne_L1.png
-│   │   │   │       └── allcools_5kb_umap_L1.png
-│   │   │   ├── blacklist_f0p2_4819/
-│   │   │   │   ├── 01_before_methylvi/
-│   │   │   │   │   ├── allcools_original_embedding_cell_type.png
-│   │   │   │   │   ├── allcools_original_embedding_condition.png
-│   │   │   │   │   └── allcools_original_embedding_sample_id.png
-│   │   │   │   ├── 02_after_methylvi/
-│   │   │   │   │   ├── methylvi_umap_cell_type.png
-│   │   │   │   │   ├── methylvi_umap_condition.png
-│   │   │   │   │   └── methylvi_umap_sample_id.png
-│   │   │   │   └── 03_supervised_umap/
-│   │   │   │       ├── target_weight_0p2/
-│   │   │   │       │   ├── methylvi_supervised_umap_cell_type.png
-│   │   │   │       │   ├── methylvi_supervised_umap_condition.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sample_id.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sequencing_depth_absolute.png
-│   │   │   │       │   └── methylvi_supervised_umap_sequencing_depth.png
-│   │   │   │       ├── target_weight_0p5/
-│   │   │   │       │   ├── methylvi_supervised_umap_cell_type.png
-│   │   │   │       │   ├── methylvi_supervised_umap_condition.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sample_id.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sequencing_depth_absolute.png
-│   │   │   │       │   └── methylvi_supervised_umap_sequencing_depth.png
-│   │   │   │       ├── target_weight_0p7/
-│   │   │   │       │   ├── methylvi_supervised_umap_cell_type.png
-│   │   │   │       │   ├── methylvi_supervised_umap_condition.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sample_id.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sequencing_depth_absolute.png
-│   │   │   │       │   └── methylvi_supervised_umap_sequencing_depth.png
-│   │   │   │       └── target_weight_0p9/
-│   │   │   │           ├── methylvi_supervised_umap_cell_type.png
-│   │   │   │           ├── methylvi_supervised_umap_condition.png
-│   │   │   │           ├── methylvi_supervised_umap_sample_id.png
-│   │   │   │           ├── methylvi_supervised_umap_sequencing_depth_absolute.png
-│   │   │   │           └── methylvi_supervised_umap_sequencing_depth.png
-│   │   │   ├── blacklist_f0p2_4819_latent15/
-│   │   │   │   ├── 01_before_methylvi/
-│   │   │   │   │   ├── allcools_original_embedding_cell_type.png
-│   │   │   │   │   ├── allcools_original_embedding_condition.png
-│   │   │   │   │   └── allcools_original_embedding_sample_id.png
-│   │   │   │   ├── 02_after_methylvi/
-│   │   │   │   │   ├── methylvi_umap_cell_type.png
-│   │   │   │   │   ├── methylvi_umap_condition.png
-│   │   │   │   │   └── methylvi_umap_sample_id.png
-│   │   │   │   └── 03_supervised_umap/
-│   │   │   │       ├── target_weight_0p2/
-│   │   │   │       │   ├── methylvi_supervised_umap_cell_type.png
-│   │   │   │       │   ├── methylvi_supervised_umap_condition.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sample_id.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sequencing_depth_absolute.png
-│   │   │   │       │   └── methylvi_supervised_umap_sequencing_depth.png
-│   │   │   │       ├── target_weight_0p5/
-│   │   │   │       │   ├── methylvi_supervised_umap_cell_type.png
-│   │   │   │       │   ├── methylvi_supervised_umap_condition.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sample_id.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sequencing_depth_absolute.png
-│   │   │   │       │   └── methylvi_supervised_umap_sequencing_depth.png
-│   │   │   │       ├── target_weight_0p7/
-│   │   │   │       │   ├── methylvi_supervised_umap_cell_type.png
-│   │   │   │       │   ├── methylvi_supervised_umap_condition.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sample_id.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sequencing_depth_absolute.png
-│   │   │   │       │   └── methylvi_supervised_umap_sequencing_depth.png
-│   │   │   │       └── target_weight_0p9/
-│   │   │   │           ├── methylvi_supervised_umap_cell_type.png
-│   │   │   │           ├── methylvi_supervised_umap_condition.png
-│   │   │   │           ├── methylvi_supervised_umap_sample_id.png
-│   │   │   │           ├── methylvi_supervised_umap_sequencing_depth_absolute.png
-│   │   │   │           └── methylvi_supervised_umap_sequencing_depth.png
-│   │   │   ├── blacklist_f0p2_4819_latent25/
-│   │   │   │   ├── 01_before_methylvi/
-│   │   │   │   │   ├── allcools_original_embedding_cell_type.png
-│   │   │   │   │   ├── allcools_original_embedding_condition.png
-│   │   │   │   │   └── allcools_original_embedding_sample_id.png
-│   │   │   │   ├── 02_after_methylvi/
-│   │   │   │   │   ├── methylvi_umap_cell_type.png
-│   │   │   │   │   ├── methylvi_umap_condition.png
-│   │   │   │   │   └── methylvi_umap_sample_id.png
-│   │   │   │   └── 03_supervised_umap/
-│   │   │   │       ├── target_weight_0p2/
-│   │   │   │       │   ├── methylvi_supervised_umap_cell_type.png
-│   │   │   │       │   ├── methylvi_supervised_umap_condition.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sample_id.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sequencing_depth_absolute.png
-│   │   │   │       │   └── methylvi_supervised_umap_sequencing_depth.png
-│   │   │   │       ├── target_weight_0p5/
-│   │   │   │       │   ├── methylvi_supervised_umap_cell_type.png
-│   │   │   │       │   ├── methylvi_supervised_umap_condition.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sample_id.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sequencing_depth_absolute.png
-│   │   │   │       │   └── methylvi_supervised_umap_sequencing_depth.png
-│   │   │   │       ├── target_weight_0p7/
-│   │   │   │       │   ├── methylvi_supervised_umap_cell_type.png
-│   │   │   │       │   ├── methylvi_supervised_umap_condition.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sample_id.png
-│   │   │   │       │   ├── methylvi_supervised_umap_sequencing_depth_absolute.png
-│   │   │   │       │   └── methylvi_supervised_umap_sequencing_depth.png
-│   │   │   │       └── target_weight_0p9/
-│   │   │   │           ├── methylvi_supervised_umap_cell_type.png
-│   │   │   │           ├── methylvi_supervised_umap_condition.png
-│   │   │   │           ├── methylvi_supervised_umap_sample_id.png
-│   │   │   │           ├── methylvi_supervised_umap_sequencing_depth_absolute.png
-│   │   │   │           └── methylvi_supervised_umap_sequencing_depth.png
-│   │   │   ├── blacklist_f0p2_50k/
-│   │   │   │   └── 01_before_methylvi/
-│   │   │   │       ├── allcools_5kb_tsne_L1.png
-│   │   │   │       └── allcools_5kb_umap_L1.png
-│   │   │   └── qc_comparison_6199_vs_4819/
-│   │   │       ├── target_weight_0p2/
-│   │   │       │   ├── qc_retained_vs_removed.png
-│   │   │       │   ├── sequencing_depth_absolute_removed_cells_overlay.png
-│   │   │       │   └── sequencing_depth_removed_cells_overlay.png
-│   │   │       ├── target_weight_0p5/
-│   │   │       │   ├── qc_retained_vs_removed.png
-│   │   │       │   ├── sequencing_depth_absolute_removed_cells_overlay.png
-│   │   │       │   └── sequencing_depth_removed_cells_overlay.png
-│   │   │       ├── target_weight_0p7/
-│   │   │       │   ├── qc_retained_vs_removed.png
-│   │   │       │   ├── sequencing_depth_absolute_removed_cells_overlay.png
-│   │   │       │   └── sequencing_depth_removed_cells_overlay.png
-│   │   │       └── target_weight_0p9/
-│   │   │           ├── qc_retained_vs_removed.png
-│   │   │           ├── sequencing_depth_absolute_removed_cells_overlay.png
-│   │   │           └── sequencing_depth_removed_cells_overlay.png
 │   │   ├── Scripts/
 │   │   │   └── .gitkeep
 │   │   └── Supplementary_materials/
@@ -473,7 +234,6 @@
 │   └── Archive/
 │       ├── 20260810/
 │       │   ├── Results/
-│       │   │   └── .gitkeep
 │       │   ├── Scripts/
 │       │   │   ├── 00_config.sh
 │       │   │   ├── 02_prepare_allcools.sh
@@ -501,14 +261,6 @@
 │       │       └── .gitkeep
 │       └── 20260813/
 │           ├── Results/
-│           │   ├── blacklist_f0p2_100k/
-│           │   │   └── 01_before_methylvi/
-│           │   │       ├── allcools_5kb_tsne_L1.png
-│           │   │       └── allcools_5kb_umap_L1.png
-│           │   └── blacklist_f0p2_50k/
-│           │       └── 01_before_methylvi/
-│           │           ├── allcools_5kb_tsne_L1.png
-│           │           └── allcools_5kb_umap_L1.png
 │           ├── Scripts/
 │           │   └── .gitkeep
 │           └── Supplementary_materials/
@@ -516,17 +268,6 @@
 └── Scanpy/
     ├── 20260815/
     │   ├── Results/
-    │   │   ├── 12_umap_final_cell_type_IR01.png
-    │   │   ├── 12_umap_final_cell_type_IR02.png
-    │   │   ├── 12_umap_final_cell_type_IR03.png
-    │   │   ├── 12_umap_final_cell_type_IR04.png
-    │   │   ├── 12_umap_final_cell_type_IR05.png
-    │   │   ├── 12_umap_final_cell_type_NR01.png
-    │   │   ├── 12_umap_final_cell_type_NR02.png
-    │   │   ├── 12_umap_final_cell_type_NR03.png
-    │   │   ├── 12_umap_final_cell_type_NR04.png
-    │   │   ├── 12_umap_final_cell_type_NR05.png
-    │   │   └── 13_umap_clean_cells_final_annotation.png
     │   ├── Scripts/
     │   │   └── .gitkeep
     │   └── Supplementary_materials/
@@ -534,32 +275,6 @@
     └── Archive/
         └── 20260810/
             ├── Results/
-            │   ├── current/
-            │   │   ├── 05_umap_by_leiden_integrated_副本.png
-            │   │   ├── 06_umap_by_final_cell_type.png
-            │   │   ├── 12_umap_final_cell_type_IR01.png
-            │   │   ├── 12_umap_final_cell_type_IR02.png
-            │   │   ├── 12_umap_final_cell_type_IR03.png
-            │   │   ├── 12_umap_final_cell_type_IR04.png
-            │   │   ├── 12_umap_final_cell_type_IR05.png
-            │   │   ├── 12_umap_final_cell_type_NR01.png
-            │   │   ├── 12_umap_final_cell_type_NR02.png
-            │   │   ├── 12_umap_final_cell_type_NR03.png
-            │   │   ├── 12_umap_final_cell_type_NR04.png
-            │   │   ├── 12_umap_final_cell_type_NR05.png
-            │   │   └── 13_umap_clean_cells_final_annotation.png
-            │   └── Result0810/
-            │       ├── 12_umap_final_cell_type_IR01.png
-            │       ├── 12_umap_final_cell_type_IR02.png
-            │       ├── 12_umap_final_cell_type_IR03.png
-            │       ├── 12_umap_final_cell_type_IR04.png
-            │       ├── 12_umap_final_cell_type_IR05.png
-            │       ├── 12_umap_final_cell_type_NR01.png
-            │       ├── 12_umap_final_cell_type_NR02.png
-            │       ├── 12_umap_final_cell_type_NR03.png
-            │       ├── 12_umap_final_cell_type_NR04.png
-            │       ├── 12_umap_final_cell_type_NR05.png
-            │       └── 13_umap_clean_cells_final_annotation.png
             ├── Scripts/
             │   ├── 01_integration.py
             │   ├── 02_annotation_config.py
