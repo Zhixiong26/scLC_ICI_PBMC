@@ -37,7 +37,7 @@ from typing import Sequence
 import numpy as np
 
 
-BASE_DIR = Path("/share/LCZX_Data/data/allcools")
+BASE_DIR = Path(os.environ.get("SCLC_ALLCOOLS_ROOT", "/share/LCZX_Data/data/allcools"))
 MERGED_ROOT = BASE_DIR / "merged_10samples_covdedupprob"
 DEFAULT_METADATA = MERGED_ROOT / "methdiff_300k/metadata/cell_metadata.tsv"
 DEFAULT_DMR_DIR = (

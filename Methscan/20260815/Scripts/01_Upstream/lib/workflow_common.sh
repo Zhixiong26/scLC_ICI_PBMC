@@ -2,13 +2,26 @@
 
 # Shared configuration and small orchestration helpers for the 01–09 workflow.
 
-: "${BASE_DIR:=/share/LCZX_Data/data/allcools}"
+WORKFLOW_LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCLC_PROJECT_CONFIG="${SCLC_PROJECT_CONFIG:-$(cd "${WORKFLOW_LIB_DIR}/../../../../.." && pwd)/project_config.sh}"
+[[ -s "$SCLC_PROJECT_CONFIG" ]] || {
+    echo "ERROR: project configuration missing: $SCLC_PROJECT_CONFIG" >&2
+    return 1 2>/dev/null || exit 1
+}
+# shellcheck disable=SC1090
+source "$SCLC_PROJECT_CONFIG"
+
+: "${BASE_DIR:=${SCLC_ALLCOOLS_ROOT}}"
 : "${THRESHOLD:=300k}"
 : "${QC_TAG:=minmeth55_maxmethnone_maxsites1200000_scanpy0814clean_covdedupprob}"
-: "${CONDA_INIT:=/share/home/rzli/miniconda3/etc/profile.d/conda.sh}"
+: "${CONDA_INIT:=${SCLC_CONDA_ROOT}/etc/profile.d/conda.sh}"
 : "${CONDA_ENV:=scDNAm}"
-: "${ANNOTATION_CSV:=/share/home/rzli/SCANPY/20260814/Result0814/annotation/02_cell_annotation_all_cells.csv}"
-: "${SCANPY_CLEAN_CSV:=/share/home/rzli/SCANPY/20260814/Result0814/annotation/02_cell_annotation_clean_cells.csv}"
+: "${ANNOTATION_CSV:=${SCLC_SCANPY_ANNOTATION}}"
+: "${SCANPY_CLEAN_CSV:=${SCLC_SCANPY_CLEAN_ANNOTATION}}"
+: "${METHSCAN_RESULTS_DIR:=${SCLC_METHSCAN_RESULTS}/01_Upstream}"
+
+export BASE_DIR CONDA_INIT CONDA_ENV ANNOTATION_CSV SCANPY_CLEAN_CSV
+export METHSCAN_RESULTS_DIR
 
 SAMPLE_SHORTS=(IR01 IR02 IR03 IR04 IR05 NR01 NR02 NR03 NR04 NR05)
 SAMPLE_DIRS=()

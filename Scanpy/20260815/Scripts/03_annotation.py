@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -11,10 +12,11 @@ import scanpy as sc
 # 1. 路径
 # ============================================================
 
-PROJECT_DIR = Path("/share/home/rzli/SCANPY/20260814")                                  # 定义服务器项目根目录
 SCRIPT_DIR = Path(__file__).resolve().parent                                            # 定位当前脚本目录
-INTEGRATION_DIR = PROJECT_DIR / "Result0814" / "integration"                            # 定位整合输入目录
-OUTPUT_DIR = PROJECT_DIR / "Result0814" / "annotation"                                  # 定义注释输出目录
+PROJECT_DIR = Path(os.environ.get("SCLC_SCANPY_ROOT", SCRIPT_DIR.parent))               # 定义当前 Scanpy 日期目录
+RESULTS_DIR = Path(os.environ.get("SCLC_SCANPY_RESULTS", PROJECT_DIR / "Results"))       # 定义统一结果目录
+INTEGRATION_DIR = RESULTS_DIR / "integration"                                           # 定位整合输入目录
+OUTPUT_DIR = RESULTS_DIR / "annotation"                                                 # 定义注释输出目录
 
 INPUT_H5AD = (                                                                          # 定义基础整合对象输入路径
     INTEGRATION_DIR / "01_integrated_base.h5ad"                                         # 拼接整合 AnnData 文件名

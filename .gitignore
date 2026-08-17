@@ -2,6 +2,7 @@
 *
 !/.gitignore
 !/README.md
+!/project_config.sh
 !/Methscan/
 !/Methscan/**/
 !/MethylVI/
@@ -48,3 +49,8 @@
 # Keep empty supplementary-material directories visible in Git.
 !/*/[0-9]*/Supplementary_materials/.gitkeep
 !/*/Archive/[0-9]*/Supplementary_materials/.gitkeep
+
+# Required MethylVI support files for the current reproducible workflow.
+!/MethylVI/20260816/Supplementary_materials/01_sample_metadata.tsv
+!/MethylVI/20260816/Supplementary_materials/ENCFF356LFX_GRCh38_blacklist.bed.gz
+!/MethylVI/20260816/Supplementary_materials/hg38.canonical.chrom.sizes

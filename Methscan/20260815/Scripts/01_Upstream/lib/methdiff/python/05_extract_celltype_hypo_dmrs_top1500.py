@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Extract the top 1500 cell-type hypomethylated DMRs per sample and cell type.
 
-On node4, the default input directory is::
+The default input directory below ``SCLC_ALLCOOLS_ROOT`` is::
 
-    /share/LCZX_Data/data/allcools/merged_10samples_upstream_v2/
+    merged_10samples_upstream_v2/
       methdiff_30k/results/sample_celltype/
         IR01__B_cells_vs_CD4_T_cells_DMRs.bed
         ...
@@ -50,8 +50,9 @@ SAMPLE_DIR_RE = re.compile(r"^(?P<sample>[A-Za-z]+[0-9]+)_sample_celltype$")
 DMR_FILE_RE = re.compile(
     r"^(?P<sample>[A-Za-z]+[0-9]+)__(?P<left>.+)_vs_(?P<right>.+)_DMRs\.bed$"
 )
+ALLCOOLS_ROOT = Path(os.environ.get("SCLC_ALLCOOLS_ROOT", "/share/LCZX_Data/data/allcools"))
 NODE4_INPUT_DIR = Path(
-    "/share/LCZX_Data/data/allcools/merged_10samples_upstream_v2/"
+    ALLCOOLS_ROOT / "merged_10samples_upstream_v2/"
     "methdiff_30k/results/sample_celltype"
 )
 

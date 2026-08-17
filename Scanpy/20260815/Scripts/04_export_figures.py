@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -12,10 +13,11 @@ import scanpy as sc
 # 1. 路径
 # ============================================================
 
-PROJECT_DIR = Path("/share/home/rzli/SCANPY/20260814")                                  # 定义服务器项目根目录
 SCRIPT_DIR = Path(__file__).resolve().parent                                            # 定位当前脚本目录
-ANNOTATION_DIR = PROJECT_DIR / "Result0814" / "annotation"                              # 定位注释输入目录
-OUTPUT_DIR = PROJECT_DIR / "Result0814" / "figures"                                     # 定义图片输出目录
+PROJECT_DIR = Path(os.environ.get("SCLC_SCANPY_ROOT", SCRIPT_DIR.parent))               # 定义当前 Scanpy 日期目录
+RESULTS_DIR = Path(os.environ.get("SCLC_SCANPY_RESULTS", PROJECT_DIR / "Results"))       # 定义统一结果目录
+ANNOTATION_DIR = RESULTS_DIR / "annotation"                                             # 定位注释输入目录
+OUTPUT_DIR = RESULTS_DIR / "figures"                                                    # 定义图片输出目录
 
 INPUT_H5AD = ANNOTATION_DIR / "02_annotated_final.h5ad"                                 # 定义最终注释对象路径
 

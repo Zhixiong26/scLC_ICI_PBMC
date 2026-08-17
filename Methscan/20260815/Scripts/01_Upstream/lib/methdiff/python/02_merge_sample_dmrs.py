@@ -21,8 +21,9 @@ from pathlib import Path
 from typing import Sequence
 
 
+ALLCOOLS_ROOT = Path(os.environ.get("SCLC_ALLCOOLS_ROOT", "/share/LCZX_Data/data/allcools"))
 NODE4_INPUT_DIR = Path(
-    "/share/LCZX_Data/data/allcools/merged_10samples_upstream_v2/"
+    ALLCOOLS_ROOT / "merged_10samples_upstream_v2/"
     "methdiff_30k/results/celltype_hypo_DMRs_diff0p30"
 )
 PAIRWISE_FILE_RE = re.compile(

@@ -42,9 +42,8 @@ import numpy as np
 from matplotlib.colors import LinearSegmentedColormap, ListedColormap
 
 
-MERGED_ROOT = Path(
-    "/share/LCZX_Data/data/allcools/merged_10samples_upstream_v2"
-)
+ALLCOOLS_ROOT = Path(os.environ.get("SCLC_ALLCOOLS_ROOT", "/share/LCZX_Data/data/allcools"))
+MERGED_ROOT = ALLCOOLS_ROOT / "merged_10samples_upstream_v2"
 DEFAULT_INPUT_DIR = (
     MERGED_ROOT / "methdiff_30k/results/single_cell_hypo_DMR_mean_CpG_ratio_diff0p30"
 )

@@ -6,14 +6,15 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-PROJECT_FIGURES_DIR=${MVI_FIGURES_DIR:-${SCRIPT_DIR}/../result}
+source "$SCRIPT_DIR/00_config.sh"
+PROJECT_FIGURES_DIR=${MVI_FIGURES_DIR:-${SCLC_METHYLVI_RESULTS}}
 FIGURES_DIR=${MVI_FIGURES_BEFORE_DIR:-${PROJECT_FIGURES_DIR}/01_before_methylvi}
 export MVI_FIGURES_DIR="$PROJECT_FIGURES_DIR"
 export MVI_FIGURES_BEFORE_DIR="$FIGURES_DIR"
 INPUT=${1:-${MVI_DATA_ROOT:-}}
 OUTPUT=${2:-${MVI_ALLCOOLS_OUTPUT:-}}
 CHROM_SIZES=${3:-${MVI_CHROM_SIZES:-}}
-ALLCOOLS_ENV=${MVI_ALLCOOLS_ENV:-/share/home/rzli/miniconda3/envs/allcools}
+ALLCOOLS_ENV=${MVI_ALLCOOLS_ENV:-${SCLC_CONDA_ROOT}/envs/allcools}
 export PATH="$ALLCOOLS_ENV/bin:${PATH}"
 if [[ -x "$ALLCOOLS_ENV/bin/python" ]]; then
     PYTHON_BIN=${PYTHON_BIN:-$ALLCOOLS_ENV/bin/python}

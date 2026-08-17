@@ -13,7 +13,7 @@ PLOT_DPI="${PLOT_DPI:-300}"
 ZSCORE_MIN_OBSERVED_CELLS="${ZSCORE_MIN_OBSERVED_CELLS:-30}"
 ZSCORE_STANDARD_CLIP="${ZSCORE_STANDARD_CLIP:-3}"
 PLOT_OVERWRITE="${PLOT_OVERWRITE:-0}"
-RESULT_LINK_DIR="${RESULT_LINK_DIR:-${SCRIPT_DIR}/result}"
+RESULT_LINK_DIR="${RESULT_LINK_DIR:-${METHSCAN_RESULTS_DIR}}"
 
 ACTION="${1:-all}"
 
@@ -34,7 +34,7 @@ Modes:
             DMR-wise Z-score heatmaps.
   dmrtype   Standard, clip-1, and max-abs DMR-type mean Z-score heatmaps.
   status    Report all eight output states without loading Conda.
-  links     Rebuild result/ as eight folders containing 80 direct PNG links.
+  links     Rebuild the configured Results directory with 80 direct PNG links.
 
 Environment:
   SAMPLE_JOBS=2

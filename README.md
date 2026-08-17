@@ -6,9 +6,9 @@
 
 每个日期目录均包含以下三个同级目录：
 
-- `Results/`：仅保存 PNG 结果图。
+- `Results/`：Git 仅跟踪 PNG 结果图；服务器运行时可在其中生成被忽略的中间文件。
 - `Scripts/`：保存 Python、R、Shell 等分析脚本。
-- `Supplementary_materials/`：预留补充材料；空目录使用 `.gitkeep` 保留。
+- `Supplementary_materials/`：保存运行所需的小型补充材料；空目录使用 `.gitkeep` 保留。
 
 当前日期组织如下：
 
@@ -16,7 +16,31 @@
 - **MethylVI**：最新批次 `20260816`；归档批次 `20260810`、`20260813`。
 - **Scanpy**：最新批次 `20260815`；归档批次 `20260810`。
 
-仓库当前包含 177 个分析脚本和 223 张 PNG 结果图。三个原始子仓库不在本仓库的跟踪范围内，其远程仓库配置保持不变。
+仓库当前包含 179 个分析脚本和 223 张 PNG 结果图。三个原始子仓库不在本仓库的跟踪范围内，其远程仓库配置保持不变。
+
+## 服务器部署与路径配置
+
+服务器上的标准部署目录为：
+
+```text
+/share/home/rzli/scLC_ICI_PBMC
+```
+
+仓库根目录的 `project_config.sh` 是三个当前流程共用的唯一路径入口。它会根据自身位置解析绝对项目根目录，并统一导出数据、参考文件、Conda、三个项目日期以及各项目 `Scripts/`、`Results/` 路径。默认外部路径如下：
+
+- 数据：`/share/LCZX_Data/data`
+- 参考文件：`/share/LCZX_Data/ref`
+- Conda：`/share/home/rzli/miniconda3`
+
+部署后可检查配置：
+
+```bash
+cd /share/home/rzli/scLC_ICI_PBMC
+source project_config.sh
+printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
+```
+
+若以后移动仓库或数据目录，只需在加载配置前导出对应的 `SCLC_*` 环境变量。当前 Methscan、MethylVI 和 Scanpy 启动脚本会自动加载该配置；`Archive/` 中的历史脚本保留原始路径，不作为当前服务器流程入口。
 
 ## 文件树
 
@@ -26,6 +50,7 @@
 .
 ├── .gitignore
 ├── README.md
+├── project_config.sh
 ├── Methscan/
 │   ├── 20260815/
 │   │   ├── Results/
@@ -138,7 +163,9 @@
 │   │   │                       ├── 11_run_pseudobulk_expression.sh
 │   │   │                       └── 12_correlate_dna_methylation_rna_expression.py
 │   │   └── Supplementary_materials/
-│   │       └── .gitkeep
+│   │       ├── 01_sample_metadata.tsv
+│   │       ├── ENCFF356LFX_GRCh38_blacklist.bed.gz
+│   │       └── hg38.canonical.chrom.sizes
 │   └── Archive/
 │       ├── 20260716/
 │       │   ├── Results/
@@ -284,6 +311,7 @@
     ├── 20260815/
     │   ├── Results/
     │   ├── Scripts/
+    │   │   ├── 00_config.sh
     │   │   ├── 01_integration.py
     │   │   ├── 02_annotation_config.py
     │   │   ├── 03_annotation.py

@@ -27,8 +27,11 @@ import scanpy.external as sce
 # 1. 路径与参数
 # ============================================================
 
-PROJECT_DIR = Path("/share/home/rzli/SCANPY/20260814")                                  # 定义服务器项目根目录
-OUTPUT_DIR = PROJECT_DIR / "Result0814" / "integration"                                 # 定义整合结果目录
+SCRIPT_DIR = Path(__file__).resolve().parent                                            # 定位当前脚本目录
+PROJECT_DIR = Path(os.environ.get("SCLC_SCANPY_ROOT", SCRIPT_DIR.parent))               # 定义当前 Scanpy 日期目录
+RESULTS_DIR = Path(os.environ.get("SCLC_SCANPY_RESULTS", PROJECT_DIR / "Results"))       # 定义统一结果目录
+MATRIX_ROOT = Path(os.environ.get("SCLC_MATRIX_ROOT", "/share/LCZX_Data/data/matrix"))  # 定义外部输入矩阵根目录
+OUTPUT_DIR = RESULTS_DIR / "integration"                                                # 定义整合结果目录
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)                                           # 创建整合结果目录
 
 OUTPUT_H5AD = OUTPUT_DIR / "01_integrated_base.h5ad"                                    # 定义整合 AnnData 输出文件
@@ -135,7 +138,7 @@ def get_sample_name(sample: str) -> str:                                        
 
 
 def get_sample_path(sample: str) -> Path:                                               # 构造单样本输入文件路径
-    sample_dir = Path("/share/LCZX_Data/data/matrix") / sample                          # 定位样本目录
+    sample_dir = MATRIX_ROOT / sample                                                   # 定位样本目录
     return sample_dir / f"{sample}_raw.h5ad"                                            # 返回 raw h5ad 路径
 
 
