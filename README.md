@@ -228,7 +228,22 @@
 │   ├── 20260816/
 │   │   ├── Results/
 │   │   ├── Scripts/
-│   │   │   └── .gitkeep
+│   │   │   ├── 00_config.sh
+│   │   │   ├── 02_prepare_allcools.sh
+│   │   │   ├── 03_cluster_allcools.py
+│   │   │   ├── 04_verify_inputs.py
+│   │   │   ├── 05_build_methylvi_input.py
+│   │   │   ├── 06_train_methylvi.py
+│   │   │   ├── 07_plot_embeddings.py
+│   │   │   ├── 08_plot_supervised_umap.py
+│   │   │   ├── 09_run_pipeline.sh
+│   │   │   ├── 10_plot_sequencing_depth.py
+│   │   │   ├── 11_compare_qc_cell_sets.py
+│   │   │   ├── 12_plot_cpg_sites.py
+│   │   │   ├── mvi_utils.py
+│   │   │   └── tests/
+│   │   │       ├── test_methylvi_smoke.py
+│   │   │       └── test_mvi_utils.py
 │   │   └── Supplementary_materials/
 │   │       └── .gitkeep
 │   └── Archive/
