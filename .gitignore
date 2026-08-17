@@ -48,6 +48,7 @@
 !/*/Archive/[0-9]*/Scripts/.gitkeep
 
 # Keep empty supplementary-material directories visible in Git.
+!/*/[0-9]*/Supplementary_materials/README.md
 !/*/[0-9]*/Supplementary_materials/.gitkeep
 !/*/Archive/[0-9]*/Supplementary_materials/.gitkeep
 

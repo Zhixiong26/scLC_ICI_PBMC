@@ -2,6 +2,8 @@
 
 本文件记录 Scanpy 批次整合、人工注释和绘图流程的服务器路径、参数与变更历史。实际参数以 `01_integration.py`、`02_annotation_config.py` 和三个 Shell 入口为准。
 
+Python 环境、必须包和版本核验命令见 [Supplementary materials 说明](../Supplementary_materials/README.md)。
+
 ## 服务器路径
 
 | 项目 | 默认路径 |

@@ -2,6 +2,8 @@
 
 本文件记录 MethylVI 可复现流程的服务器路径、关键参数、执行阶段和服务器变更。实际默认值以 `00_config.sh` 和各 Python CLI 为准。
 
+两个 Conda 环境、软件依赖和辅助文件校验见 [Supplementary materials 说明](../Supplementary_materials/README.md)。
+
 ## 服务器路径
 
 | 项目 | 默认路径 |

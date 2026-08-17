@@ -2,6 +2,8 @@
 
 本文件记录当前 Methscan 主流程的服务器路径、参数、执行方式和变更历史。脚本中的实际默认值是最终依据；修改参数或服务器流程时，必须同步更新本文件。
 
+软件环境和依赖见 [Supplementary materials 说明](../Supplementary_materials/README.md)。
+
 ## 服务器路径
 
 | 项目 | 默认路径 |

@@ -161,9 +161,8 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
 │   │   │                       ├── 11_run_pseudobulk_expression.sh
 │   │   │                       └── 12_correlate_dna_methylation_rna_expression.py
 │   │   └── Supplementary_materials/
-│   │       ├── 01_sample_metadata.tsv
-│   │       ├── ENCFF356LFX_GRCh38_blacklist.bed.gz
-│   │       └── hg38.canonical.chrom.sizes
+│   │       ├── README.md
+│   │       └── .gitkeep
 │   └── Archive/
 │       ├── 20260716/
 │       │   ├── Results/
@@ -271,6 +270,7 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
 │   │   │       ├── test_methylvi_smoke.py
 │   │   │       └── test_mvi_utils.py
 │   │   └── Supplementary_materials/
+│   │       ├── README.md
 │   │       ├── 01_sample_metadata.tsv
 │   │       ├── ENCFF356LFX_GRCh38_blacklist.bed.gz
 │   │       └── hg38.canonical.chrom.sizes
@@ -322,6 +322,7 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
     │   │   ├── 06_run_annotation.sh
     │   │   └── 07_run_export_figures.sh
     │   └── Supplementary_materials/
+    │       ├── README.md
     │       └── .gitkeep
     └── Archive/
         └── 20260810/
