@@ -11,6 +11,7 @@
 !/Scanpy/**/
 
 # Analysis and workflow scripts must live below a Scripts directory.
+!/*/[0-9]*/Scripts/README.md
 !/*/[0-9]*/Scripts/**/*.py
 !/*/[0-9]*/Scripts/**/*.R
 !/*/[0-9]*/Scripts/**/*.r

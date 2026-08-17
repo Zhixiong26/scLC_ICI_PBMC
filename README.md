@@ -59,6 +59,7 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
 │   ├── 20260815/
 │   │   ├── Results/
 │   │   ├── Scripts/
+│   │   │   ├── README.md
 │   │   │   ├── 01_Upstream/
 │   │   │   │   ├── 00_workflow_common.sh
 │   │   │   │   ├── 01_check_cov_duplicates.sh
@@ -252,6 +253,7 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
 │   ├── 20260816/
 │   │   ├── Results/
 │   │   ├── Scripts/
+│   │   │   ├── README.md
 │   │   │   ├── 00_config.sh
 │   │   │   ├── 02_prepare_allcools.sh
 │   │   │   ├── 03_cluster_allcools.py
@@ -269,7 +271,9 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
 │   │   │       ├── test_methylvi_smoke.py
 │   │   │       └── test_mvi_utils.py
 │   │   └── Supplementary_materials/
-│   │       └── .gitkeep
+│   │       ├── 01_sample_metadata.tsv
+│   │       ├── ENCFF356LFX_GRCh38_blacklist.bed.gz
+│   │       └── hg38.canonical.chrom.sizes
 │   └── Archive/
 │       ├── 20260810/
 │       │   ├── Results/
@@ -308,6 +312,7 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
     ├── 20260815/
     │   ├── Results/
     │   ├── Scripts/
+    │   │   ├── README.md
     │   │   ├── 00_config.sh
     │   │   ├── 01_integration.py
     │   │   ├── 02_annotation_config.py
