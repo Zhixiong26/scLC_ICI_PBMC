@@ -1,0 +1,26 @@
+# This repository intentionally publishes only executable analysis scripts and
+# PNG figures located below result-like directories.
+
+# Ignore every file by default while still allowing Git to traverse folders.
+*
+!*/
+
+# Repository policy.
+!.gitignore
+
+# Analysis and workflow scripts.
+!*.py
+!*.R
+!*.r
+!*.sh
+!*.bash
+!*.zsh
+!*.pl
+!*.jl
+!*.ipynb
+!*.Rmd
+!*.qmd
+
+# Figures only when they live beneath result*, Result*, results*, etc.
+!**/[Rr]esult*/**/*.png
+!**/[Rr]esult*/**/*.PNG
