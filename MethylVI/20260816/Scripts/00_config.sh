@@ -128,6 +128,12 @@ export MVI_QC_COMPARISON_DIR="${MVI_QC_COMPARISON_DIR:-${MVI_FIGURES_DIR}/04_qc_
 # sum(mc)/sum(mc+uc)；文件独立命名以避免误用旧的 CpG 位点数缓存。
 export MVI_OVERALL_MCG_LEVEL_TABLE="${MVI_OVERALL_MCG_LEVEL_TABLE:-${MVI_ROOT}/overall_mcg_level_by_cell.tsv.gz}"
 
+# QC 对比中的 CpG 位点数分箱。表中 cpg_sites 是每细胞已覆盖的
+# 唯一 CpG 位点数，默认与 MethSCAn 最新 300k–1.2M QC 边界一致。
+export MVI_QC_CPG_SITE_TABLE="${MVI_QC_CPG_SITE_TABLE:-${MVI_OVERALL_MCG_LEVEL_TABLE}}"
+export MVI_QC_MIN_CPG_SITES="${MVI_QC_MIN_CPG_SITES:-300000}"
+export MVI_QC_MAX_CPG_SITES="${MVI_QC_MAX_CPG_SITES:-1200000}"
+
 # 输入审计 JSON 报告；保留既有文件名以兼容已生成结果。
 if [[ "$MVI_USE_BLACKLIST" == 1 ]]; then
     export MVI_AUDIT="${MVI_AUDIT:-${MVI_ROOT}/input_audit.json}"

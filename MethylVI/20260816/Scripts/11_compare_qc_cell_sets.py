@@ -28,6 +28,7 @@ STATUS_LABELS = {
     STATUS_SCANPY_REMOVED: "Removed by Scanpy clean",
     STATUS_QC_REMOVED: "Removed by MethSCAn QC after Scanpy clean",
 }
+STATUS_ORDER = (STATUS_RETAINED, STATUS_SCANPY_REMOVED, STATUS_QC_REMOVED)
 
 
 def _weight_tag(weight: float) -> str:
@@ -84,6 +85,20 @@ def _read_scanpy_clean_cells(path: Path) -> set[str]:
     if len(cells) != len(set(cells)):
         raise ValueError(f"Scanpy clean 注释表的细胞 ID 标准化后存在重复: {path}")
     return set(cells)
+
+
+def _read_cpg_sites(path: Path) -> pd.Series:
+    if not path.is_file():
+        raise FileNotFoundError(f"每细胞 CpG 位点表不存在: {path}")
+    table = pd.read_csv(path, sep="\t", index_col=0)
+    if "cpg_sites" not in table.columns:
+        raise ValueError(f"每细胞 CpG 位点表缺少 cpg_sites 列: {path}")
+    table.index = _canonical_index(table.index, str(path))
+    values = pd.to_numeric(table["cpg_sites"], errors="raise")
+    if values.isna().any() or (values < 0).any():
+        raise ValueError(f"每细胞 CpG 位点表包含无效 cpg_sites: {path}")
+    values.name = "cpg_sites"
+    return values
 
 
 def _classify_cells(
@@ -196,7 +211,7 @@ def _draw_depth_overlay(
 
 def _draw_status(table: pd.DataFrame, output: Path, title: str) -> None:
     fig, axis = plt.subplots(figsize=(7, 6))
-    for status in (STATUS_RETAINED, STATUS_SCANPY_REMOVED, STATUS_QC_REMOVED):
+    for status in STATUS_ORDER:
         selected = table["qc_status"].eq(status)
         axis.scatter(
             table.loc[selected, "UMAP1"],
@@ -211,6 +226,83 @@ def _draw_status(table: pd.DataFrame, output: Path, title: str) -> None:
     axis.set_ylabel("UMAP2")
     axis.set_title(title)
     axis.legend(loc="best", frameon=True, markerscale=3, fontsize=8)
+    fig.tight_layout()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _cpg_site_bin_statistics(
+    table: pd.DataFrame,
+    minimum: int,
+    maximum: int,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if minimum < 0 or maximum < minimum:
+        raise ValueError(f"无效 CpG 分箱边界: minimum={minimum}, maximum={maximum}")
+    labels = (f"<{minimum}", f"{minimum}-{maximum}", f">{maximum}")
+    cpg_sites = table["cpg_sites"].astype(int)
+    bins = np.select(
+        (cpg_sites < minimum, cpg_sites <= maximum),
+        labels[:2],
+        default=labels[2],
+    )
+    frame = pd.DataFrame(
+        {
+            "cpg_site_bin": pd.Categorical(bins, categories=labels, ordered=True),
+            "qc_status": pd.Categorical(
+                table["qc_status"], categories=STATUS_ORDER, ordered=True
+            ),
+        },
+        index=table.index,
+    )
+    counts = (
+        frame.groupby(["cpg_site_bin", "qc_status"], observed=False)
+        .size()
+        .unstack(fill_value=0)
+        .reindex(index=labels, columns=STATUS_ORDER, fill_value=0)
+        .astype(int)
+    )
+    counts.columns.name = None
+    counts["total"] = counts.sum(axis=1)
+    percentages = counts.loc[:, list(STATUS_ORDER)].div(
+        counts["total"].replace(0, np.nan), axis=0
+    ) * 100
+    percentages = percentages.fillna(0.0)
+    percentages["total"] = 100.0
+    return counts, percentages
+
+
+def _draw_cpg_site_bin_counts(counts: pd.DataFrame, output: Path) -> None:
+    fig, axis = plt.subplots(figsize=(8, 6))
+    bottom = np.zeros(len(counts), dtype=float)
+    x = np.arange(len(counts))
+    for status in STATUS_ORDER:
+        values = counts[status].to_numpy(dtype=float)
+        axis.bar(
+            x,
+            values,
+            bottom=bottom,
+            color=STATUS_COLORS[status],
+            label=STATUS_LABELS[status],
+        )
+        for position, value, base in zip(x, values, bottom):
+            if value > 0:
+                axis.text(
+                    position,
+                    base + value / 2,
+                    f"{int(value):,}",
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                )
+        bottom += values
+    for position, total in zip(x, counts["total"].to_numpy(dtype=int)):
+        axis.text(position, total, f"n={total:,}", ha="center", va="bottom", fontsize=9)
+    axis.set_xticks(x, ["<300k", "300k–1.2M", ">1.2M"])
+    axis.set_xlabel("Covered unique CpG sites per cell")
+    axis.set_ylabel("Number of cells")
+    axis.set_title("Cell retention and exclusion by covered CpG-site range")
+    axis.legend(loc="best", frameon=True, fontsize=8)
     fig.tight_layout()
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, dpi=300, bbox_inches="tight")
@@ -237,6 +329,9 @@ def main() -> None:
     current_results = env_path("MVI_QC_CURRENT_RESULTS", os.environ.get("MVI_RESULTS"))
     output_root = env_path("MVI_QC_COMPARISON_DIR")
     scanpy_clean_path = env_path("MVI_SCANPY_CLEAN_ANNOTATION")
+    cpg_site_path = env_path("MVI_QC_CPG_SITE_TABLE")
+    minimum_cpg_sites = int(os.environ.get("MVI_QC_MIN_CPG_SITES", "300000"))
+    maximum_cpg_sites = int(os.environ.get("MVI_QC_MAX_CPG_SITES", "1200000"))
 
     reference_depth = _read_depth(reference_results, "旧版参考结果")
     current_depth = _read_depth(current_results, "新版QC结果")
@@ -265,6 +360,14 @@ def main() -> None:
     }
     reference_depth["qc_status"] = reference_depth.index.map(status_by_cell)
     reference_depth["present_in_new_qc"] = reference_depth.index.isin(current_cells)
+    cpg_sites = _read_cpg_sites(cpg_site_path)
+    missing_cpg_sites = reference_depth.index.difference(cpg_sites.index)
+    if len(missing_cpg_sites):
+        raise ValueError(
+            f"CpG位点表缺少{len(missing_cpg_sites):,}个参考细胞: "
+            f"{missing_cpg_sites[:5].tolist()}"
+        )
+    reference_depth["cpg_sites"] = cpg_sites.loc[reference_depth.index].astype(int)
     output_root.mkdir(parents=True, exist_ok=True)
     reference_depth.to_csv(
         output_root / "reference_cells_qc_membership.tsv.gz",
@@ -275,8 +378,25 @@ def main() -> None:
         reference_depth.index.isin(removed_cells)
     ].to_csv(output_root / "removed_cells.tsv", sep="\t")
 
+    cpg_bin_counts, cpg_bin_percentages = _cpg_site_bin_statistics(
+        reference_depth,
+        minimum_cpg_sites,
+        maximum_cpg_sites,
+    )
+    cpg_bin_count_file = output_root / "cpg_site_range_qc_counts.tsv"
+    cpg_bin_percentage_file = output_root / "cpg_site_range_qc_percentages.tsv"
+    cpg_bin_figure = output_root / "cpg_site_range_qc_counts.png"
+    cpg_bin_counts.to_csv(cpg_bin_count_file, sep="\t", index_label="cpg_site_range")
+    cpg_bin_percentages.to_csv(
+        cpg_bin_percentage_file,
+        sep="\t",
+        index_label="cpg_site_range",
+        float_format="%.4f",
+    )
+    _draw_cpg_site_bin_counts(cpg_bin_counts, cpg_bin_figure)
+
     weights = _load_weights(reference_results)
-    figure_files: list[str] = []
+    figure_files: list[str] = [str(cpg_bin_figure)]
     coordinate_files: list[str] = []
     for weight in weights:
         tag = _weight_tag(weight)
@@ -326,6 +446,19 @@ def main() -> None:
         "reference_results": str(reference_results),
         "current_results": str(current_results),
         "scanpy_clean_annotation": str(scanpy_clean_path),
+        "cpg_site_table": str(cpg_site_path),
+        "cpg_site_bin_boundaries": {
+            "minimum_inclusive": minimum_cpg_sites,
+            "maximum_inclusive": maximum_cpg_sites,
+        },
+        "cpg_site_bin_counts": {
+            str(site_range): {
+                str(status): int(value) for status, value in row.items()
+            }
+            for site_range, row in cpg_bin_counts.iterrows()
+        },
+        "cpg_site_bin_count_file": str(cpg_bin_count_file),
+        "cpg_site_bin_percentage_file": str(cpg_bin_percentage_file),
         "coordinate_space": "reference supervised UMAP",
         "reference_cells": int(len(reference_cells)),
         "current_cells": int(len(current_cells)),
