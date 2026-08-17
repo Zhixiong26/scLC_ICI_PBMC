@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""将每个细胞覆盖的唯一CpG位点数投影到监督式UMAP。"""
+"""将每个细胞的 overall mCG level 投影到监督式 UMAP。
+
+主指标定义为每个细胞在所有已覆盖 CpG 位点上的
+``sum(mc) / sum(mc + uc)``，取值范围为 0–1。同时保留位点等权平均、
+CpG 位点数和总覆盖量作为质量审计指标。
+"""
 
 from __future__ import annotations
 
@@ -11,7 +16,6 @@ import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 from mvi_utils import canonical_cell_id, env_path, save_json
@@ -42,17 +46,44 @@ def _cov_cell_id(path: Path) -> str:
     return canonical_cell_id(f"{sample_id}__{barcode}")
 
 
-def _count_cpg_rows(path_string: str) -> int:
-    """计数去重cov中的非空、非注释行；每行代表一个唯一CpG坐标。"""
+def _summarize_cpg_file(path_string: str) -> tuple[int, float, int, float]:
+    """计算一个细胞的位点平均和覆盖加权 CpG 甲基化水平。"""
     path = Path(path_string)
     opener = gzip.open if path.name.endswith(".gz") else open
-    count = 0
-    with opener(path, "rb") as handle:
-        for line in handle:
+    cpg_sites = 0
+    site_fraction_sum = 0.0
+    total_methylated = 0
+    total_coverage = 0
+    with opener(path, "rt") as handle:
+        for line_number, line in enumerate(handle, start=1):
             stripped = line.strip()
-            if stripped and not stripped.startswith(b"#"):
-                count += 1
-    return count
+            if not stripped or stripped.startswith("#"):
+                continue
+            fields = stripped.split("\t")
+            if len(fields) < 6:
+                raise ValueError(f"{path}:{line_number}: cov行少于6列")
+            try:
+                methylated = int(fields[4])
+                unmethylated = int(fields[5])
+            except ValueError as error:
+                raise ValueError(
+                    f"{path}:{line_number}: 甲基化/未甲基化计数不是整数"
+                ) from error
+            coverage = methylated + unmethylated
+            if methylated < 0 or unmethylated < 0 or coverage <= 0:
+                raise ValueError(f"{path}:{line_number}: 无效mc/uc计数")
+            cpg_sites += 1
+            site_fraction_sum += methylated / coverage
+            total_methylated += methylated
+            total_coverage += coverage
+    if cpg_sites == 0 or total_coverage == 0:
+        raise ValueError(f"cov文件没有可用CpG记录: {path}")
+    return (
+        cpg_sites,
+        site_fraction_sum / cpg_sites,
+        total_coverage,
+        total_methylated / total_coverage,
+    )
 
 
 def _canonical_index(index: pd.Index, source: str) -> pd.Index:
@@ -94,7 +125,7 @@ def _load_coordinates(path: Path) -> pd.DataFrame:
     return table
 
 
-def _load_or_count_sites(
+def _load_or_compute_levels(
     cells: pd.Index,
     data_root: Path,
     cache_path: Path,
@@ -104,13 +135,23 @@ def _load_or_count_sites(
     canonical_cells = _canonical_index(cells, "UMAP坐标")
     if cache_path.is_file() and not force:
         cached = pd.read_csv(cache_path, sep="\t", index_col=0)
-        if "cpg_sites" not in cached.columns:
-            raise ValueError(f"CpG缓存表缺少cpg_sites列: {cache_path}")
+        required_columns = {
+            "overall_mcg_level",
+            "mean_site_mcg_level",
+            "cpg_sites",
+            "total_coverage",
+        }
+        missing_columns = required_columns.difference(cached.columns)
+        if missing_columns:
+            raise ValueError(
+                f"CpG缓存表缺少列{sorted(missing_columns)}: {cache_path}; "
+                "请设置MVI_OVERALL_MCG_FORCE=1重建"
+            )
         cached.index = _canonical_index(cached.index, str(cache_path))
         missing = canonical_cells.difference(cached.index)
         if len(missing):
             raise ValueError(f"CpG缓存表缺少{len(missing):,}个细胞: {missing[:5].tolist()}")
-        return cached.loc[canonical_cells, ["cpg_sites"]]
+        return cached.loc[canonical_cells, sorted(required_columns)]
 
     cov_index = _index_cov_files(data_root)
     missing = canonical_cells.difference(cov_index)
@@ -119,18 +160,29 @@ def _load_or_count_sites(
             f"{len(missing):,}个UMAP细胞没有去重cov文件: {missing[:5].tolist()}"
         )
     paths = [cov_index[cell_id] for cell_id in canonical_cells]
-    counts = np.empty(len(paths), dtype=np.int64)
+    summaries: list[tuple[int, float, int, float] | None] = [None] * len(paths)
     with concurrent.futures.ProcessPoolExecutor(max_workers=threads) as executor:
         futures = {
-            executor.submit(_count_cpg_rows, str(path)): index
+            executor.submit(_summarize_cpg_file, str(path)): index
             for index, path in enumerate(paths)
         }
         for completed, future in enumerate(concurrent.futures.as_completed(futures), start=1):
-            counts[futures[future]] = future.result()
+            summaries[futures[future]] = future.result()
             if completed % 100 == 0 or completed == len(futures):
-                print(f"CpG计数 {completed:,}/{len(futures):,}", flush=True)
+                print(f"CpG水平计算 {completed:,}/{len(futures):,}", flush=True)
 
-    result = pd.DataFrame({"cpg_sites": counts}, index=canonical_cells)
+    if any(summary is None for summary in summaries):
+        raise RuntimeError("CpG水平计算结果不完整")
+    completed_summaries = [summary for summary in summaries if summary is not None]
+    result = pd.DataFrame(
+        {
+            "overall_mcg_level": [summary[3] for summary in completed_summaries],
+            "mean_site_mcg_level": [summary[1] for summary in completed_summaries],
+            "cpg_sites": [summary[0] for summary in completed_summaries],
+            "total_coverage": [summary[2] for summary in completed_summaries],
+        },
+        index=canonical_cells,
+    )
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(cache_path, sep="\t", compression="gzip")
     return result
@@ -142,14 +194,14 @@ def _plot(table: pd.DataFrame, output: Path, title: str) -> None:
     scatter = axis.scatter(
         table["UMAP1"],
         table["UMAP2"],
-        c=table["cpg_sites"].to_numpy(dtype=float),
+        c=table["overall_mcg_level"].to_numpy(dtype=float),
         s=2,
         alpha=0.8,
         cmap="viridis",
         linewidths=0,
     )
     colorbar = fig.colorbar(scatter, ax=axis, pad=0.02)
-    colorbar.set_label("covered unique CpG sites per cell")
+    colorbar.set_label("Overall mCG level: Σmc / Σ(mc + uc)")
     axis.set_xlabel("UMAP1")
     axis.set_ylabel("UMAP2")
     axis.set_title(title)
@@ -179,12 +231,15 @@ def main() -> None:
         supervised_root / f"target_weight_{first_tag}_coordinates.tsv.gz"
     )
     cache_path = env_path(
-        "MVI_CPG_SITES_TABLE",
-        str(env_path("MVI_ROOT") / "cpg_sites_by_cell.tsv.gz"),
+        "MVI_OVERALL_MCG_LEVEL_TABLE",
+        str(env_path("MVI_ROOT") / "overall_mcg_level_by_cell.tsv.gz"),
     )
     threads = max(1, int(os.environ.get("MVI_THREADS", "4")))
-    force = os.environ.get("MVI_CPG_FORCE_COUNT", "0") == "1"
-    sites = _load_or_count_sites(
+    force = os.environ.get(
+        "MVI_OVERALL_MCG_FORCE",
+        os.environ.get("MVI_CPG_FORCE_COUNT", "0"),
+    ) == "1"
+    levels = _load_or_compute_levels(
         first_coordinates.index,
         data_root,
         cache_path,
@@ -195,9 +250,9 @@ def main() -> None:
     minimum = int(os.environ.get("MVI_FILTER_MIN_SITES", "0"))
     maximum_text = os.environ.get("MVI_FILTER_MAX_SITES", "none").lower()
     maximum = None if maximum_text == "none" else int(maximum_text)
-    if minimum and (sites["cpg_sites"] < minimum).any():
+    if minimum and (levels["cpg_sites"] < minimum).any():
         raise ValueError(f"发现CpG数小于配置下限 {minimum:,} 的细胞")
-    if maximum is not None and (sites["cpg_sites"] > maximum).any():
+    if maximum is not None and (levels["cpg_sites"] > maximum).any():
         raise ValueError(f"发现CpG数大于配置上限 {maximum:,} 的细胞")
 
     figure_files: list[str] = []
@@ -206,46 +261,54 @@ def main() -> None:
         coordinates = _load_coordinates(
             supervised_root / f"target_weight_{tag}_coordinates.tsv.gz"
         )
-        missing = coordinates.index.difference(sites.index)
-        extra = sites.index.difference(coordinates.index)
+        missing = coordinates.index.difference(levels.index)
+        extra = levels.index.difference(coordinates.index)
         if len(missing) or len(extra):
             raise ValueError(
                 f"target_weight={weight:g}坐标与CpG表不匹配: "
                 f"missing={len(missing)}, extra={len(extra)}"
             )
-        table = coordinates.join(sites, how="left")
+        table = coordinates.join(levels, how="left")
         output = (
             figure_root
             / f"target_weight_{tag}"
-            / "methylvi_supervised_umap_cpg_sites.png"
+            / "methylvi_supervised_umap_overall_mcg_level.png"
         )
         _plot(
             table,
             output,
-            f"MethylVI supervised UMAP — covered CpG sites (target_weight={weight:g})",
+            f"MethylVI supervised UMAP — overall mCG level (target_weight={weight:g})",
         )
         figure_files.append(str(output))
 
-    values = sites["cpg_sites"].astype(float)
+    values = levels["overall_mcg_level"].astype(float)
+    site_mean_values = levels["mean_site_mcg_level"].astype(float)
     save_json(
-        supervised_root / "cpg_sites_summary.json",
+        supervised_root / "overall_mcg_level_summary.json",
         {
-            "metric": "non-empty rows in each cov_dedup_probability/*.cov(.gz) file",
-            "unit": "unique covered CpG coordinates per cell",
+            "metric": "sum(mc)/sum(mc+uc) across covered CpG sites per cell",
+            "unit": "methylation fraction (0-1)",
             "cache_table": str(cache_path),
-            "cells": int(len(sites)),
-            "minimum": int(values.min()),
+            "cells": int(len(levels)),
+            "minimum": float(values.min()),
             "q25": float(values.quantile(0.25)),
             "median": float(values.median()),
             "q75": float(values.quantile(0.75)),
-            "maximum": int(values.max()),
+            "maximum": float(values.max()),
+            "mean_site_metric": "arithmetic mean of mc/(mc+uc) across covered unique CpG sites",
+            "mean_site_minimum": float(site_mean_values.min()),
+            "mean_site_median": float(site_mean_values.median()),
+            "mean_site_maximum": float(site_mean_values.max()),
+            "cpg_sites_minimum": int(levels["cpg_sites"].min()),
+            "cpg_sites_median": float(levels["cpg_sites"].median()),
+            "cpg_sites_maximum": int(levels["cpg_sites"].max()),
             "configured_min_sites": minimum,
             "configured_max_sites": maximum,
             "target_weights": weights,
             "figure_files": figure_files,
         },
     )
-    print(f"已生成{len(figure_files)}张CpG位点数UMAP图", flush=True)
+    print(f"已生成{len(figure_files)}张overall mCG level UMAP图", flush=True)
 
 
 if __name__ == "__main__":

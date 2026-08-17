@@ -33,13 +33,13 @@ bash 09_run_pipeline.sh train
 bash 09_run_pipeline.sh plots
 bash 09_run_pipeline.sh supervised
 bash 09_run_pipeline.sh depth
-bash 09_run_pipeline.sh cpg-sites
+bash 09_run_pipeline.sh mcg-level
 bash 09_run_pipeline.sh qc-compare
 bash 09_run_pipeline.sh test
 bash 09_run_pipeline.sh all
 ```
 
-`all` 依次执行 `verify → build → train → plots → supervised → depth → cpg-sites`，不包含 `prepare`、`blacklist`、`test` 和 `qc-compare`。
+`all` 依次执行 `verify → build → train → plots → supervised → depth → mcg-level`，不包含 `prepare`、`blacklist`、`test` 和 `qc-compare`。`cpg-level` 和 `cpg-sites` 仅作为旧命令别名保留。
 
 ## 当前关键参数
 
@@ -59,6 +59,7 @@ bash 09_run_pipeline.sh all
 | 潜空间 | neighbors / Leiden resolution | `15` / `1.0` |
 | 模型 | likelihood / dispersion | `betabinomial` / `region` |
 | 监督 UMAP | target / weights / min_dist | `cell_type` / `0.2 0.5 0.7 0.9` / `0.5` |
+| mCG 着色 | 主指标 / 单位 | 每细胞 `sum(mc)/sum(mc+uc)` / `0–1` |
 
 注意：本流程当前记录的 MethSCAn QC `max_sites=10,000,000`，而当前 Methscan 20260815 主流程使用 `1,200,000`。正式运行 `prepare/verify` 前应核对服务器实际 provenance，不要在未确认时自动改参数。
 
@@ -68,7 +69,8 @@ bash 09_run_pipeline.sh all
 - `MVI_RESULTS`：模型、latent、UMAP、Leiden 和训练记录。
 - `Results/blacklist_f0p2/01_before_methylvi`：校正前图。
 - `Results/blacklist_f0p2/02_after_methylvi`：校正后图。
-- `Results/blacklist_f0p2/03_supervised_umap`：监督 UMAP、测序深度和 CpG 位点图。
+- `Results/blacklist_f0p2/03_supervised_umap`：监督 UMAP、测序深度和 overall mCG level 图。
+- `overall_mcg_level_by_cell.tsv.gz`：每细胞 overall mCG level、位点等权平均、CpG 位点数和总覆盖量。
 
 ## 服务器提交与修改记录
 
@@ -76,6 +78,7 @@ bash 09_run_pipeline.sh all
 |---|---|---|---|---|
 | 2026-08-17 | `d3d47ad` | 纳入当前 MethylVI 20260816 脚本和测试 | 文件结构审计 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-17 | `17ff80b` | 改为统一仓库路径；引用当前 Methscan/Scanpy；补入 blacklist、chrom sizes 和样本元数据 | Shell/Python 语法、路径与辅助文件检查 | GitHub 已提交，服务器待 `git pull` |
+| 2026-08-17 | 本次提交 | `12_plot_cpg_sites.py` 从 CpG 位点数改为每细胞 overall mCG level | Python 语法、cov fixture 和 Shell 语法检查 | 服务器待 `git pull` |
 
 以后每次修改服务器脚本或参数，必须追加：
 

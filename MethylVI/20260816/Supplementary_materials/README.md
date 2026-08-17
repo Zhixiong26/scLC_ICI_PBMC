@@ -35,7 +35,7 @@
 |---|---|
 | Conda 环境 | `methylvi` |
 | 激活脚本 | `/share/home/rzli/miniconda3/etc/profile.d/conda.sh` |
-| 主要阶段 | `verify`、`build`、`train`、`plots`、`supervised`、`depth`、`cpg-sites`、`test` |
+| 主要阶段 | `verify`、`build`、`train`、`plots`、`supervised`、`depth`、`mcg-level`、`test` |
 | 核心包 | `scvi-tools`（必须包含 `scvi.external.METHYLVI`）、`torch` |
 | 数据容器 | `mudata`、`anndata`、`h5py` |
 | 分析 | `scanpy`、`numpy`、`pandas`、`scipy` |
