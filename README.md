@@ -284,7 +284,13 @@
     ├── 20260815/
     │   ├── Results/
     │   ├── Scripts/
-    │   │   └── .gitkeep
+    │   │   ├── 01_integration.py
+    │   │   ├── 02_annotation_config.py
+    │   │   ├── 03_annotation.py
+    │   │   ├── 04_export_figures.py
+    │   │   ├── 05_run_integration.sh
+    │   │   ├── 06_run_annotation.sh
+    │   │   └── 07_run_export_figures.sh
     │   └── Supplementary_materials/
     │       └── .gitkeep
     └── Archive/
