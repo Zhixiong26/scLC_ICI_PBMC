@@ -14,6 +14,7 @@
 | 旧版 MCDS | `/share/LCZX_Data/data/allcools/methylvi_5kb_300k/mcg_5kb.mcds` |
 | blacklist 版 ALLCools 输出 | `/share/LCZX_Data/data/allcools/methylvi_5kb_300k_blacklist_f0p2` |
 | blacklist 版 MethylVI 输出 | `/share/LCZX_Data/data/allcools/methylVI_results_300k_blacklist_f0p2` |
+| QC 对比的新版 4,819 细胞输出 | `/share/LCZX_Data/data/allcools/methylVI_results_300k_blacklist_f0p2_4819/results_ir_nr` |
 | 图片 | `MethylVI/20260816/Results/blacklist_f0p2` |
 | Scanpy 注释 | `Scanpy/20260815/Results/annotation/02_cell_annotation_all_cells.csv` |
 | Conda | `/share/home/rzli/miniconda3` |
@@ -73,6 +74,7 @@ bash 09_run_pipeline.sh all
 - `Results/blacklist_f0p2/03_supervised_umap`：监督 UMAP、测序深度、overall mCG level 和算术平均 mCG level 图。
 - `overall_mcg_level_by_cell.tsv.gz`：每细胞 overall mCG level、位点等权平均、CpG 位点数和总覆盖量。
 - `qc-compare` 的状态图将保留细胞标为灰色、Scanpy clean 筛除细胞标为红色、通过 Scanpy clean 后被 MethSCAn QC 筛除的细胞标为蓝色；测序深度图使用同样颜色的空心轮廓。
+- `qc-compare` 默认比较 6,199 细胞参考结果与 4,819 细胞新版结果，图片写入 `Results/blacklist_f0p2/04_qc_comparison_4819`。
 
 ## 服务器提交与修改记录
 
@@ -83,6 +85,7 @@ bash 09_run_pipeline.sh all
 | 2026-08-17 | 本次提交 | `12_plot_cpg_sites.py` 从 CpG 位点数改为每细胞 overall mCG level | Python 语法、cov fixture 和 Shell 语法检查 | 服务器待 `git pull` |
 | 2026-08-17 | 本次提交 | 新增 `mean-mcg-level`，绘制每细胞内各 CpG 甲基化比例的算术平均 | Python/Shell 语法与缓存绘图检查 | 服务器待 `git pull` |
 | 2026-08-17 | 本次提交 | `qc-compare` 将 Scanpy clean 和 MethSCAn QC 筛除细胞分色显示 | Python/Shell 语法和三类互斥分类测试 | 服务器待 `git pull` |
+| 2026-08-17 | 本次提交 | 为 `qc-compare` 补齐 6,199 参考结果、4,819 新版结果和图片目录默认路径 | Shell 语法和配置加载检查 | 服务器待 `git pull` |
 
 以后每次修改服务器脚本或参数，必须追加：
 

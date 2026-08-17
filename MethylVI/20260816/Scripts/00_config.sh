@@ -118,6 +118,12 @@ export MVI_FIGURES_BEFORE_DIR="${MVI_FIGURES_BEFORE_DIR:-${MVI_FIGURES_DIR}/01_b
 export MVI_FIGURES_AFTER_DIR="${MVI_FIGURES_AFTER_DIR:-${MVI_FIGURES_DIR}/02_after_methylvi}"
 export MVI_FIGURES_SUPERVISED_DIR="${MVI_FIGURES_SUPERVISED_DIR:-${MVI_FIGURES_DIR}/03_supervised_umap}"
 
+# QC 对比默认将 6,199 细胞的 blacklist_f0p2 结果作为参考 UMAP，
+# 与服务器已生成的 4,819 细胞新版 QC 结果比较。
+export MVI_QC_REFERENCE_RESULTS="${MVI_QC_REFERENCE_RESULTS:-${MVI_RESULTS}}"
+export MVI_QC_CURRENT_RESULTS="${MVI_QC_CURRENT_RESULTS:-${MVI_DATA_ROOT}/methylVI_results_300k_blacklist_f0p2_4819/results_ir_nr}"
+export MVI_QC_COMPARISON_DIR="${MVI_QC_COMPARISON_DIR:-${MVI_FIGURES_DIR}/04_qc_comparison_4819}"
+
 # 每细胞 overall mCG level 及覆盖审计表。主指标为所有已覆盖 CpG 的
 # sum(mc)/sum(mc+uc)；文件独立命名以避免误用旧的 CpG 位点数缓存。
 export MVI_OVERALL_MCG_LEVEL_TABLE="${MVI_OVERALL_MCG_LEVEL_TABLE:-${MVI_ROOT}/overall_mcg_level_by_cell.tsv.gz}"
