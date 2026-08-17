@@ -25,5 +25,9 @@
 !/*/[0-9]*/Results/**/*.png
 !/*/[0-9]*/Results/**/*.PNG
 
+# Keep currently empty Results or Scripts directories visible in Git.
+!/*/[0-9]*/Results/.gitkeep
+!/*/[0-9]*/Scripts/.gitkeep
+
 # Keep empty supplementary-material directories visible in Git.
 !/*/[0-9]*/Supplementary_materials/.gitkeep
