@@ -6,8 +6,8 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/workflow_common.sh"
-RESULT_SCRIPT_DIR="${RESULT_SCRIPT_DIR:-${SCRIPT_DIR}/lib/methdiff/python}"
+source "$SCRIPT_DIR/workflow_common.sh"
+RESULT_SCRIPT_DIR="${RESULT_SCRIPT_DIR:-${SCRIPT_DIR}}"
 SAMPLE_JOBS="${SAMPLE_JOBS:-2}"
 PLOT_DPI="${PLOT_DPI:-300}"
 ZSCORE_MIN_OBSERVED_CELLS="${ZSCORE_MIN_OBSERVED_CELLS:-30}"

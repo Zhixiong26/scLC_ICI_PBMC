@@ -65,18 +65,15 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
 │   │   │   │   ├── 07_compute_top200_dmr_matrix.sh
 │   │   │   │   ├── 08_plot_all_top200_heatmaps.sh
 │   │   │   │   ├── 09_rerun_rawp_no_null_fdr.sh
-│   │   │   │   └── lib/
-│   │   │   │       ├── build_scanpy_clean_cell_list.py
-│   │   │   │       ├── check_cov_duplicates_one_sample.sh
-│   │   │   │       ├── deduplicate_cov_by_probability_one_sample.sh
-│   │   │   │       ├── workflow_common.sh
-│   │   │   │       └── methdiff/
-│   │   │   │           ├── run_single_sample_dmr.sh
-│   │   │   │           └── python/
-│   │   │   │               ├── 02_merge_sample_dmrs.py
-│   │   │   │               ├── 04_plot_single_cell_dmr_heatmaps.py
-│   │   │   │               ├── 05_extract_celltype_hypo_dmrs_top1500.py
-│   │   │   │               └── 06_compute_dmr_mean_of_cpg_ratios.py
+│   │   │   │   ├── 02_merge_sample_dmrs.py
+│   │   │   │   ├── 04_plot_single_cell_dmr_heatmaps.py
+│   │   │   │   ├── 05_extract_celltype_hypo_dmrs_top1500.py
+│   │   │   │   ├── 06_compute_dmr_mean_of_cpg_ratios.py
+│   │   │   │   ├── build_scanpy_clean_cell_list.py
+│   │   │   │   ├── check_cov_duplicates_one_sample.sh
+│   │   │   │   ├── deduplicate_cov_by_probability_one_sample.sh
+│   │   │   │   ├── run_single_sample_dmr.sh
+│   │   │   │   └── workflow_common.sh
 │   │   │   └── Archive/
 │   │   │       ├── 01_Upstream/
 │   │   │       │   ├── 10_prepare_merged_response_input.sh

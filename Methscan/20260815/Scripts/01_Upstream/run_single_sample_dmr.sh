@@ -13,7 +13,7 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THRESHOLD="${THRESHOLD:-30k}"
-source "$SCRIPT_DIR/../workflow_common.sh"
+source "$SCRIPT_DIR/workflow_common.sh"
 
 SAMPLE_NAME="${SAMPLE_NAME:-25110891_IR01_Met}"
 DERIVED_SAMPLE_SHORT="$(sample_short "$SAMPLE_NAME")" ||

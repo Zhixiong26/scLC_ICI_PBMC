@@ -50,7 +50,7 @@ DEFAULT_INPUT_DIR = (
 DEFAULT_DMR_ANNOTATION_DIR = (
     MERGED_ROOT / "methdiff_30k/results/sample_merged_hypo_DMRs_diff0p30"
 )
-UPSTREAM_DIR = Path(__file__).resolve().parents[3]
+UPSTREAM_DIR = Path(__file__).resolve().parent
 DEFAULT_OUTPUT_DIR = (
     UPSTREAM_DIR / "Heatmap/figures_diff0p30_hypo_DMRs_grouped_5000bins_blue_red"
 )

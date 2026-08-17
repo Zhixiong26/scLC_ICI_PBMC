@@ -18,7 +18,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/workflow_common.sh"
+source "$SCRIPT_DIR/workflow_common.sh"
 MIN_CELLS="${MIN_CELLS:-10}"
 FALLBACK_PACKAGE_ROOT="${FALLBACK_PACKAGE_ROOT:-$SCRIPT_DIR/.rawp_fallback_methscan}"
 PATCH_REVISION="rawp_no_null_dmrs_v2"

@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/workflow_common.sh"
+source "$SCRIPT_DIR/workflow_common.sh"
 UPSTREAM_SCRIPT="${UPSTREAM_SCRIPT:-${SCRIPT_DIR}/03_run_upstream_pipeline.sh}"
 DEFAULT_SAMPLE_JOBS="${DEFAULT_SAMPLE_JOBS:-10}"
 

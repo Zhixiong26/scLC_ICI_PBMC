@@ -7,7 +7,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/workflow_common.sh"
+source "$SCRIPT_DIR/workflow_common.sh"
 
 DATA_TAG="${DATA_TAG:-covdedupprob}"
 COV_SUBDIR="${COV_SUBDIR:-cov_dedup_probability}"
@@ -20,7 +20,7 @@ FILTER_MIN_METH="${FILTER_MIN_METH:-55}"
 FILTER_MAX_METH="${FILTER_MAX_METH:-}"
 FILTER_MAX_SITES="${FILTER_MAX_SITES:-1200000}"
 SCANPY_FILTER_LABEL="${SCANPY_FILTER_LABEL:-scanpy0814clean}"
-SCANPY_KEEP_SCRIPT="${SCANPY_KEEP_SCRIPT:-${SCRIPT_DIR}/lib/build_scanpy_clean_cell_list.py}"
+SCANPY_KEEP_SCRIPT="${SCANPY_KEEP_SCRIPT:-${SCRIPT_DIR}/build_scanpy_clean_cell_list.py}"
 VALID_THRESHOLDS=(10k 20k 30k 50k 300k)
 
 FILTER_MAX_METH_LABEL="${FILTER_MAX_METH:-none}"

@@ -5,8 +5,8 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/workflow_common.sh"
-DMR_SCRIPT="${DMR_SCRIPT:-$SCRIPT_DIR/lib/methdiff/run_single_sample_dmr.sh}"
+source "$SCRIPT_DIR/workflow_common.sh"
+DMR_SCRIPT="${DMR_SCRIPT:-$SCRIPT_DIR/run_single_sample_dmr.sh}"
 DEFAULT_PREPARE_JOBS="${DEFAULT_PREPARE_JOBS:-2}"
 DEFAULT_SAMPLE_JOBS="${DEFAULT_SAMPLE_JOBS:-2}"
 DEFAULT_COMPARISON_JOBS="${DEFAULT_COMPARISON_JOBS:-2}"
