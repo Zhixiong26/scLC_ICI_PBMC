@@ -29,6 +29,10 @@ STATUS_LABELS = {
     STATUS_QC_REMOVED: "Removed by MethSCAn QC after Scanpy clean",
 }
 STATUS_ORDER = (STATUS_RETAINED, STATUS_SCANPY_REMOVED, STATUS_QC_REMOVED)
+SAMPLE_ORDER = tuple(
+    [f"IR{index:02d}" for index in range(1, 6)]
+    + [f"NR{index:02d}" for index in range(1, 6)]
+)
 
 
 def _weight_tag(weight: float) -> str:
@@ -272,6 +276,60 @@ def _cpg_site_bin_statistics(
     return counts, percentages
 
 
+def _cpg_site_bin_statistics_by_sample(
+    table: pd.DataFrame,
+    minimum: int,
+    maximum: int,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    labels = (f"<{minimum}", f"{minimum}-{maximum}", f">{maximum}")
+    cpg_sites = table["cpg_sites"].astype(int)
+    bins = np.select(
+        (cpg_sites < minimum, cpg_sites <= maximum),
+        labels[:2],
+        default=labels[2],
+    )
+    sample_ids = table.index.to_series().astype(str).str.extract(
+        r"^((?:IR|NR)\d{2})__", expand=False
+    )
+    if sample_ids.isna().any():
+        raise ValueError("存在无法从细胞ID解析 IR/NR 样本的参考细胞")
+    frame = pd.DataFrame(
+        {
+            "sample_id": pd.Categorical(
+                sample_ids, categories=SAMPLE_ORDER, ordered=True
+            ),
+            "cpg_site_bin": pd.Categorical(bins, categories=labels, ordered=True),
+            "qc_status": pd.Categorical(
+                table["qc_status"], categories=STATUS_ORDER, ordered=True
+            ),
+        },
+        index=table.index,
+    )
+    counts = (
+        frame.groupby(
+            ["sample_id", "cpg_site_bin", "qc_status"], observed=False
+        )
+        .size()
+        .unstack(fill_value=0)
+        .reindex(
+            pd.MultiIndex.from_product(
+                [SAMPLE_ORDER, labels], names=["sample_id", "cpg_site_bin"]
+            ),
+            fill_value=0,
+        )
+        .reindex(columns=list(STATUS_ORDER), fill_value=0)
+        .astype(int)
+    )
+    counts.columns.name = None
+    counts["total"] = counts.sum(axis=1)
+    percentages = counts.loc[:, list(STATUS_ORDER)].div(
+        counts["total"].replace(0, np.nan), axis=0
+    ) * 100
+    percentages = percentages.fillna(0.0)
+    percentages["total"] = 100.0
+    return counts, percentages
+
+
 def _draw_cpg_site_bin_counts(counts: pd.DataFrame, output: Path) -> None:
     fig, axis = plt.subplots(figsize=(8, 6))
     bottom = np.zeros(len(counts), dtype=float)
@@ -307,6 +365,37 @@ def _draw_cpg_site_bin_counts(counts: pd.DataFrame, output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, dpi=300, bbox_inches="tight")
     plt.close(fig)
+
+
+def _draw_cpg_site_bin_counts_by_sample(
+    counts: pd.DataFrame, output: Path
+) -> None:
+    figure, axes = plt.subplots(2, 5, figsize=(18, 8), sharey=True)
+    for axis, sample_id in zip(axes.flat, SAMPLE_ORDER):
+        sample_counts = counts.loc[sample_id]
+        bottom = np.zeros(len(sample_counts), dtype=float)
+        x = np.arange(len(sample_counts))
+        for status in STATUS_ORDER:
+            values = sample_counts[status].to_numpy(dtype=float)
+            axis.bar(x, values, bottom=bottom, color=STATUS_COLORS[status])
+            bottom += values
+        axis.set_title(sample_id)
+        axis.set_xticks(x, ["<300k", "300k–1.2M", ">1.2M"], rotation=25)
+        axis.tick_params(axis="both", labelsize=8)
+        for position, total in zip(x, sample_counts["total"].to_numpy(dtype=int)):
+            axis.text(position, total, str(total), ha="center", va="bottom", fontsize=7)
+    axes[0, 0].set_ylabel("Number of cells")
+    axes[1, 0].set_ylabel("Number of cells")
+    handles = [
+        plt.Rectangle((0, 0), 1, 1, color=STATUS_COLORS[status], label=STATUS_LABELS[status])
+        for status in STATUS_ORDER
+    ]
+    figure.legend(handles=handles, loc="upper center", ncol=3, fontsize=8)
+    figure.suptitle("Cell retention and exclusion by CpG-site range, per sample")
+    figure.tight_layout(rect=(0, 0, 1, 0.92))
+    output.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output, dpi=300, bbox_inches="tight")
+    plt.close(figure)
 
 
 def _depth_summary(table: pd.DataFrame) -> dict[str, dict[str, float | int]]:
@@ -395,8 +484,36 @@ def main() -> None:
     )
     _draw_cpg_site_bin_counts(cpg_bin_counts, cpg_bin_figure)
 
+    cpg_bin_counts_by_sample, cpg_bin_percentages_by_sample = (
+        _cpg_site_bin_statistics_by_sample(
+            reference_depth,
+            minimum_cpg_sites,
+            maximum_cpg_sites,
+        )
+    )
+    cpg_bin_count_by_sample_file = (
+        output_root / "cpg_site_range_qc_counts_by_sample.tsv"
+    )
+    cpg_bin_percentage_by_sample_file = (
+        output_root / "cpg_site_range_qc_percentages_by_sample.tsv"
+    )
+    cpg_bin_by_sample_figure = output_root / "cpg_site_range_qc_counts_by_sample.png"
+    cpg_bin_counts_by_sample.to_csv(
+        cpg_bin_count_by_sample_file, sep="\t", index_label=["sample_id", "cpg_site_range"]
+    )
+    cpg_bin_percentages_by_sample.to_csv(
+        cpg_bin_percentage_by_sample_file,
+        sep="\t",
+        index_label=["sample_id", "cpg_site_range"],
+        float_format="%.4f",
+    )
+    _draw_cpg_site_bin_counts_by_sample(
+        cpg_bin_counts_by_sample,
+        cpg_bin_by_sample_figure,
+    )
+
     weights = _load_weights(reference_results)
-    figure_files: list[str] = [str(cpg_bin_figure)]
+    figure_files: list[str] = [str(cpg_bin_figure), str(cpg_bin_by_sample_figure)]
     coordinate_files: list[str] = []
     for weight in weights:
         tag = _weight_tag(weight)
@@ -459,6 +576,22 @@ def main() -> None:
         },
         "cpg_site_bin_count_file": str(cpg_bin_count_file),
         "cpg_site_bin_percentage_file": str(cpg_bin_percentage_file),
+        "cpg_site_bin_counts_by_sample": {
+            str(sample_id): {
+                str(site_range): {
+                    str(status): int(value)
+                    for status, value in row.items()
+                }
+                for site_range, row in sample_table.iterrows()
+            }
+            for sample_id, sample_table in cpg_bin_counts_by_sample.groupby(
+                level="sample_id", sort=False
+            )
+        },
+        "cpg_site_bin_count_by_sample_file": str(cpg_bin_count_by_sample_file),
+        "cpg_site_bin_percentage_by_sample_file": str(
+            cpg_bin_percentage_by_sample_file
+        ),
         "coordinate_space": "reference supervised UMAP",
         "reference_cells": int(len(reference_cells)),
         "current_cells": int(len(current_cells)),

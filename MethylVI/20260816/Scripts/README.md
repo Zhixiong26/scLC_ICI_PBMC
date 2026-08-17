@@ -76,6 +76,7 @@ bash 09_run_pipeline.sh all
 - `qc-compare` 的状态图将保留细胞标为灰色、Scanpy clean 筛除细胞标为红色、通过 Scanpy clean 后被 MethSCAn QC 筛除的细胞标为蓝色；测序深度图使用同样颜色的空心轮廓。
 - `qc-compare` 默认比较 6,199 细胞参考结果与 4,819 细胞新版结果，图片写入 `Results/blacklist_f0p2/04_qc_comparison_4819`。
 - `qc-compare` 还会按每细胞覆盖的唯一 CpG 位点数生成 `<300k`、`300k–1.2M`、`>1.2M` 三档保留/排除计数表、百分比表和堆叠柱状图。
+- 同时生成 10 个样本（IR01–IR05、NR01–NR05）的分样本计数表、百分比表和分面堆叠柱状图。
 
 ## 服务器提交与修改记录
 
@@ -88,6 +89,7 @@ bash 09_run_pipeline.sh all
 | 2026-08-17 | 本次提交 | `qc-compare` 将 Scanpy clean 和 MethSCAn QC 筛除细胞分色显示 | Python/Shell 语法和三类互斥分类测试 | 服务器待 `git pull` |
 | 2026-08-17 | 本次提交 | 为 `qc-compare` 补齐 6,199 参考结果、4,819 新版结果和图片目录默认路径 | Shell 语法和配置加载检查 | 服务器待 `git pull` |
 | 2026-08-17 | 本次提交 | `qc-compare` 新增 `<300k` / `300k–1.2M` / `>1.2M` 的保留及两类排除细胞统计 | Python/Shell 语法、分箱边界和计数测试 | 服务器待 `git pull` |
+| 2026-08-17 | 本次提交 | `qc-compare` 增加10个样本的 CpG 覆盖区间保留/排除统计 | Python/Shell 语法和分样本表样式检查 | 服务器待 `git pull` |
 
 以后每次修改服务器脚本或参数，必须追加：
 
