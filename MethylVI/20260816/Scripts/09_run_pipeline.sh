@@ -20,7 +20,7 @@ mkdir -p "$HERE/logs" "$MVI_ROOT" "$MVI_RESULTS"
 
 usage() {
     cat <<'EOF'
-用法：bash 09_run_pipeline.sh {prepare|blacklist|verify|build|train|plots|supervised|depth|mcg-level|qc-compare|test|all}
+用法：bash 09_run_pipeline.sh {prepare|blacklist|verify|build|train|plots|supervised|depth|mcg-level|mean-mcg-level|qc-compare|test|all}
 
   prepare      正式从头复现：整理ALLC、生成MCDS、blacklist过滤及5-kb聚类
   blacklist    快捷复用历史MCDS，只重做blacklist过滤及5-kb聚类
@@ -31,6 +31,7 @@ usage() {
   supervised   生成 target_weight=0.2、0.5、0.7、0.9 的监督式 UMAP
   depth        在每个监督式UMAP上绘制基于cov总覆盖量的测序深度
   mcg-level    在每个监督式UMAP上绘制每细胞的overall mCG level
+  mean-mcg-level 绘制每细胞内各CpG位点mCG比例的算术平均
   qc-compare   将新版QC剔除的细胞标记回旧版监督式UMAP
   test         运行公共函数单元测试和两轮 CPU smoke test
   all          依次运行verify到overall mCG level绘图（不含prepare/test/qc-compare）
@@ -149,6 +150,11 @@ case "$stage" in
     python "$HERE/12_plot_cpg_sites.py" \
       2>&1 | tee "$HERE/logs/12_plot_overall_mcg_level.log"
     ;;
+  mean-mcg-level)
+    activate_methylvi
+    python "$HERE/12_plot_cpg_sites.py" --metric mean-site \
+      2>&1 | tee "$HERE/logs/12_plot_mean_site_mcg_level.log"
+    ;;
   qc-compare)
     activate_methylvi
     python "$HERE/11_compare_qc_cell_sets.py" \
@@ -170,6 +176,7 @@ case "$stage" in
     bash "$0" supervised
     bash "$0" depth
     bash "$0" mcg-level
+    bash "$0" mean-mcg-level
     ;;
   *)
     usage

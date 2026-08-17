@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""将每个细胞的 overall mCG level 投影到监督式 UMAP。
+"""将每个细胞的 mCG level 投影到监督式 UMAP。
 
-主指标定义为每个细胞在所有已覆盖 CpG 位点上的
-``sum(mc) / sum(mc + uc)``，取值范围为 0–1。同时保留位点等权平均、
-CpG 位点数和总覆盖量作为质量审计指标。
+支持覆盖度加权的 ``sum(mc) / sum(mc + uc)``，以及各已覆盖 CpG 位点
+``mc / (mc + uc)`` 的算术平均。两种指标均为每细胞计算，取值范围为 0–1。
 """
 
 from __future__ import annotations
 
 import concurrent.futures
+import argparse
 import gzip
 import json
 import os
@@ -188,20 +188,26 @@ def _load_or_compute_levels(
     return result
 
 
-def _plot(table: pd.DataFrame, output: Path, title: str) -> None:
+def _plot(
+    table: pd.DataFrame,
+    output: Path,
+    title: str,
+    metric_column: str,
+    colorbar_label: str,
+) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     fig, axis = plt.subplots(figsize=(7, 6))
     scatter = axis.scatter(
         table["UMAP1"],
         table["UMAP2"],
-        c=table["overall_mcg_level"].to_numpy(dtype=float),
+        c=table[metric_column].to_numpy(dtype=float),
         s=2,
         alpha=0.8,
         cmap="viridis",
         linewidths=0,
     )
     colorbar = fig.colorbar(scatter, ax=axis, pad=0.02)
-    colorbar.set_label("Overall mCG level: Σmc / Σ(mc + uc)")
+    colorbar.set_label(colorbar_label)
     axis.set_xlabel("UMAP1")
     axis.set_ylabel("UMAP2")
     axis.set_title(title)
@@ -211,6 +217,15 @@ def _plot(table: pd.DataFrame, output: Path, title: str) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--metric",
+        choices=("overall", "mean-site"),
+        default="overall",
+        help="overall为覆盖度加权；mean-site为各CpG位点甲基化比例的算术平均",
+    )
+    args = parser.parse_args()
+
     results = env_path("MVI_RESULTS")
     data_root = env_path("MVI_DATA_ROOT")
     figure_root = env_path("MVI_FIGURES_SUPERVISED_DIR")
@@ -255,6 +270,21 @@ def main() -> None:
     if maximum is not None and (levels["cpg_sites"] > maximum).any():
         raise ValueError(f"发现CpG数大于配置上限 {maximum:,} 的细胞")
 
+    if args.metric == "mean-site":
+        metric_column = "mean_site_mcg_level"
+        metric_slug = "mean_site_mcg_level"
+        metric_title = "arithmetic mean mCG level"
+        colorbar_label = "Mean CpG methylation: mean[mc / (mc + uc)]"
+        metric_definition = (
+            "arithmetic mean of mc/(mc+uc) across covered unique CpG sites per cell"
+        )
+    else:
+        metric_column = "overall_mcg_level"
+        metric_slug = "overall_mcg_level"
+        metric_title = "overall mCG level"
+        colorbar_label = "Overall mCG level: Σmc / Σ(mc + uc)"
+        metric_definition = "sum(mc)/sum(mc+uc) across covered CpG sites per cell"
+
     figure_files: list[str] = []
     for weight in weights:
         tag = _weight_tag(weight)
@@ -272,21 +302,23 @@ def main() -> None:
         output = (
             figure_root
             / f"target_weight_{tag}"
-            / "methylvi_supervised_umap_overall_mcg_level.png"
+            / f"methylvi_supervised_umap_{metric_slug}.png"
         )
         _plot(
             table,
             output,
-            f"MethylVI supervised UMAP — overall mCG level (target_weight={weight:g})",
+            f"MethylVI supervised UMAP — {metric_title} (target_weight={weight:g})",
+            metric_column,
+            colorbar_label,
         )
         figure_files.append(str(output))
 
-    values = levels["overall_mcg_level"].astype(float)
-    site_mean_values = levels["mean_site_mcg_level"].astype(float)
+    values = levels[metric_column].astype(float)
     save_json(
-        supervised_root / "overall_mcg_level_summary.json",
+        supervised_root / f"{metric_slug}_summary.json",
         {
-            "metric": "sum(mc)/sum(mc+uc) across covered CpG sites per cell",
+            "metric_column": metric_column,
+            "metric": metric_definition,
             "unit": "methylation fraction (0-1)",
             "cache_table": str(cache_path),
             "cells": int(len(levels)),
@@ -295,10 +327,6 @@ def main() -> None:
             "median": float(values.median()),
             "q75": float(values.quantile(0.75)),
             "maximum": float(values.max()),
-            "mean_site_metric": "arithmetic mean of mc/(mc+uc) across covered unique CpG sites",
-            "mean_site_minimum": float(site_mean_values.min()),
-            "mean_site_median": float(site_mean_values.median()),
-            "mean_site_maximum": float(site_mean_values.max()),
             "cpg_sites_minimum": int(levels["cpg_sites"].min()),
             "cpg_sites_median": float(levels["cpg_sites"].median()),
             "cpg_sites_maximum": int(levels["cpg_sites"].max()),
@@ -308,7 +336,7 @@ def main() -> None:
             "figure_files": figure_files,
         },
     )
-    print(f"已生成{len(figure_files)}张overall mCG level UMAP图", flush=True)
+    print(f"已生成{len(figure_files)}张{metric_title} UMAP图", flush=True)
 
 
 if __name__ == "__main__":
