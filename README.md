@@ -16,7 +16,7 @@
 - **MethylVI**：最新批次 `20260816`；归档批次 `20260810`、`20260813`。
 - **Scanpy**：最新批次 `20260815`；归档批次 `20260810`。
 
-仓库当前包含 175 个分析脚本和 223 张 PNG 结果图。三个原始子仓库不在本仓库的跟踪范围内，其远程仓库配置保持不变。
+仓库当前包含 130 个分析脚本和 205 张 PNG 结果图。三个原始子仓库不在本仓库的跟踪范围内，其远程仓库配置保持不变。
 
 ### Methscan 当前流程顺序
 
@@ -60,7 +60,7 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
 │   │   ├── Results/
 │   │   ├── Scripts/
 │   │   │   ├── README.md
-│   │   │   ├── 01_Upstream/
+│   │   │   └── 01_Upstream/
 │   │   │   │   ├── 00_workflow_common.sh
 │   │   │   │   ├── 01_check_cov_duplicates.sh
 │   │   │   │   ├── 02_deduplicate_cov_by_probability.sh
@@ -75,91 +75,6 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
 │   │   │   │   ├── 07_plot_all_top200_heatmaps.sh
 │   │   │   │   ├── 07a_plot_single_cell_dmr_heatmaps.py
 │   │   │   │   └── 08_rerun_rawp_no_null_fdr.sh
-│   │   │   └── Archive/
-│   │   │       ├── 01_Upstream/
-│   │   │       │   ├── 10_prepare_merged_response_input.sh
-│   │   │       │   ├── 11_run_merged_celltype_ir_vs_nr_dmr.sh
-│   │   │       │   ├── 12_select_merged_ir_nr_candidate_dmrs.sh
-│   │   │       │   ├── 13_run_merged_response_scan_matrix.sh
-│   │   │       │   └── archive_legacy/
-│   │   │       │       ├── 04_run_ir01_single_sample_dmr_entry_legacy.sh
-│   │   │       │       ├── Methscan_10samples_merged_batch_correct_legacy.sh
-│   │   │       │       ├── Methscan_full_legacy.sh
-│   │   │       │       ├── run_upstream_pipeline_legacy.sh
-│   │   │       │       ├── filter_threshold_audit_legacy/
-│   │   │       │       │   └── 90_summarize_filter_thresholds.py
-│   │   │       │       └── plot_wrappers_before_unified_20260812/
-│   │   │       │           ├── 08_plot_top200_dmr_heatmap.sh
-│   │   │       │           ├── 09_plot_top200_dmr_zscore_heatmap.sh
-│   │   │       │           ├── 09b_plot_top200_dmr_type_mean_zscore_heatmap.sh
-│   │   │       │           ├── 09c_plot_top200_dmr_zscore_maxabs_heatmap.sh
-│   │   │       │           ├── 09d_plot_top200_dmr_zscore_clip1_heatmap.sh
-│   │   │       │           ├── 09e_plot_top200_dmr_type_mean_zscore_maxabs_heatmap.sh
-│   │   │       │           └── 09f_plot_top200_dmr_type_mean_zscore_clip1_heatmap.sh
-│   │   │       ├── 02_Methdiff/
-│   │   │       │   ├── archive_merged_workflow/
-│   │   │       │   │   └── run_methdiff_pipeline_merged_legacy.sh
-│   │   │       │   └── Result/
-│   │   │       │       ├── 01_extract_celltype_hypo_dmrs.py
-│   │   │       │       ├── 03_compute_dmr_mean_cpg_ratio.py
-│   │   │       │       ├── 07_audit_sparse_value_origin.py
-│   │   │       │       ├── 08_trace_sparse_values_to_cov.py
-│   │   │       │       └── run_ir01_top200_heatmap.sh
-│   │   │       └── root_workflows/
-│   │   │           ├── 03_MethExprBubble/
-│   │   │           │   ├── 01_audit_promoter_dmr_expression_inputs.py
-│   │   │           │   ├── 02_map_ir_hypo_dmrs_to_promoters.py
-│   │   │           │   ├── 03_compute_promoter_methylation_pseudobulk.py
-│   │   │           │   ├── 04_compute_rna_expression_pseudobulk.py
-│   │   │           │   ├── 05_correlate_promoter_methylation_expression.py
-│   │   │           │   ├── 06_plot_promoter_effect_quadrant.py
-│   │   │           │   ├── run_promoter_dmr_expression_workflow.sh
-│   │   │           │   └── workflow_config.py
-│   │   │           ├── 04_Hamming_distance/
-│   │   │           │   ├── hamming_scwgbs.py
-│   │   │           │   └── run_hamming_pipeline.sh
-│   │   │           ├── 05_VMR_clustering/
-│   │   │           │   ├── run_vmr_clustering.sh
-│   │   │           │   └── vmr_clustering.R
-│   │   │           ├── 06_PromoterDMR_eQTM/
-│   │   │           │   ├── 01_map_bidirectional_dmrs_to_promoters.py
-│   │   │           │   ├── 02_compute_promoter_methylation_pseudobulk.py
-│   │   │           │   ├── 03_compute_rna_expression_pseudobulk.py
-│   │   │           │   ├── 04_compute_pseudobulk_correlations.py
-│   │   │           │   ├── run_pseudobulk_correlation.sh
-│   │   │           │   └── workflow_config.py
-│   │   │           └── DMRs/
-│   │   │               └── scripts/
-│   │   │                   ├── common/
-│   │   │                   │   └── make_promoter_bed_2kb_2kb.py
-│   │   │                   ├── q001_2kb_2kb/
-│   │   │                   │   ├── 00_make_dna_cell_metadata.py
-│   │   │                   │   ├── 01_merge_subtract_dmr.sh
-│   │   │                   │   ├── 02_subset_vmr_matrix.py
-│   │   │                   │   ├── 03_run_subset_vmr_matrix.sh
-│   │   │                   │   ├── 04_summarize_ir_vs_nr_dmr.sh
-│   │   │                   │   ├── 05_filter_ir_vs_nr_dmr.sh
-│   │   │                   │   ├── 06_make_promoter_bed_2kb_2kb.py
-│   │   │                   │   ├── 07_intersect_dmr_promoter.sh
-│   │   │                   │   ├── 08_format_promoter_dmr_gene_table.py
-│   │   │                   │   ├── 09_filter_protein_coding_genes.py
-│   │   │                   │   ├── 10_integrate_pseudobulk_expression.py
-│   │   │                   │   ├── 11_run_pseudobulk_expression.sh
-│   │   │                   │   └── 12_correlate_dna_methylation_rna_expression.py
-│   │   │                   └── q005_2kb_2kb/
-│   │   │                       ├── 00_make_dna_cell_metadata.py
-│   │   │                       ├── 01_merge_subtract_dmr.sh
-│   │   │                       ├── 02_subset_vmr_matrix.py
-│   │   │                       ├── 03_run_subset_vmr_matrix.sh
-│   │   │                       ├── 04_summarize_ir_vs_nr_dmr.sh
-│   │   │                       ├── 05_filter_ir_vs_nr_dmr.sh
-│   │   │                       ├── 06_make_promoter_bed_2kb_2kb.py
-│   │   │                       ├── 07_intersect_dmr_promoter.sh
-│   │   │                       ├── 08_format_promoter_dmr_gene_table.py
-│   │   │                       ├── 09_filter_protein_coding_genes.py
-│   │   │                       ├── 10_integrate_pseudobulk_expression.py
-│   │   │                       ├── 11_run_pseudobulk_expression.sh
-│   │   │                       └── 12_correlate_dna_methylation_rna_expression.py
 │   │   └── Supplementary_materials/
 │   │       ├── README.md
 │   │       └── .gitkeep
