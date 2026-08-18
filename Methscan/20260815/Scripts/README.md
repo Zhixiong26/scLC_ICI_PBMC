@@ -54,7 +54,7 @@ bash Methscan/20260815/Scripts/01_Upstream/07_plot_all_top200_heatmaps.sh links
 | 阶段 | 参数 | 当前值 |
 |---|---|---|
 | 公共 | `THRESHOLD` | `300k` |
-| 公共 | `QC_TAG` | `minmeth55_maxmethnone_maxsites1200000_scanpy0814clean_covdedupprob` |
+| 公共 | `QC_TAG` | `minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_covdedupprob` |
 | 03 过滤 | `FILTER_MIN_METH` / `FILTER_MAX_METH` | `55` / 无上限 |
 | 03 过滤 | `FILTER_MAX_SITES` | `1,200,000` |
 | 03 默认资源 | `DEFAULT_MAX_JOBS` / `DEFAULT_THREADS` | `1` / `20` |
@@ -82,6 +82,7 @@ bash Methscan/20260815/Scripts/01_Upstream/07_plot_all_top200_heatmaps.sh links
 | 2026-08-17 | `aef8e12` | 合并 `01`/`02` 的批处理与单样本实现 | 单样本与十样本 fixture 测试 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-17 | `04297fe` | 合并 `04` DMR 批处理和单样本入口 | 批处理 dispatcher 测试 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-17 | `a47280e` | `05a` 改为通用 Top-N 命名，当前主流程仍为 Top200 | Python 语法检查 | GitHub 已提交，服务器待 `git pull` |
+| 2026-08-18 | 本次提交 | 适配 Scanpy 20260815 GEM-X v4 新注释；将 upstream QC 标签从 `scanpy0814clean` 更新为 `scanpy0815gemxclean`，避免复用旧注释结果 | Shell 语法检查、Scanpy 注释路径审计 | 待提交、待 GitHub 推送 |
 
 以后每次修改服务器脚本或参数，必须追加一行：
 

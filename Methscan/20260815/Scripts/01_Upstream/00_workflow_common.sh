@@ -13,7 +13,7 @@ source "$SCLC_PROJECT_CONFIG"
 
 : "${BASE_DIR:=${SCLC_ALLCOOLS_ROOT}}"
 : "${THRESHOLD:=300k}"
-: "${QC_TAG:=minmeth55_maxmethnone_maxsites1200000_scanpy0814clean_covdedupprob}"
+: "${QC_TAG:=minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_covdedupprob}"
 : "${CONDA_INIT:=${SCLC_CONDA_ROOT}/etc/profile.d/conda.sh}"
 : "${CONDA_ENV:=scDNAm}"
 : "${ANNOTATION_CSV:=${SCLC_SCANPY_ANNOTATION}}"
