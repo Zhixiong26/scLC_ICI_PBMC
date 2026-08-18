@@ -120,7 +120,6 @@ case "$stage" in
     ensure_reused_allc_dir
     activate_methylvi
     python "$HERE/05_build_methylvi_input.py" --threads "$MVI_THREADS" \
-      --n-features "${MVI_FEATURE_COUNT:-0}" \
       2>&1 | tee "$HERE/logs/05_build_methylvi_input.log"
     ;;
   train)

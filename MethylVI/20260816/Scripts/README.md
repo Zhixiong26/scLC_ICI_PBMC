@@ -43,6 +43,17 @@ bash 09_run_pipeline.sh all
 
 `all` 依次执行 `verify → build → train → plots → supervised → depth → mcg-level → mean-mcg-level`，不包含 `prepare`、`blacklist`、`test` 和 `qc-compare`。`cpg-level` 和 `cpg-sites` 仅作为旧命令别名保留。
 
+### 100k/50k profile 统一入口
+
+`13_run_target_bin_profile.sh` 固定使用当前 4,998-cell 基础 MCDS，并在每个 profile 内顺序执行 `blacklist → bins 数核验 → verify → build → train → plots`。这样不需要通过 dsub `--env` 传递多个变量，也不会让下游任务抢在本 profile 的 H5AD 生成前启动。
+
+```bash
+bash 13_run_target_bin_profile.sh 100k full
+bash 13_run_target_bin_profile.sh 50k full
+```
+
+100k 与 50k 是两个独立输出目录，两个 `full` 任务可以并行；每个任务内部的阶段仍按依赖顺序执行。脚本会硬检查实际最终 bins 分别为 99,109 和 49,935，数值不符时停止，不进入 MethylVI 训练。
+
 ## 当前关键参数
 
 | 类别 | 参数 | 当前值 |
@@ -115,6 +126,7 @@ MVI_HYPO_PERCENT = threshold / n_cells * 100
 | 2026-08-17 | 本次提交 | `qc-compare` 增加10个样本的 CpG 覆盖区间保留/排除统计 | Python/Shell 语法和分样本表样式检查 | 服务器待 `git pull` |
 | 2026-08-18 | 本次提交 | 切换到 Methscan 20260815 Scanpy clean 白名单；预期细胞数由 6,199 更新为 4,998，max_sites 更新为 1,200,000，并使用独立 MethylVI 输出目录 | Shell/Python 语法与配置审计 | 待提交、待 GitHub 推送 |
 | 2026-08-18 | 本次提交 | 记录按当前细胞集和目标最终 bins 计算 `MVI_HYPO_PERCENT` 的方法及 100k/50k 实际数值 | ALLCools blacklist、binarize 和非零细胞数计算 | 待提交、待 GitHub 推送 |
+| 2026-08-18 | 本次提交 | 新增 100k/50k profile 统一 wrapper；每个任务内部顺序执行 blacklist 和全部下游，并移除不符合本流程定义的方差 top-N 入口 | Shell/Python 语法、目标 bins 硬检查 | 待提交、待 GitHub 推送 |
 
 以后每次修改服务器脚本或参数，必须追加：
 

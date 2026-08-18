@@ -94,12 +94,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--threads", type=int, default=int(os.environ.get("MVI_THREADS", "4")))
     parser.add_argument("--bin-size", type=int, default=int(os.environ.get("MVI_BIN_SIZE", "5000")))
-    parser.add_argument(
-        "--n-features",
-        type=int,
-        default=int(os.environ.get("MVI_FEATURE_COUNT", "0")),
-        help="Keep the top N variable regions; 0 keeps all regions.",
-    )
     parser.add_argument("--context", default=os.environ.get("MVI_MC_CONTEXT", "CGN"))
     parser.add_argument("--dtype", choices=("auto", "uint16", "uint32", "uint64"), default="auto")
     parser.add_argument("--force-assemble", action="store_true")
@@ -142,26 +136,6 @@ def _input_manifest(cells, regions, h5ad: Path, context: str, bin_size: int) -> 
         "context": context,
         "bin_size": bin_size,
     }
-
-
-def _select_top_variable_regions(source, regions, n_features: int):
-    """Select top variable regions using the ALLCools score matrix."""
-    if n_features <= 0 or n_features >= len(regions):
-        return regions
-    matrix = source.X
-    if hasattr(matrix, "multiply"):
-        sums = np.asarray(matrix.sum(axis=0)).ravel()
-        squared = np.asarray(matrix.multiply(matrix).sum(axis=0)).ravel()
-    else:
-        dense = np.asarray(matrix)
-        sums = dense.sum(axis=0)
-        squared = np.square(dense).sum(axis=0)
-    n_cells = max(1, source.n_obs)
-    variance = squared / n_cells - np.square(sums / n_cells)
-    variance = np.nan_to_num(variance, nan=-np.inf, posinf=-np.inf, neginf=-np.inf)
-    selected = np.argsort(-variance, kind="stable")[:n_features]
-    selected.sort()
-    return regions.iloc[selected].copy()
 
 
 def _assemble_dense_layers(
@@ -211,7 +185,6 @@ def main() -> None:
     source = ad.read_h5ad(h5ad, backed="r")
     cells = source.obs_names.astype(str)
     regions = regions_from_var(source.var, bin_size=args.bin_size)
-    regions = _select_top_variable_regions(source, regions, args.n_features)
     if output.exists() and not args.force_assemble:
         reopened = mudata.read_h5mu(output, backed="r")
         expected = (len(cells), len(regions))
@@ -228,8 +201,6 @@ def main() -> None:
         return
 
     manifest = _input_manifest(cells, regions, h5ad, args.context, args.bin_size)
-    manifest["feature_selection"] = "top_variance" if args.n_features > 0 else "all"
-    manifest["requested_features"] = args.n_features
     manifest_path = row_dir / "manifest.json"
     existing_rows = list(row_dir.glob("*.npz"))
     if manifest_path.exists():
@@ -296,7 +267,7 @@ def main() -> None:
     obs.index = cells
     for column in annotations.columns:
         obs[column] = annotations[column].to_numpy()
-    var = source.var.loc[regions.index].copy()
+    var = source.var.copy()
     var["chrom"] = regions["chrom"].to_numpy()
     var["start"] = regions["start"].to_numpy()
     var["end"] = regions["end"].to_numpy()
@@ -330,8 +301,6 @@ def main() -> None:
         "features": len(regions),
         "context": args.context,
         "bin_size": args.bin_size,
-        "feature_selection": "top_variance" if args.n_features > 0 else "all",
-        "requested_features": args.n_features,
         "dtype": dtype.name,
         "maximum_mc_per_cell_region": max_mc,
         "maximum_cov_per_cell_region": max_cov,
