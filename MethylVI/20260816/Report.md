@@ -49,6 +49,20 @@
 
 `yuanpei` 实际停止约 epoch 73；当前历史版本为 epoch 0–88。停止轮数差异来自数据集、特征集、数据分布和收敛过程，不代表方法不同。
 
+### 4.3 当前流程的三个实际参数版本
+
+三个版本均使用同一批 6,199 个细胞、10 个样本（5 IR + 5 NR）、ENCODE `ENCFF356LFX` GRCh38 blacklist、`blacklist overlap fraction=0.2`，并从同一批 617,665 个初始 5-kb bins 出发。差别只在低频 bin 筛选阈值和最终特征数量。
+
+| 版本/profile | `MVI_HYPO_PERCENT` | ALLCools 内部阈值 | 最终 bins | H5MU | 训练任务与实际停止 |
+|---|---:|---:|---:|---:|---|
+| `blacklist_f0p2` | 0.5 | 非零细胞数 >30 | 230,306 | 1.03 GiB | `164172`，120 CPU；第 78/500 epoch early stopping |
+| `blacklist_f0p2_100k` | 1.169543 | 非零细胞数 >72 | 100,206 | 0.49 GiB | `164134`，64 CPU；第 80/500 epoch early stopping |
+| `blacklist_f0p2_50k` | 2.669785 | 非零细胞数 >165 | 49,947 | 0.26 GiB | `164166`，96 CPU；第 69/500 epoch early stopping |
+
+三个版本均使用 `latent=20`、`hidden=128`、`hidden_layers=1`、最大 `500 epochs`、`batch_size=32`、`neighbors=15`、Leiden `resolution=1.0`、`seed=0`、`likelihood=betabinomial`、`dispersion=region`、CPU 训练和 `MVI_BATCH_KEY=sample_id`。
+
+三个版本的普通及监督式 UMAP 结果均已生成；230k 版本的普通 UMAP 任务为 `164173`，监督式 UMAP 任务为 `164174`。
+
 ## 5. 数据构建共同原则
 
 两套流程都禁止把 ALLCools H5AD 的 `X` 直接作为 MethylVI 计数，因为该矩阵是经过处理的 hypo-score。两者都使用 H5AD 确定细胞和保留 5-kb bins，再重新读取对应 ALLC 聚合 `mc`（methylated count）和 `cov`（total coverage count），最终写入包含整数 `mc/cov` 层的 H5MU。
@@ -108,4 +122,3 @@ ALLCools 聚类脚本可以确认核心代码和参数几乎一致；`yuanpei` M
 当前流程针对 5 IR + 5 NR 数据重写了样本识别、MethSCAn 300k QC、输入审计、并行方式、断点保护和版本记录，并将 supervised UMAP 设置为独立可选阶段。
 
 > 当前流程是 `yuanpei` MethylVI 核心方法在当前 IR/NR 数据上的复现和增强版；统计主线相同，但数据、batch 字段、QC、环境和部分内部实现证据不同。
-
