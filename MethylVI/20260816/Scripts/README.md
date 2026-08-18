@@ -53,7 +53,7 @@ bash 09_run_pipeline.sh all
 | MethSCAn QC | threshold / min sites / max sites / min meth | `300k` / `300000` / `1200000` / `55` |
 | MethSCAn QC | `MVI_QC_TAG` | `minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_covdedupprob` |
 | 计数 | bin size / context | `5000` / `CGN` |
-| ALLCools 特征 | binarize cutoff / hypo percent | `0.95` / `0.5` |
+| ALLCools 特征 | binarize cutoff / hypo percent | `0.95` / 按目标最终 bins 计算 |
 | 批次校正 | `MVI_BATCH_KEY` | `sample_id` |
 | 资源 | threads / memory record / accelerator | `32` / `190 GB` / `auto` |
 | 训练 | batch size / max epochs / seed | `32` / `500` / `0` |
@@ -63,7 +63,30 @@ bash 09_run_pipeline.sh all
 | 监督 UMAP | target / weights / min_dist | `cell_type` / `0.2 0.5 0.7 0.9` / `0.5` |
 | mCG 着色 | 加权指标 / 算术平均 / 单位 | 每细胞 `sum(mc)/sum(mc+uc)` / `mean[mc/(mc+uc)]` / `0–1` |
 
-注意：本流程当前记录的 MethSCAn QC `max_sites=10,000,000`，而当前 Methscan 20260815 主流程使用 `1,200,000`。正式运行 `prepare/verify` 前应核对服务器实际 provenance，不要在未确认时自动改参数。
+### 根据目标最终 bins 计算 `MVI_HYPO_PERCENT`
+
+`MVI_HYPO_PERCENT` 不是固定经验值。每次更换细胞白名单或目标特征数量时，必须在当前细胞集和 blacklist 后的 MCDS 上重新计算。
+
+计算步骤：
+
+1. 打开当前 `mcg_5kb.mcds`，应用相同的 blacklist（`f=0.2`）。
+2. 生成 `CGN` 的 `hypo-score` 矩阵，并使用 `binarize_cutoff=0.95`。
+3. 对每个 5-kb bin 统计其非零细胞数 `n_nonzero`。
+4. 对目标 bins 数 `N`，寻找使 `sum(n_nonzero > threshold)` 最接近 `N` 的阈值。
+5. 将阈值换算为：
+
+```text
+MVI_HYPO_PERCENT = threshold / n_cells * 100
+```
+
+当前 4,998-cell 数据的计算结果：
+
+| 目标最终 bins | 阈值 | 实际保留 bins | `MVI_HYPO_PERCENT` |
+|---:|---:|---:|---:|
+| 100,000 | `>49` | 99,109 | `0.980392157` |
+| 50,000 | `>110` | 49,935 | `2.200880352` |
+
+旧版本 6,199-cell 数据得到的 `1.169543` 和 `2.669785` 不得直接用于当前 4,998-cell 数据。每次计算应同时记录细胞数、blacklist 后 bins、阈值、实际最终 bins 和对应 `MVI_HYPO_PERCENT`。
 
 ## 输出约定
 
@@ -91,6 +114,7 @@ bash 09_run_pipeline.sh all
 | 2026-08-17 | 本次提交 | `qc-compare` 新增 `<300k` / `300k–1.2M` / `>1.2M` 的保留及两类排除细胞统计 | Python/Shell 语法、分箱边界和计数测试 | 服务器待 `git pull` |
 | 2026-08-17 | 本次提交 | `qc-compare` 增加10个样本的 CpG 覆盖区间保留/排除统计 | Python/Shell 语法和分样本表样式检查 | 服务器待 `git pull` |
 | 2026-08-18 | 本次提交 | 切换到 Methscan 20260815 Scanpy clean 白名单；预期细胞数由 6,199 更新为 4,998，max_sites 更新为 1,200,000，并使用独立 MethylVI 输出目录 | Shell/Python 语法与配置审计 | 待提交、待 GitHub 推送 |
+| 2026-08-18 | 本次提交 | 记录按当前细胞集和目标最终 bins 计算 `MVI_HYPO_PERCENT` 的方法及 100k/50k 实际数值 | ALLCools blacklist、binarize 和非零细胞数计算 | 待提交、待 GitHub 推送 |
 
 以后每次修改服务器脚本或参数，必须追加：
 
