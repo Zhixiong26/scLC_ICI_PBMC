@@ -75,16 +75,24 @@ MAX_PCT_COUNTS_MT = 5.0
 MIN_CELLS_PER_GENE = 3
 
 # Scrublet
-DEFAULT_EXPECTED_DOUBLET_RATE = 0.05
+# GEM-X Single Cell 3' v4: approximately 0.4% per 1,000 recovered cells.
+# This fallback applies only to future samples not listed below.
+DEFAULT_EXPECTED_DOUBLET_RATE = 0.004
 SIM_DOUBLET_RATIO = 2.0
 SCRUBLET_N_PCS = 30
 
-# 如果以后根据每个 10x library 的 recovered cell number
-# 得到了更准确的 expected doublet rate，可在这里单独覆盖。
+# Per-sample overrides based on the current recovered-cell counts.
 EXPECTED_DOUBLET_RATES: dict[str, float] = {
-    # "IR01": 0.04,
-    # "IR02": 0.05,
-    # "NR01": 0.06,
+    "IR01": 0.032,  # 7,981 cells
+    "IR02": 0.024,  # 6,070 cells
+    "IR03": 0.030,  # 7,383 cells
+    "IR04": 0.033,  # 8,171 cells
+    "IR05": 0.022,  # 5,392 cells
+    "NR01": 0.017,  # 4,340 cells
+    "NR02": 0.023,  # 5,672 cells
+    "NR03": 0.017,  # 4,285 cells
+    "NR04": 0.028,  # 7,057 cells
+    "NR05": 0.009,  # 2,183 cells
 }
 
 # Integration

@@ -47,7 +47,7 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 | 细胞 QC | `MAX_GENES_PER_CELL` | `6000` |
 | 细胞 QC | `MAX_PCT_COUNTS_MT` | `<5.0%` |
 | 基因 QC | `MIN_CELLS_PER_GENE` | `3` |
-| Scrublet | expected doublet rate / simulated ratio / PCs | `0.05` / `2.0` / `30` |
+| Scrublet | expected doublet rate / simulated ratio / PCs | 样本覆盖率见 `01_integration.py`；默认 `0.004` / `2.0` / `30` |
 | HVG | `N_TOP_GENES` | `2000` |
 | PCA | `N_PCS` | `30` |
 | 邻居图 | `N_NEIGHBORS` | `30` |
@@ -83,6 +83,7 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 | 2026-08-17 | `aa28116` | 纳入 Scanpy 20260815 整合、注释和导图脚本 | 文件结构审计 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-17 | `17ff80b` | 增加 `00_config.sh`；改为统一仓库、矩阵和 Results 路径 | Shell/Python 语法与路径审计 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `d50f53e` | 修复 Scrublet 低基因细胞缺失值被误判为 doublet；跨样本合并改为 outer join 并以 0 填充，保留样本/组别特异基因 | Python 语法检查、Shell 语法检查、`git diff --check` | GitHub 已提交，服务器待 `git pull` |
+| 2026-08-18 | 本次提交 | 按 GEM-X Single Cell 3' v4 的 recovered-cell 规则更新 10 个样本 expected doublet rate，并将新样本默认值从 `0.05` 改为 `0.004` | Python/Shell 语法检查、`git diff --check` | 待提交、待 GitHub 推送 |
 
 以后每次修改服务器脚本、QC、cluster 映射或 marker 时，必须追加：
 
