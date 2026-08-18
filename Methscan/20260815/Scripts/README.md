@@ -59,7 +59,7 @@ mkdir -p scheduler_logs
 dsub \
   -n methscan_upstream_gemx_300k \
   -R"cpu=32;mem=65536MB" \
-  -cwd /share/home/rzli/scLC_ICI_PBMC/Methscan/20260815/Scripts/01_Upstream \
+  --cwd /share/home/rzli/scLC_ICI_PBMC/Methscan/20260815/Scripts/01_Upstream \
   -oo scheduler_logs/methscan_upstream_gemx_300k.%J.out \
   -eo scheduler_logs/methscan_upstream_gemx_300k.%J.err \
   bash 03_run_upstream_pipeline.sh run-to-smooth 300k 10 1 all
@@ -101,7 +101,7 @@ dsub \
 | 2026-08-17 | `04297fe` | 合并 `04` DMR 批处理和单样本入口 | 批处理 dispatcher 测试 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-17 | `a47280e` | `05a` 改为通用 Top-N 命名，当前主流程仍为 Top200 | Python 语法检查 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `3bf8a06` | 适配 Scanpy 20260815 GEM-X v4 新注释；将 upstream QC 标签从 `scanpy0814clean` 更新为 `scanpy0815gemxclean`，避免复用旧注释结果 | Shell 语法检查、Scanpy 注释路径审计 | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-18 | `3ed82e9` | 增加 dsub 提交 `run-to-smooth` 的 32 CPU / 64 GB 模板 | Shell 语法检查、命令参数审计 | GitHub 已提交，服务器待 `git pull` |
+| 2026-08-18 | 本次提交 | 根据服务器 dsub `--help` 修正提交模板：使用 `--cwd`，并分开 `-R` 与资源字符串 | Shell 语法检查、dsub 参数审计 | 待提交、待 GitHub 推送 |
 
 以后每次修改服务器脚本或参数，必须追加一行：
 
