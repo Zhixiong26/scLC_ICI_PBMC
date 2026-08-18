@@ -67,7 +67,34 @@ dsub \
 
 主要细胞损失发生在 coverage filter，而不是 Scanpy 注释过滤。
 
-## 4. 结果目录与审计文件
+## 4. Scanpy 再筛除细胞中的 doublet 审计
+
+服务器审计脚本的 glob 同时匹配到了旧 QC 目录和本次
+`minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_covdedupprob`
+目录，因此每个样本出现了两行结果。以下按本报告第 3 节的
+`Scanpy 再筛除` 数量匹配当前 QC 目录后的结果：
+
+| 样本 | Scanpy 再筛除 | 其中 predicted doublet | 其中非-doublet |
+|---|---:|---:|---:|
+| IR01 | 93 | 77 | 16 |
+| IR02 | 134 | 55 | 79 |
+| IR03 | 157 | 107 | 50 |
+| IR04 | 55 | 40 | 15 |
+| IR05 | 31 | 4 | 27 |
+| NR01 | 43 | 25 | 18 |
+| NR02 | 54 | 2 | 52 |
+| NR03 | 24 | 1 | 23 |
+| NR04 | 141 | 78 | 63 |
+| NR05 | 45 | 32 | 13 |
+| **合计** | **777** | **421** | **356** |
+
+因此，777 个 Scanpy 再筛除细胞中，**421 个（54.18%）是 Scrublet
+predicted doublet，356 个（45.82%）不是 doublet**。后者包括 Scanpy
+QC 不通过、注释排除或 barcode 无法进入 clean-cell 白名单的细胞。
+全体 Scanpy 输入中检测到的 1,497 个 doublet 并不等于这 777 个，
+因为其中一部分已经在 coverage filter 阶段被删除。
+
+## 5. 结果目录与审计文件
 
 每个样本结果位于：
 
