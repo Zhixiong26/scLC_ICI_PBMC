@@ -22,6 +22,24 @@
 
 `Methscan/20260815/Scripts/01_Upstream` 使用 `00–08` 表示执行顺序：`00` 为公共配置，`01–03` 完成 cov 检查、概率去重和上游处理，`04` 运行逐样本 DMR，`05–07` 完成 Top200 DMR 选择、矩阵计算和绘图，`08` 处理无 null DMR 时的 raw-p 回退。带 `a/b` 后缀的文件是同一步骤调用的辅助程序，不需要单独调整执行顺序。`01`、`02` 和 `04` 均通过单一入口同时提供批处理与单样本模式，不再保留单独的单样本 Shell 实现。原 `04_run_all_samples_to_smooth.sh` 已合并为 `03_run_upstream_pipeline.sh smooth-all [sample_jobs]` 和 `smooth-status`。
 
+### Methscan upstream 的 dsub 提交
+
+Scanpy 20260815 GEM-X v4 注释更新后，Methscan upstream 应通过 dsub 提交到计算节点，不要在登录节点前台运行：
+
+```bash
+cd /share/home/rzli/scLC_ICI_PBMC/Methscan/20260815/Scripts/01_Upstream
+mkdir -p scheduler_logs
+dsub \
+  -n methscan_upstream_gemx_300k \
+  -R "cpu=32;mem=65536MB" \
+  --cwd /share/home/rzli/scLC_ICI_PBMC/Methscan/20260815/Scripts/01_Upstream \
+  -oo scheduler_logs/methscan_upstream_gemx_300k.%J.out \
+  -eo scheduler_logs/methscan_upstream_gemx_300k.%J.err \
+  bash 03_run_upstream_pipeline.sh run-to-smooth 300k 10 1 all
+```
+
+该任务使用 `scanpy0815gemxclean` QC 标签，最多并行 10 个样本；日志写入 `Methscan/20260815/Scripts/01_Upstream/scheduler_logs/`。
+
 ## 服务器部署与路径配置
 
 服务器上的标准部署目录为：
