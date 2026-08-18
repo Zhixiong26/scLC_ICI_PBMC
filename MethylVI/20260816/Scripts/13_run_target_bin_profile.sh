@@ -11,7 +11,9 @@ case "$PROFILE" in
     EXPECTED_BINS=99109
     ;;
   50k)
-    HYP_PERCENT=2.200880352
+    # 110 / 4998 * 100 = 2.200880352140856；取略高值，确保
+    # ALLCools 的严格大于比较排除 nonzero_cells == 110 的 bins。
+    HYP_PERCENT=2.200880372
     EXPECTED_BINS=49935
     ;;
   *)
@@ -81,4 +83,3 @@ case "$ACTION" in
     run_downstream
     ;;
 esac
-

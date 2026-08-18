@@ -84,18 +84,21 @@ bash 13_run_target_bin_profile.sh 50k full
 2. 生成 `CGN` 的 `hypo-score` 矩阵，并使用 `binarize_cutoff=0.95`。
 3. 对每个 5-kb bin 统计其非零细胞数 `n_nonzero`。
 4. 对目标 bins 数 `N`，寻找使 `sum(n_nonzero > threshold)` 最接近 `N` 的阈值。
-5. 将阈值换算为：
+5. 将阈值换算后取一个略高于边界的数，避免小数截断把阈值落到整数边界下方：
 
 ```text
-MVI_HYPO_PERCENT = threshold / n_cells * 100
+boundary = threshold / n_cells * 100
+MVI_HYPO_PERCENT = boundary + 一个很小的正 epsilon
 ```
+
+ALLCools 保留满足 `n_nonzero > threshold` 的 bins。如果把 boundary 截断到过少小数，实际值可能略低于整数阈值，从而错误保留 `n_nonzero == threshold` 的 bins。
 
 当前 4,998-cell 数据的计算结果：
 
 | 目标最终 bins | 阈值 | 实际保留 bins | `MVI_HYPO_PERCENT` |
 |---:|---:|---:|---:|
 | 100,000 | `>49` | 99,109 | `0.980392157` |
-| 50,000 | `>110` | 49,935 | `2.200880352` |
+| 50,000 | `>110` | 49,935 | `2.200880372` |
 
 旧版本 6,199-cell 数据得到的 `1.169543` 和 `2.669785` 不得直接用于当前 4,998-cell 数据。每次计算应同时记录细胞数、blacklist 后 bins、阈值、实际最终 bins 和对应 `MVI_HYPO_PERCENT`。
 
@@ -127,6 +130,7 @@ MVI_HYPO_PERCENT = threshold / n_cells * 100
 | 2026-08-18 | 本次提交 | 切换到 Methscan 20260815 Scanpy clean 白名单；预期细胞数由 6,199 更新为 4,998，max_sites 更新为 1,200,000，并使用独立 MethylVI 输出目录 | Shell/Python 语法与配置审计 | 待提交、待 GitHub 推送 |
 | 2026-08-18 | 本次提交 | 记录按当前细胞集和目标最终 bins 计算 `MVI_HYPO_PERCENT` 的方法及 100k/50k 实际数值 | ALLCools blacklist、binarize 和非零细胞数计算 | 待提交、待 GitHub 推送 |
 | 2026-08-18 | 本次提交 | 新增 100k/50k profile 统一 wrapper；每个任务内部顺序执行 blacklist 和全部下游，并移除不符合本流程定义的方差 top-N 入口 | Shell/Python 语法、目标 bins 硬检查 | 待提交、待 GitHub 推送 |
+| 2026-08-19 | 本次提交 | 修正 50k 的整数阈值边界：为 `MVI_HYPO_PERCENT` 加正 epsilon，避免截断后错误保留非零细胞数等于 110 的 bins | 服务器实测 2.200880352 得到 50,310 bins；修正目标为 49,935 | 待提交、待 GitHub 推送 |
 
 以后每次修改服务器脚本或参数，必须追加：
 
