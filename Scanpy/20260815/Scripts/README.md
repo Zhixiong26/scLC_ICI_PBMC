@@ -71,6 +71,7 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 - `integration/01_integrated_base.h5ad`：Scrublet singlet、Harmony、UMAP 和 Leiden 结果。
 - `integration/01_sample_qc_summary.csv` 和 `01_doublet_calls.csv`：QC/doublet 审计。
 - `integration/01_leiden_top_markers.csv`：人工注释依据。
+- `../Report.md`：版本、逐样本过滤、降维参数和 PCA/marker 提取说明。
 - `annotation/02_cell_annotation_all_cells.csv`：Methscan 和 MethylVI 使用的全细胞注释。
 - `annotation/02_cell_annotation_clean_cells.csv`：Methscan Scanpy clean-cell 筛选输入。
 - `annotation/02_annotated_final.h5ad`：最终注释对象。
@@ -84,6 +85,7 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 | 2026-08-17 | `17ff80b` | 增加 `00_config.sh`；改为统一仓库、矩阵和 Results 路径 | Shell/Python 语法与路径审计 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `d50f53e` | 修复 Scrublet 低基因细胞缺失值被误判为 doublet；跨样本合并改为 outer join 并以 0 填充，保留样本/组别特异基因 | Python 语法检查、Shell 语法检查、`git diff --check` | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `037b4e1` | 按 GEM-X Single Cell 3' v4 的 recovered-cell 规则更新 10 个样本 expected doublet rate，并将新样本默认值从 `0.05` 改为 `0.004` | Python/Shell 语法检查、`git diff --check` | GitHub 已提交，服务器待 `git pull` |
+| 2026-08-18 | 本次提交 | 新增 `Report.md`，记录版本差异、逐样本过滤结果、降维参数和 PCA/marker gene 提取方法 | Markdown 内容审计、结果总数核对 | 待提交、待 GitHub 推送 |
 
 以后每次修改服务器脚本、QC、cluster 映射或 marker 时，必须追加：
 
