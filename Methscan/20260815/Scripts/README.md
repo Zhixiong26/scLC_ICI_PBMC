@@ -103,7 +103,7 @@ dsub \
 | 2026-08-17 | `a47280e` | `05a` 改为通用 Top-N 命名，当前主流程仍为 Top200 | Python 语法检查 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `3bf8a06` | 适配 Scanpy 20260815 GEM-X v4 新注释；将 upstream QC 标签从 `scanpy0814clean` 更新为 `scanpy0815gemxclean`，避免复用旧注释结果 | Shell 语法检查、Scanpy 注释路径审计 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `0bca9dc` | 根据服务器 dsub `--help` 修正提交模板：使用 `--cwd`，并分开 `-R` 与资源字符串 | Shell 语法检查、dsub 参数审计 | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-18 | 本次提交 | 新增 upstream 筛选报告，记录 coverage、Scanpy clean-cell、smooth 参数及逐样本细胞统计 | 表格总数核对、Markdown 内容审计 | 待提交、待 GitHub 推送 |
+| 2026-08-18 | `a18e95e` | 新增 upstream 筛选报告，记录 coverage、Scanpy clean-cell、smooth 参数及逐样本细胞统计 | 表格总数核对、Markdown 内容审计 | GitHub 已提交，服务器待 `git pull` |
 
 以后每次修改服务器脚本或参数，必须追加一行：
 
