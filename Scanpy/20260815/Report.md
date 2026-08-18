@@ -173,6 +173,27 @@ cluster 14: ENSG00000225885 TCF4 RHEX RUNX2 CCDC50 IRF8 FCHSD2 BCL11A UGCG FHIP1
 cluster 15: NCOA4 SLC40A1 STOM MOB1B PRKAR2B TRIM58 GPX1 SNCA CAVIN2 TSC22D1 MPP1 PPBP STON2 OAZ1 ARHGEF12 TUBB1 H2AC6 ABCC4 FAXDC2 H3-3A
 ```
 
+### 6.2 当前 cluster → cell type 映射
+
+| Cluster | 注释 |
+|---:|---|
+| 0 | CD8_T_cells |
+| 1 | NK_cells |
+| 2 | CD4_T_cells |
+| 3 | Monocytes |
+| 4 | CD4_T_cells |
+| 5 | Monocytes |
+| 6 | Monocytes |
+| 7 | T_cells_unresolved |
+| 8 | B_cells |
+| 9 | Gamma_delta_T_cells |
+| 10 | HLAII_high_APCs |
+| 11 | Monocytes |
+| 12 | Cycling_cells |
+| 13 | Plasma_cells |
+| 14 | pDCs |
+| 15 | Platelet_erythroid_contamination |
+
 ## 7. 复现与审计文件
 
 ```bash

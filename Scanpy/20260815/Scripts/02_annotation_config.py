@@ -5,28 +5,23 @@ from __future__ import annotations
 # Leiden cluster → 最终细胞类型
 # ============================================================
 
-CLUSTER_TO_CELLTYPE = {                                                                 # 定义 Leiden cluster 到最终细胞类型的映射
-    "0": "CD8_T_cells",
-    "1": "Monocytes",
-    "2": "CD4_T_cells",
-    "3": "CD4_T_cells",
-    "4": "Monocytes",
-    "5": "NK_cells",
-    "6": "NK_cells",
-    "7": "B_cells",
-    "8": "Monocytes",
-    "9": "T_cells_unresolved",
-    "10": "Gamma_delta_T_cells",
-    "11": "CD4_T_cells",
-    "12": "Treg_cells",
-    "13": "HLAII_high_APCs",
-    "14": "Monocytes",
-    "15": "MAIT_cells",
-    "16": "Cycling_cells",
-    "17": "Plasma_cells",
-    "18": "pDCs",
-    "19": "Platelet_erythroid_contamination",
-    "20": "cDCs",
+CLUSTER_TO_CELLTYPE = {                                                                 # 基于 GEM-X v4 重跑 marker 的 Leiden 映射
+    "0": "CD8_T_cells",                         # CCL5, NKG7, GZMH, CD2
+    "1": "NK_cells",                            # KLRF1, KLRD1, GNLY, PRF1
+    "2": "CD4_T_cells",                         # LEF1, IL7R, BACH2
+    "3": "Monocytes",                           # VCAN, FCN1, LYZ, S100A8
+    "4": "CD4_T_cells",                         # IL7R, LEF1, BCL2, RORA
+    "5": "Monocytes",                           # VCAN, LYZ, CLEC7A, FCN1
+    "6": "Monocytes",                           # LST1, LYZ, CTSS, SLC8A1
+    "7": "T_cells_unresolved",                 # LEF1, SKAP1, BCL11B, CD28
+    "8": "B_cells",                             # MS4A1, CD79A, BANK1, CD74
+    "9": "Gamma_delta_T_cells",                # TRDV2, TRGV9, TRDC, KLRD1
+    "10": "HLAII_high_APCs",                   # HLA-DRA, CD74, CIITA
+    "11": "Monocytes",                          # VCAN, LYZ, CTSS, CYBB
+    "12": "Cycling_cells",                      # MKI67, STMN1, CENPF, EZH2
+    "13": "Plasma_cells",                       # MZB1, JCHAIN, TXNDC5
+    "14": "pDCs",                               # TCF4, IRF8, BCL11A, RHEX
+    "15": "Platelet_erythroid_contamination",  # PPBP, TUBB1, SLC40A1, STOM
 }
 
 
