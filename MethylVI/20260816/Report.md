@@ -57,17 +57,15 @@ Methscan 300k QC + Scanpy clean-cell 白名单
 | train fraction | 0.5，最多 500 个细胞 |
 | max iterations | 20 |
 
-## 5. 三个实际参数版本
+## 5. 当前实际参数版本
 
-三个版本均使用同一批 6,199 个细胞、10 个样本、同一 blacklist 和同一批 617,665 个初始 5-kb bins。差别只在低频 bin 筛选阈值和最终特征数量。
+当前正式版本使用更新后的 Scanpy clean-cell 白名单，共 4,998 个细胞、10 个样本（5 IR + 5 NR），从 617,665 个初始 5-kb bins 出发。
 
-| 版本/profile | `MVI_HYPO_PERCENT` | ALLCools 内部阈值 | 最终 bins | H5MU | 训练任务与实际停止 |
-|---|---:|---:|---:|---:|---|
-| `blacklist_f0p2` | 0.5 | 非零细胞数 >30 | 230,306 | 1.03 GiB | `164172`，120 CPU；第 78/500 epoch early stopping |
-| `blacklist_f0p2_100k` | 1.169543 | 非零细胞数 >72 | 100,206 | 0.49 GiB | `164134`，64 CPU；第 80/500 epoch early stopping |
-| `blacklist_f0p2_50k` | 2.669785 | 非零细胞数 >165 | 49,947 | 0.26 GiB | `164166`，96 CPU；第 69/500 epoch early stopping |
+| 版本/profile | `MVI_HYPO_PERCENT` | blacklist 后 bins | 低频筛选移除 | 最终 bins | H5MU | 训练任务与状态 |
+|---|---:|---:|---:|---:|---:|---|
+| `blacklist_f0p2_scanpy0815gemxclean` | 0.5 | 603,353 | 409,290 | **194,063** | **687M（约 0.67 GiB）** | `164516`；训练日志至少达到 epoch 76，任务在最后 mCG level 绘图阶段失败 |
 
-这里的“100k/50k”指最终保留约 100,000/50,000 个 5-kb bins，不是把 bin 宽度改成 100 kb/50 kb。
+这里的 5-kb bins 是固定的 5-kb 特征分辨率；`194,063` 是当前 ALLCools 低频过滤后的最终特征数，不是 50 kb 或 100 kb 的 bin 宽度。
 
 ## 6. MethylVI 输入构建
 
@@ -99,7 +97,7 @@ cov = total coverage count
 | neighbors | 15 |
 | Leiden resolution | 1.0 |
 
-三个版本的训练均出现 early stopping，实际停止轮数见第 5 节。
+训练、普通 UMAP 和监督式 UMAP 已运行；任务最终在 mCG level 绘图阶段因 CpG 数超过 1,200,000 上限而退出，模型和 H5MU 已成功生成。
 
 ## 8. 注释和可视化
 
