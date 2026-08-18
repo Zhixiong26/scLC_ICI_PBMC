@@ -52,7 +52,7 @@ export MVI_METHSCAN_UPSTREAM="${MVI_METHSCAN_UPSTREAM:-${SCLC_METHSCAN_SCRIPTS}/
 # 通过MethSCAn 300k细胞QC后的ALLCools 5-kb输出目录。
 # 启用blacklist后默认切换到独立目录，防止覆盖当前231,648-bin版本。
 if [[ "$MVI_USE_BLACKLIST" == 1 ]]; then
-    export MVI_VARIANT_ID="${MVI_VARIANT_ID:-blacklist_f0p2}"
+    export MVI_VARIANT_ID="${MVI_VARIANT_ID:-blacklist_f0p2_scanpy0815gemxclean}"
     export MVI_ALLCOOLS_OUTPUT="${MVI_ALLCOOLS_OUTPUT:-${MVI_DATA_ROOT}/methylvi_5kb_300k_${MVI_VARIANT_ID}}"
 else
     export MVI_VARIANT_ID="${MVI_VARIANT_ID:-current_no_blacklist}"
@@ -158,15 +158,15 @@ export MVI_CONDITION_KEY="${MVI_CONDITION_KEY:-condition}"
 export MVI_EXPECTED_SAMPLES="${MVI_EXPECTED_SAMPLES:-10}"
 export MVI_EXPECTED_IR="${MVI_EXPECTED_IR:-5}"
 export MVI_EXPECTED_NR="${MVI_EXPECTED_NR:-5}"
-export MVI_EXPECTED_CELLS="${MVI_EXPECTED_CELLS:-6199}"
+export MVI_EXPECTED_CELLS="${MVI_EXPECTED_CELLS:-4998}"
 
 # MethSCAn 细胞 QC 白名单设置。300k 表示每个细胞至少覆盖 300,000 个
 # CpG 位点；同时要求最多 10,000,000 个位点和 min_meth=55。
 export MVI_USE_FILTERED_CELLS="${MVI_USE_FILTERED_CELLS:-1}"
-export MVI_QC_TAG="${MVI_QC_TAG:-minmeth55_maxmethnone_maxsites10000000_covdedupprob}"
+export MVI_QC_TAG="${MVI_QC_TAG:-minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_covdedupprob}"
 export MVI_FILTER_THRESHOLD="${MVI_FILTER_THRESHOLD:-300k}"
 export MVI_FILTER_MIN_SITES="${MVI_FILTER_MIN_SITES:-300000}"
-export MVI_FILTER_MAX_SITES="${MVI_FILTER_MAX_SITES:-10000000}"
+export MVI_FILTER_MAX_SITES="${MVI_FILTER_MAX_SITES:-1200000}"
 export MVI_FILTER_MIN_METH="${MVI_FILTER_MIN_METH:-55}"
 export MVI_FILTER_MAX_METH="${MVI_FILTER_MAX_METH:-none}"
 

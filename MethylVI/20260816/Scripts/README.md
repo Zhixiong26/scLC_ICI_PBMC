@@ -13,8 +13,8 @@
 | 数据根目录 | `/share/LCZX_Data/data/allcools` |
 | 旧版 MCDS | `/share/LCZX_Data/data/allcools/methylvi_5kb_300k/mcg_5kb.mcds` |
 | blacklist 版 ALLCools 输出 | `/share/LCZX_Data/data/allcools/methylvi_5kb_300k_blacklist_f0p2` |
-| blacklist 版 MethylVI 输出 | `/share/LCZX_Data/data/allcools/methylVI_results_300k_blacklist_f0p2` |
-| QC 对比的新版 4,819 细胞输出 | `/share/LCZX_Data/data/allcools/methylVI_results_300k_blacklist_f0p2_4819/results_ir_nr` |
+| 当前 Scanpy clean + blacklist 版 MethylVI 输出 | `/share/LCZX_Data/data/allcools/methylVI_results_300k_blacklist_f0p2_scanpy0815gemxclean` |
+| 历史 MethylVI 输出 | `/share/LCZX_Data/data/allcools/methylVI_results_300k_blacklist_f0p2` |
 | 图片 | `MethylVI/20260816/Results/blacklist_f0p2` |
 | Scanpy 注释 | `Scanpy/20260815/Results/annotation/02_cell_annotation_all_cells.csv` |
 | Conda | `/share/home/rzli/miniconda3` |
@@ -47,11 +47,11 @@ bash 09_run_pipeline.sh all
 
 | 类别 | 参数 | 当前值 |
 |---|---|---|
-| 变体 | `MVI_USE_BLACKLIST` / `MVI_VARIANT_ID` | `1` / `blacklist_f0p2` |
+| 变体 | `MVI_USE_BLACKLIST` / `MVI_VARIANT_ID` | `1` / `blacklist_f0p2_scanpy0815gemxclean` |
 | blacklist | accession / MD5 / overlap fraction | `ENCFF356LFX` / `393688b4f06c9ce26165d47433dd8c37` / `0.2` |
-| 预期数据 | samples / IR / NR / cells | `10` / `5` / `5` / `6199` |
-| MethSCAn QC | threshold / min sites / max sites / min meth | `300k` / `300000` / `10000000` / `55` |
-| MethSCAn QC | `MVI_QC_TAG` | `minmeth55_maxmethnone_maxsites10000000_covdedupprob` |
+| 预期数据 | samples / IR / NR / cells | `10` / `5` / `5` / `4998` |
+| MethSCAn QC | threshold / min sites / max sites / min meth | `300k` / `300000` / `1200000` / `55` |
+| MethSCAn QC | `MVI_QC_TAG` | `minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_covdedupprob` |
 | 计数 | bin size / context | `5000` / `CGN` |
 | ALLCools 特征 | binarize cutoff / hypo percent | `0.95` / `0.5` |
 | 批次校正 | `MVI_BATCH_KEY` | `sample_id` |
@@ -90,6 +90,7 @@ bash 09_run_pipeline.sh all
 | 2026-08-17 | 本次提交 | 为 `qc-compare` 补齐 6,199 参考结果、4,819 新版结果和图片目录默认路径 | Shell 语法和配置加载检查 | 服务器待 `git pull` |
 | 2026-08-17 | 本次提交 | `qc-compare` 新增 `<300k` / `300k–1.2M` / `>1.2M` 的保留及两类排除细胞统计 | Python/Shell 语法、分箱边界和计数测试 | 服务器待 `git pull` |
 | 2026-08-17 | 本次提交 | `qc-compare` 增加10个样本的 CpG 覆盖区间保留/排除统计 | Python/Shell 语法和分样本表样式检查 | 服务器待 `git pull` |
+| 2026-08-18 | 本次提交 | 切换到 Methscan 20260815 Scanpy clean 白名单；预期细胞数由 6,199 更新为 4,998，max_sites 更新为 1,200,000，并使用独立 MethylVI 输出目录 | Shell/Python 语法与配置审计 | 待提交、待 GitHub 推送 |
 
 以后每次修改服务器脚本或参数，必须追加：
 
