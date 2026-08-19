@@ -31,7 +31,7 @@ case "$ACTION" in
 esac
 
 DATA_ROOT=/share/LCZX_Data/data/allcools
-BASE_PROFILE=blacklist_f0p2_scanpy0815gemxclean
+BASE_PROFILE=blacklist_f0p2_scanpy0815gemxclean_v2
 export MVI_THREADS="${MVI_THREADS:-64}"
 export MVI_ACCELERATOR="${MVI_ACCELERATOR:-cpu}"
 export MVI_MEMORY_GB="${MVI_MEMORY_GB:-100}"
