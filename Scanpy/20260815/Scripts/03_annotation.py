@@ -18,18 +18,14 @@ RESULTS_DIR = Path(os.environ.get("SCLC_SCANPY_RESULTS", PROJECT_DIR / "Results"
 INTEGRATION_DIR = RESULTS_DIR / "integration"                                           # 定位整合输入目录
 OUTPUT_DIR = RESULTS_DIR / "annotation"                                                 # 定义注释输出目录
 
-INPUT_H5AD = (                                                                          # 定义基础整合对象输入路径
-    INTEGRATION_DIR / "01_integrated_base.h5ad"                                         # 拼接整合 AnnData 文件名
-)
+INPUT_H5AD = INTEGRATION_DIR / "01_integrated_base.h5ad"                                # 定义基础整合对象输入路径
 OUTPUT_H5AD = OUTPUT_DIR / "02_annotated_final.h5ad"                                    # 定义最终 AnnData 输出路径
 OUTPUT_CSV_ALL = OUTPUT_DIR / "02_cell_annotation_all_cells.csv"                        # 定义全细胞注释表
 OUTPUT_CSV_CLEAN = OUTPUT_DIR / "02_cell_annotation_clean_cells.csv"                    # 定义 clean 注释表
 OUTPUT_MAPPING = OUTPUT_DIR / "02_cluster_annotation_mapping.csv"                       # 定义注释映射表
 OUTPUT_COUNTS = OUTPUT_DIR / "02_cell_type_counts.csv"                                  # 定义总体计数表
 OUTPUT_COUNTS_BY_SAMPLE = OUTPUT_DIR / "02_cell_type_counts_by_sample.csv"              # 定义分样本计数表
-OUTPUT_PROPORTIONS_BY_SAMPLE = (                                                        # 定义分样本比例表
-    OUTPUT_DIR / "02_cell_type_proportions_by_sample.csv"                               # 拼接分样本比例文件名
-)
+OUTPUT_PROPORTIONS_BY_SAMPLE = OUTPUT_DIR / "02_cell_type_proportions_by_sample.csv"  # 定义分样本比例表
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)                                           # 创建注释结果目录
 
@@ -147,11 +143,7 @@ if "cell_type_integrated" in adata.obs.columns:                                 
         "cell_type_integrated"
     ].astype(str)                                                                       # 统一旧注释为字符串
 
-adata.obs["cell_type_integrated"] = (                                                   # 创建最终细胞类型字段
-    cluster_id                                                                          # 使用标准化后的 cluster ID
-    .map(CLUSTER_TO_CELLTYPE)                                                           # 应用人工注释映射
-    .astype("category")                                                                 # 转为分类变量节省空间
-)                                                                                       # 按 Leiden cluster 写入人工细胞类型
+adata.obs["cell_type_integrated"] = cluster_id.map(CLUSTER_TO_CELLTYPE).astype("category")  # 转为分类变量节省空间
 
 
 # ============================================================
@@ -159,16 +151,12 @@ adata.obs["cell_type_integrated"] = (                                           
 # ============================================================
 
 adata.obs["exclude_from_main_analysis"] = (                                             # 创建主分析排除布尔字段
-    adata.obs["cell_type_integrated"]                                                   # 读取最终细胞类型
-    .astype(str)                                                                        # 转换为字符串便于集合判断
-    .isin(EXCLUDE_CELL_TYPES)                                                           # 判断是否属于排除集合
-)                                                                                       # 标记需要从主分析排除的细胞类型
+    adata.obs["cell_type_integrated"].astype(str).isin(EXCLUDE_CELL_TYPES)
+)
 
 adata.obs["analysis_status"] = (                                                        # 创建可读的分析状态字段
-    adata.obs["exclude_from_main_analysis"]                                             # 读取排除布尔字段
-    .map(STATUS_LABELS)                                                                 # 映射为可读状态文本
-    .astype("category")                                                                 # 转换为分类变量
-)                                                                                       # 将布尔排除标记转换为 Keep/Exclude
+    adata.obs["exclude_from_main_analysis"].map(STATUS_LABELS).astype("category")
+)
 
 
 # ============================================================
@@ -176,10 +164,8 @@ adata.obs["analysis_status"] = (                                                
 # ============================================================
 
 mapping_table = pd.DataFrame(                                                           # 构建 cluster 到细胞类型的审计表
-        {
-        "leiden_integrated": list(CLUSTER_TO_CELLTYPE),                                 # 保留配置 cluster 顺序
-        "cell_type_integrated": list(CLUSTER_TO_CELLTYPE.values()),                     # 对应细胞类型
-    }
+    CLUSTER_TO_CELLTYPE.items(),                                                        # 保留配置 cluster 顺序
+    columns=["leiden_integrated", "cell_type_integrated"],
 )
 
 mapping_table["exclude_from_main_analysis"] = (                                         # 标记映射表中的排除类型
@@ -260,7 +246,7 @@ df[output_columns].to_csv(OUTPUT_CSV_ALL, index=False)                          
 # 9. 导出 clean 注释表
 # ============================================================
 
-clean_df = df.loc[~df["exclude_from_main_analysis"]].copy()                             # 筛选主分析细胞
+clean_df = df.loc[~df["exclude_from_main_analysis"]]                                    # 筛选主分析细胞
 clean_df[output_columns].to_csv(OUTPUT_CSV_CLEAN, index=False)                          # 导出主分析细胞
 
 
@@ -268,11 +254,13 @@ clean_df[output_columns].to_csv(OUTPUT_CSV_CLEAN, index=False)                  
 # 10. 保存最终注释 h5ad
 # ============================================================
 
+clean_cell_count = int((~adata.obs["exclude_from_main_analysis"]).sum())                # 主分析细胞数
+
 adata.uns["annotation_metadata"] = {                                                    # 保存注释来源和细胞数量元数据
     "config_file": str(CONFIG_PATH),                                                    # 记录使用的配置文件
     "excluded_cell_types": sorted(EXCLUDE_CELL_TYPES),                                  # 记录排除类型
     "all_cell_count": int(adata.n_obs),                                                 # 记录全部 singlet 数量
-    "clean_cell_count": int((~adata.obs["exclude_from_main_analysis"]).sum()),          # 记录主分析细胞数
+    "clean_cell_count": clean_cell_count,                                               # 记录主分析细胞数
 }
 
 adata.write(OUTPUT_H5AD, compression="gzip")                                            # 保存最终注释 AnnData
@@ -281,7 +269,4 @@ print(f"\nSaved annotated h5ad: {OUTPUT_H5AD}")                                 
 print(f"Saved all-cell CSV:    {OUTPUT_CSV_ALL}")                                       # 记录全细胞注释表位置
 print(f"Saved clean-cell CSV:  {OUTPUT_CSV_CLEAN}")                                     # 记录 clean 注释表位置
 print(f"All cells:             {adata.n_obs}")                                          # 输出全部 singlet 数
-print(                                                                                  # 输出主分析细胞数
-    "Clean cells:           "
-    f"{(~adata.obs['exclude_from_main_analysis']).sum()}"                               # 计算并显示 clean 细胞数
-)
+print(f"Clean cells:           {clean_cell_count}")                                     # 输出主分析细胞数

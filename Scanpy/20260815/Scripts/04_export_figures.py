@@ -134,43 +134,24 @@ if "X_umap_before_harmony" in adata.obsm:                                       
 # 6. 批次校正后 UMAP
 # ============================================================
 
-plot_umap(                                                                              # 绘制 Harmony 后样本分布
-    adata,                                                                              # 使用最终整合对象
-    "03_after_harmony_umap_by_sample.png",                                              # 指定输出文件名
-    color="sample",                                                                     # 按样本着色
-    title="After Harmony: sample",                                                      # 设置图标题
-)
+after_harmony_umaps = [                                                                 # Harmony 后统一导出的五张 UMAP
+    ("03_after_harmony_umap_by_sample.png",
+     {"color": "sample", "title": "After Harmony: sample"}),                            # 样本分布
+    ("04_after_harmony_umap_by_group.png",
+     {"color": "group", "title": "After Harmony: IR/NR"}),                              # 实验组分布
+    ("05_umap_by_leiden_integrated.png",
+     {"color": "leiden_integrated", "legend_loc": "on data",
+      "title": "Integrated Leiden clusters"}),                                          # Leiden cluster 分布
+    ("06_umap_by_final_cell_type.png",
+     {"color": "cell_type_integrated", "legend_loc": UMAP_LEGEND_LOCATION,
+      "title": "Final cell type annotation"}),                                          # 最终细胞类型分布
+    ("07_umap_by_analysis_status.png",
+     {"color": "analysis_status", "legend_loc": "right margin",
+      "title": "Recommended analysis status"}),                                         # Keep/Exclude 状态分布
+]
 
-plot_umap(                                                                              # 绘制 Harmony 后实验组分布
-    adata,                                                                              # 使用最终整合对象
-    "04_after_harmony_umap_by_group.png",                                               # 指定输出文件名
-    color="group",                                                                      # 按 IR/NR 分组着色
-    title="After Harmony: IR/NR",                                                       # 设置图标题
-)
-
-plot_umap(                                                                              # 绘制 Leiden cluster 分布
-    adata,                                                                              # 使用最终整合对象
-    "05_umap_by_leiden_integrated.png",                                                 # 指定输出文件名
-    color="leiden_integrated",                                                          # 按 Leiden cluster 着色
-    legend_loc="on data",                                                               # 将 cluster 标签显示在图中
-    title="Integrated Leiden clusters",                                                 # 设置图标题
-)
-
-plot_umap(                                                                              # 绘制最终细胞类型分布
-    adata,                                                                              # 使用最终整合对象
-    "06_umap_by_final_cell_type.png",                                                   # 指定输出文件名
-    color="cell_type_integrated",                                                       # 按最终细胞类型着色
-    legend_loc=UMAP_LEGEND_LOCATION,                                                    # 使用配置中的图例位置
-    title="Final cell type annotation",                                                 # 设置图标题
-)
-
-plot_umap(                                                                              # 绘制 Keep/Exclude 状态分布
-    adata,                                                                              # 使用最终整合对象
-    "07_umap_by_analysis_status.png",                                                   # 指定输出文件名
-    color="analysis_status",                                                            # 按分析状态着色
-    legend_loc="right margin",                                                          # 将状态图例放在右侧
-    title="Recommended analysis status",                                                # 设置图标题
-)
+for filename, plot_kwargs in after_harmony_umaps:                                       # 按上述顺序绘制并保存
+    plot_umap(adata, filename, **plot_kwargs)
 
 
 # ============================================================
@@ -203,32 +184,19 @@ observed_cell_types = set(                                                      
     adata.obs["cell_type_integrated"].astype(str).unique()                              # 排除配置中未使用的历史类型
 )
 
-available_markers = {                                                                   # 按细胞类型过滤数据中不存在的 markers
-    cell_type: [                                                                        # 为当前细胞类型构建可用 marker 列表
-        gene                                                                            # 保留当前 marker 名称
-        for gene in genes                                                               # 遍历配置中的 markers
-        if gene in expression_var_names                                                 # 仅保留表达矩阵存在的基因
-    ]
-    for cell_type, genes in MARKER_GENES.items()                                        # 遍历配置中的全部细胞类型
-    if cell_type in observed_cell_types                                                 # 仅保留本轮实际存在的细胞类型
-}
-
-available_markers = {                                                                   # 移除没有任何可用 marker 的类别
-    cell_type: genes                                                                    # 保留细胞类型及其 marker 列表
-    for cell_type, genes in available_markers.items()                                   # 遍历过滤结果
-    if genes                                                                            # 仅保留非空列表
-}
+available_markers = {}                                                                  # 按细胞类型过滤 markers，丢弃不存在的类型/基因
+for cell_type, genes in MARKER_GENES.items():                                           # 遍历配置中的全部细胞类型
+    if cell_type not in observed_cell_types:                                            # 跳过本轮不存在的历史类型
+        continue
+    present_genes = [gene for gene in genes if gene in expression_var_names]            # 仅保留表达矩阵存在的基因
+    if present_genes:                                                                   # 跳过没有任何可用 marker 的类别
+        available_markers[cell_type] = present_genes
 
 marker_table = pd.DataFrame(                                                            # 构建长格式可用 marker 审计表
-    [                                                                                   # 收集每个细胞类型-marker 组合
-        {                                                                               # 创建单条 marker 记录
-            "cell_type": cell_type,                                                     # 保存细胞类型
-            "marker_gene": gene,                                                        # 保存 marker 基因
-        }
-        for cell_type, genes                                                            # 遍历细胞类型及其 marker 列表
-        in available_markers.items()                                                    # 使用已过滤的 marker 字典
-        for gene in genes                                                               # 展开每个 marker 为独立记录
-    ]
+    [(cell_type, gene)                                                                  # 收集每个细胞类型-marker 组合
+     for cell_type, genes in available_markers.items()                                  # 使用已过滤的 marker 字典
+     for gene in genes],                                                                # 展开每个 marker 为独立记录
+    columns=["cell_type", "marker_gene"],                                               # 固定列顺序
 )
 
 marker_table.to_csv(                                                                    # 导出可用 marker 审计表
@@ -280,10 +248,11 @@ if "rank_genes_groups" in adata.uns:                                            
 # 11. 每个样本分别画 UMAP
 # ============================================================
 
-sample_order = sorted(adata.obs["sample"].astype(str).unique())                         # 固定分样本绘图顺序
+sample_labels = adata.obs["sample"].astype(str)                                         # 统一样本字段为字符串
+sample_order = sorted(sample_labels.unique())                                           # 固定分样本绘图顺序
 
 for sample in sample_order:                                                             # 逐样本导出细胞类型 UMAP
-    sample_mask = adata.obs["sample"].astype(str) == sample                             # 构建当前样本掩码
+    sample_mask = sample_labels == sample                                               # 构建当前样本掩码
     adata_sample = adata[sample_mask].copy()                                            # 保留全局 UMAP 坐标的单样本子集
     plot_umap(                                                                          # 绘制当前样本细胞类型分布
         adata_sample,                                                                   # 使用当前样本子集
