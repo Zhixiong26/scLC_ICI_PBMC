@@ -53,7 +53,7 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 | 邻居图 | `N_NEIGHBORS` | `30` |
 | 批次校正 | Harmony key | `sample` |
 | Leiden | `LEIDEN_RESOLUTION` | `0.8` |
-| UMAP | min_dist / spread | `0.5` / `1.0` |
+| UMAP | min_dist / spread | `0.3` / `1.0` |
 | 复现 | `RANDOM_STATE` | `0` |
 | 整合阶段线程 | BLAS/OpenMP/Numba/Joblib | 均限制为 `1` |
 | 注释和导图线程 | BLAS/OpenMP | 均限制为 `4` |
@@ -80,6 +80,21 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 
 ## 服务器提交与修改记录
 
+提交命令（服务器上执行，拉取最新代码后核对 HEAD）：
+
+```bash
+cd /share/home/rzli/scLC_ICI_PBMC
+
+git -c http.version=HTTP/1.1 pull --ff-only origin main
+git rev-parse --short HEAD
+
+# 若本次提交修改了 01_integration.py 的整合/降维参数，
+# 需要先重跑整合脚本，再执行注释与导图
+# bash Scanpy/20260815/Scripts/05_run_integration.sh
+bash Scanpy/20260815/Scripts/06_run_annotation.sh
+bash Scanpy/20260815/Scripts/07_run_export_figures.sh
+```
+
 | 日期 | Git 提交 | 修改 | 验证 | 服务器状态 |
 |---|---|---|---|---|
 | 2026-08-17 | `aa28116` | 纳入 Scanpy 20260815 整合、注释和导图脚本 | 文件结构审计 | GitHub 已提交，服务器待 `git pull` |
@@ -89,9 +104,10 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 | 2026-08-18 | `e67e607` | 新增 `Report.md`，记录版本差异、逐样本过滤结果、降维参数和 PCA/marker gene 提取方法 | Markdown 内容审计、结果总数核对 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `bb3f70d` | 将本次 16 个 Leiden cluster 的 Top 20 marker genes 原样补入 `Report.md`，并区分 cluster marker 与 PCA component genes | marker 日志逐项核对 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `e86d9c4` | 按 GEM-X v4 新的 16 个 Leiden clusters 更新 `02_annotation_config.py` 的 cluster 注释映射 | Python 语法检查、marker 对照、cluster 覆盖检查 | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-19 | 本次提交 | 按 marker 复核表修订 0–15 注释：cluster 2 改为 `T_cells_unresolved`，cluster 15 改为 `Platelets_Megakaryocytes`，并记录亚型倾向与置信度 | Python 语法、cluster 覆盖、排除类型与 Markdown 表格检查 | 待 GitHub 推送，服务器待 `git pull` |
-| 2026-08-19 | 本次提交 | raw counts/ID 硬校验；QC 改为使用完整原始基因集；`min_cells=3` 改为合并后全局执行并新增审计表；新样本 GEM-X doublet rate 动态计算；未知样本分组改为报错；兼容旧 Scrublet API；Leiden counts 按数值排序；删除冗余 log1p layer | Python 语法、函数边界、字段引用和 diff 检查 | 待 GitHub 推送，服务器待 `git pull` |
-| 2026-08-19 | 本次提交 | 按 20260819 新的 17 个 Leiden clusters 更新 0–16 映射；cluster 2 定为 `Naive_CD4_T_cells`，新增 Treg、MAIT 和 cDC 类型；不设 cluster-level 排除 | Python 语法、cluster 覆盖、marker 与 Markdown 检查 | 待 GitHub 推送，服务器待 `git pull` |
+| 2026-08-19 | `1385617` | 按 marker 复核表修订 0–15 注释：cluster 2 改为 `T_cells_unresolved`，cluster 15 改为 `Platelets_Megakaryocytes`，并记录亚型倾向与置信度 | Python 语法、cluster 覆盖、排除类型与 Markdown 表格检查 | GitHub 已推送，服务器待 `git pull` |
+| 2026-08-19 | `7bef6b2` | raw counts/ID 硬校验；QC 改为使用完整原始基因集；`min_cells=3` 改为合并后全局执行并新增审计表；新样本 GEM-X doublet rate 动态计算；未知样本分组改为报错；兼容旧 Scrublet API；Leiden counts 按数值排序；删除冗余 log1p layer | Python 语法、函数边界、字段引用和 diff 检查 | GitHub 已推送，服务器待 `git pull` |
+| 2026-08-19 | `a1c4998` | 按 20260819 新的 17 个 Leiden clusters 更新 0–16 映射；cluster 2 定为 `Naive_CD4_T_cells`，新增 Treg、MAIT 和 cDC 类型；不设 cluster-level 排除 | Python 语法、cluster 覆盖、marker 与 Markdown 检查 | GitHub 已推送，服务器待 `git pull` |
+| 2026-08-19 | `4a79636` | UMAP `min_dist` 由 `0.5` 改为 `0.3`（Harmony 前后两次 UMAP 均生效）；仅改变 UMAP 布局，不影响邻居图与 Leiden 聚类，cluster 映射无需调整 | 参数逐项核对（PCA 30/arpack、neighbors 30、UMAP min_dist 0.3/spread 1.0、Leiden 0.8 与脚本调用一致） | GitHub 已推送（SSH），服务器待 `git pull` |
 
 以后每次修改服务器脚本、QC、cluster 映射或 marker 时，必须追加：
 
