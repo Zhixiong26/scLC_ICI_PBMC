@@ -213,12 +213,12 @@ cluster 16: WDFY4 CLNK CCSER1 HDAC9 NEGR1 SHTN1 CPVL FLT3 CPNE3 IRF8 HLA-DPA1 DS
 | 8 | 1,333 | Gamma_delta_T_cells | — | 极高 |
 | 9 | 1,200 | Monocytes | 伴少量 platelet/erythroid signal，不整群排除 | 高 |
 | 10 | 979 | Treg_cells | IKZF2/IL2RA/FOXP3/CTLA4 | 极高 |
-| 11 | 800 | HLAII_high_APCs | — | 高 |
+| 11 | 800 | cDC2 | HLA-DRA/B 高表达，伴 LYZ/FCER1A，非经典 cDC1/pDC 的 APC 群 | 高 |
 | 12 | 667 | MAIT_cells | SLC4A10/KLRB1/GZMK | 极高 |
 | 13 | 429 | Cycling_cells | — | 极高 |
 | 14 | 362 | Plasma_cells | — | 极高 |
-| 15 | 290 | pDCs | TCF4/BCL11A/GZMB/JCHAIN | 极高 |
-| 16 | 67 | cDCs | FLT3/CPNE3/ZNF366/CADM1 | 极高 |
+| 15 | 290 | pDC | TCF4/BCL11A/GZMB/JCHAIN | 极高 |
+| 16 | 67 | cDC1 | FLT3/CPNE3/ZNF366/CADM1/CLEC9A | 极高 |
 
 按本轮指定映射，17 个 cluster 都是主分析细胞类型，不定义 cluster-level 排除类型。
 
@@ -236,12 +236,12 @@ cluster 16: WDFY4 CLNK CCSER1 HDAC9 NEGR1 SHTN1 CPVL FLT3 CPNE3 IRF8 HLA-DPA1 DS
 | B_cells | 2,632 | 4.76% |
 | Gamma_delta_T_cells | 1,333 | 2.41% |
 | Treg_cells | 979 | 1.77% |
-| HLAII_high_APCs | 800 | 1.45% |
+| cDC2 | 800 | 1.45% |
 | MAIT_cells | 667 | 1.21% |
 | Cycling_cells | 429 | 0.78% |
 | Plasma_cells | 362 | 0.65% |
-| pDCs | 290 | 0.52% |
-| cDCs | 67 | 0.12% |
+| pDC | 290 | 0.52% |
+| cDC1 | 67 | 0.12% |
 | **合计** | **55,280** | 100.00% |
 
 14 种类型合计 55,280，与 clean cells 数一致（本轮无 cluster-level 排除）。Monocytes 由 cluster 3/5/7/9 合并（6,676 + 5,873 + 1,906 + 1,200），其余类型与 6.2 表一一对应。

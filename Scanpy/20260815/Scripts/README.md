@@ -117,6 +117,7 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 | 2026-08-19 | `4a79636` | UMAP `min_dist` 由 `0.5` 改为 `0.3`（Harmony 前后两次 UMAP 均生效）；仅改变 UMAP 布局，不影响邻居图与 Leiden 聚类，cluster 映射无需调整 | 参数逐项核对（PCA 30/arpack、neighbors 30、UMAP min_dist 0.3/spread 1.0、Leiden 0.8 与脚本调用一致） | GitHub 已推送（SSH），服务器待 `git pull` |
 | 2026-08-19 | `fd36bd5` | 终端打印的 Leiden marker 由 Top 20 改为 Top 50（仅影响运行日志；`01_leiden_top_markers.csv` 仍写全基因排序，注释与下游结果不变） | Python 语法检查（`py_compile`） | GitHub 已推送，服务器待 `git pull` |
 | 2026-08-19 | `fc9fa38` | 服务器完整重跑（05→06→07，git pull 至 fc9fa38）：10 样本 Scrublet/QC、合并 55,280 细胞 × 32,162 基因、17 Leiden clusters、14 种细胞类型，clean = 全部 55,280（本轮无 cluster-level 排除）；Top-50 marker 终端打印生效 | 与 `Report.md` 2.3/6.1/6.3 数字逐项核对一致 | 已部署 |
+| 2026-08-19 | `5466b4b` | DC 注释改名：cluster 11 `HLAII_high_APCs` → `cDC2`、cluster 15 `pDCs` → `pDC`、cluster 16 `cDCs` → `cDC1`；仅改类型名，marker 与 cluster 映射不变，需重跑 06/07 生效 | Python 语法检查（`py_compile`）、旧名全仓库引用审计（无残留） | GitHub 已提交，服务器待 `git pull` |
 
 以后每次修改服务器脚本、QC、cluster 映射或 marker 时，必须追加：
 
