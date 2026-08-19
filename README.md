@@ -38,7 +38,7 @@ dsub \
   bash 03_run_upstream_pipeline.sh run-to-smooth 300k 10 1 all
 ```
 
-该任务使用 `scanpy0815gemxclean` QC 标签，最多并行 10 个样本；日志写入 `Methscan/20260815/Scripts/01_Upstream/scheduler_logs/`。
+该任务使用 `scanpy0815gemxclean_v2` QC 标签，最多并行 10 个样本；日志写入 `Methscan/20260815/Scripts/01_Upstream/scheduler_logs/`。
 
 ## 服务器部署与路径配置
 

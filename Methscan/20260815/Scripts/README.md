@@ -66,20 +66,20 @@ dsub \
   bash 03_run_upstream_pipeline.sh run-to-smooth 300k 10 1 all
 ```
 
-该任务使用默认的 `scanpy0815gemxclean` QC 标签，并读取仓库统一配置指向的当前 Scanpy clean-cell 注释。
+该任务使用默认的 `scanpy0815gemxclean_v2` QC 标签，并读取仓库统一配置指向的当前 Scanpy clean-cell 注释。
 
 ## 当前关键参数
 
 | 阶段 | 参数 | 当前值 |
 |---|---|---|
 | 公共 | `THRESHOLD` | `300k` |
-| 公共 | `QC_TAG` | `minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_covdedupprob` |
+| 公共 | `QC_TAG` | `minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_v2_covdedupprob` |
 | 03 过滤 | `FILTER_MIN_METH` / `FILTER_MAX_METH` | `55` / 无上限 |
 | 03 过滤 | `FILTER_MAX_SITES` | `1,200,000` |
 | 03 默认资源 | `DEFAULT_MAX_JOBS` / `DEFAULT_THREADS` | `1` / `20` |
 | 03 smooth-all | `DEFAULT_SMOOTH_SAMPLE_JOBS` | `10` |
 | 04 DMR | `MIN_CELLS` | `10` |
-| 04 DMR | `EXCLUDED_CELL_TYPES` | `Platelet_erythroid_contamination` |
+| 04 DMR | `EXCLUDED_CELL_TYPES` | 无（新 17-cluster 注释无整群排除类型） |
 | 04 批处理 | sample/comparison/threads | `2` / `2` / `24` |
 | 05 筛选 | raw-p / 最小绝对差异 / Top-N | `<0.01` / `≥0.25` / `200` |
 | 05 并行 | `SAMPLE_JOBS` | `10` |
@@ -104,6 +104,7 @@ dsub \
 | 2026-08-18 | `3bf8a06` | 适配 Scanpy 20260815 GEM-X v4 新注释；将 upstream QC 标签从 `scanpy0814clean` 更新为 `scanpy0815gemxclean`，避免复用旧注释结果 | Shell 语法检查、Scanpy 注释路径审计 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `0bca9dc` | 根据服务器 dsub `--help` 修正提交模板：使用 `--cwd`，并分开 `-R` 与资源字符串 | Shell 语法检查、dsub 参数审计 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `a18e95e` | 新增 upstream 筛选报告，记录 coverage、Scanpy clean-cell、smooth 参数及逐样本细胞统计 | 表格总数核对、Markdown 内容审计 | GitHub 已提交，服务器待 `git pull` |
+| 2026-08-19 | `993db3b` | 适配 Scanpy 20260819 新 17-cluster 注释：QC 标签从 `scanpy0815gemxclean` 更新为 `scanpy0815gemxclean_v2`，避免复用旧注释结果；`EXCLUDED_CELL_TYPES` 清空（原 `Platelet_erythroid_contamination` 在新注释中已不存在，本轮无整群排除） | Shell 语法检查（`bash -n`）、QC 标签与注释路径审计 | GitHub 已推送，服务器待 `git pull` |
 
 以后每次修改服务器脚本或参数，必须追加一行：
 
