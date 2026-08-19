@@ -35,11 +35,7 @@
 !/*/Archive/[0-9]*/Scripts/**/*.Rmd
 !/*/Archive/[0-9]*/Scripts/**/*.qmd
 
-# Result artifacts are restricted to PNG files below Results directories.
-!/*/[0-9]*/Results/**/*.png
-!/*/[0-9]*/Results/**/*.PNG
-!/*/Archive/[0-9]*/Results/**/*.png
-!/*/Archive/[0-9]*/Results/**/*.PNG
+# Result figures (images) are not tracked; keep directories visible via .gitkeep only.
 
 # Keep currently empty Results or Scripts directories visible in Git.
 !/*/[0-9]*/Results/.gitkeep
