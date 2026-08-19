@@ -1029,14 +1029,14 @@ cluster_counts.to_csv(
 
 
 print(
-    "\nTop 20 markers by Leiden cluster:"
+    "\nTop 50 markers by Leiden cluster:"
 )
 
 for cluster in marker_names.columns:
 
     top_genes = (
         marker_names[cluster]
-        .head(20)
+        .head(50)
         .dropna()
         .astype(str)
         .tolist()
