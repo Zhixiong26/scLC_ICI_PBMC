@@ -105,6 +105,7 @@ dsub \
 | 2026-08-18 | `0bca9dc` | 根据服务器 dsub `--help` 修正提交模板：使用 `--cwd`，并分开 `-R` 与资源字符串 | Shell 语法检查、dsub 参数审计 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `a18e95e` | 新增 upstream 筛选报告，记录 coverage、Scanpy clean-cell、smooth 参数及逐样本细胞统计 | 表格总数核对、Markdown 内容审计 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-19 | `993db3b` | 适配 Scanpy 20260819 新 17-cluster 注释：QC 标签从 `scanpy0815gemxclean` 更新为 `scanpy0815gemxclean_v2`，避免复用旧注释结果；`EXCLUDED_CELL_TYPES` 清空（原 `Platelet_erythroid_contamination` 在新注释中已不存在，本轮无整群排除） | Shell 语法检查（`bash -n`）、QC 标签与注释路径审计 | GitHub 已推送，服务器待 `git pull` |
+| 2026-08-19 | `43a07c5` | `01_check_cov_duplicates.sh` 只读性重构（行为不变）：删除重复 `die`、复用 `is_positive_integer`、简化 gzip 管道与 xargs wrapper、合并 per-file cat、注明 chrM 审计口径 | `bash -n`、合成 cov 数据（OK/READ_ERROR/空/坏列/重复/乱序）输出逐字节对比 | GitHub 已推送，服务器待 `git pull` |
 
 以后每次修改服务器脚本或参数，必须追加一行：
 
