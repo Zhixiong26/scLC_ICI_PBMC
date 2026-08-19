@@ -17,15 +17,15 @@ case "$PROFILE" in
     EXPECTED_BINS=49935
     ;;
   *)
-    echo "Usage: bash 13_run_target_bin_profile.sh {100k|50k} {blacklist|downstream|full}" >&2
+    echo "Usage: bash 13_run_target_bin_profile.sh {100k|50k} {blacklist|downstream|refresh-labels|full}" >&2
     exit 2
     ;;
 esac
 
 case "$ACTION" in
-  blacklist|downstream|full) ;;
+  blacklist|downstream|refresh-labels|full) ;;
   *)
-    echo "ERROR: action must be blacklist, downstream, or full" >&2
+    echo "ERROR: action must be blacklist, downstream, refresh-labels, or full" >&2
     exit 2
     ;;
 esac
@@ -75,9 +75,19 @@ run_downstream() {
     MVI_FILTER_MAX_SITES=none bash "$HERE/09_run_pipeline.sh" mean-mcg-level
 }
 
+refresh_labels() {
+    validate_bins
+    bash "$HERE/09_run_pipeline.sh" plots
+    bash "$HERE/09_run_pipeline.sh" supervised
+    bash "$HERE/09_run_pipeline.sh" depth
+    MVI_FILTER_MAX_SITES=none bash "$HERE/09_run_pipeline.sh" mcg-level
+    MVI_FILTER_MAX_SITES=none bash "$HERE/09_run_pipeline.sh" mean-mcg-level
+}
+
 case "$ACTION" in
   blacklist) run_blacklist ;;
   downstream) run_downstream ;;
+  refresh-labels) refresh_labels ;;
   full)
     run_blacklist
     run_downstream

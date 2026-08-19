@@ -54,6 +54,13 @@ bash 13_run_target_bin_profile.sh 50k full
 
 100k 与 50k 是两个独立输出目录，两个 `full` 任务可以并行；每个任务内部的阶段仍按依赖顺序执行。脚本会硬检查实际最终 bins 分别为 99,109 和 49,935，数值不符时停止，不进入 MethylVI 训练。
 
+Scanpy cell-type 映射改动但 clean-cell 集合不变时，不需要重建 H5MU 或重训 MethylVI。只刷新标签、supervised UMAP 及其覆盖图：
+
+```bash
+bash 13_run_target_bin_profile.sh 100k refresh-labels
+bash 13_run_target_bin_profile.sh 50k refresh-labels
+```
+
 ## 当前关键参数
 
 | 类别 | 参数 | 当前值 |
@@ -130,6 +137,7 @@ ALLCools 保留满足 `n_nonzero > threshold` 的 bins。如果把 boundary 截�
 | 2026-08-18 | 本次提交 | 切换到 Methscan 20260815 Scanpy clean 白名单；预期细胞数由 6,199 更新为 4,998，max_sites 更新为 1,200,000，并使用独立 MethylVI 输出目录 | Shell/Python 语法与配置审计 | 待提交、待 GitHub 推送 |
 | 2026-08-18 | 本次提交 | 记录按当前细胞集和目标最终 bins 计算 `MVI_HYPO_PERCENT` 的方法及 100k/50k 实际数值 | ALLCools blacklist、binarize 和非零细胞数计算 | 待提交、待 GitHub 推送 |
 | 2026-08-18 | 本次提交 | 新增 100k/50k profile 统一 wrapper；每个任务内部顺序执行 blacklist 和全部下游，并移除不符合本流程定义的方差 top-N 入口 | Shell/Python 语法、目标 bins 硬检查 | 待提交、待 GitHub 推送 |
+| 2026-08-19 | 本次提交 | 为 target-bin wrapper 新增 `refresh-labels`，仅刷新 Scanpy 标签依赖的图形，不重建 H5MU 或重训 MethylVI | Shell 语法、阶段调用顺序检查 | 待 GitHub 推送，服务器待 `git pull` |
 | 2026-08-19 | 本次提交 | 修正 50k 的整数阈值边界：为 `MVI_HYPO_PERCENT` 加正 epsilon，避免截断后错误保留非零细胞数等于 110 的 bins | 服务器实测 2.200880352 得到 50,310 bins；修正目标为 49,935 | 待提交、待 GitHub 推送 |
 
 以后每次修改服务器脚本或参数，必须追加：
