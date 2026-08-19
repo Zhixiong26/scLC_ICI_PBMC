@@ -72,10 +72,10 @@ dsub \
 
 | 阶段 | 参数 | 当前值 |
 |---|---|---|
-| 公共 | `THRESHOLD` | `300k` |
-| 公共 | `QC_TAG` | `minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_v2_covdedupprob` |
+| 公共 | `THRESHOLD` | `300k`（默认）；`200k` 为 min_sites≥20 万档 |
+| 公共 | `QC_TAG` | 自动派生：`minmeth<X>_maxmeth<Y>_maxsites<Z>_scanpy0815gemxclean_v2_covdedupprob`（默认 = `minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_v2_covdedupprob`） |
 | 03 过滤 | `FILTER_MIN_METH` / `FILTER_MAX_METH` | `55` / 无上限 |
-| 03 过滤 | `FILTER_MAX_SITES` | `1,200,000` |
+| 03 过滤 | `FILTER_MAX_SITES` | `1,200,000`（默认，V1/V2）；`1,000,000`（V3/V4） |
 | 03 默认资源 | `DEFAULT_MAX_JOBS` / `DEFAULT_THREADS` | `1` / `20` |
 | 03 smooth-all | `DEFAULT_SMOOTH_SAMPLE_JOBS` | `10` |
 | 04 DMR | `MIN_CELLS` | `10` |
@@ -90,6 +90,61 @@ dsub \
 | 08 fallback | `MIN_CELLS` | `10` |
 
 `01` 和 `02` 均支持 `all` 批处理与 `one` 单样本模式；`04` 通过 `one <sample_name> <action>` 支持单样本和单比较运行。
+
+## 4 版本运行矩阵
+
+本轮按 min_sites / max_sites 分 4 个过滤版本跑 03→04→05→06→07 全流程。各版本输出目录天然隔离（QC 目录名含 `maxsites<X>`，DMR 目录按 `filtered_data_single_<THRESHOLD>` / `methdiff_celltype_<THRESHOLD>` 区分），可并存：
+
+| 版本 | min_sites | max_sites | THRESHOLD | FILTER_MAX_SITES |
+|---|---|---|---|---|
+| V1 | ≥300k（30 万） | ≤1,200k（120 万） | `300k` | 默认 `1200000` |
+| V2 | ≥200k（20 万） | ≤1,200k | `200k` | 默认 `1200000` |
+| V3 | ≥300k | ≤1,000k（100 万） | `300k` | `1000000` |
+| V4 | ≥200k | ≤1,000k | `200k` | `1000000` |
+
+`QC_TAG` 由 `FILTER_MIN_METH` / `FILTER_MAX_METH` / `FILTER_MAX_SITES` / `SCANPY_FILTER_LABEL` 自动派生（`00_workflow_common.sh`），显式导出 `QC_TAG` 仍优先；03 内部按同一规则计算，拼上 `_covdedupprob` 后与 04–08 目录名一致。
+
+每版本的 03 `run-to-smooth` 均按上文 dsub 模板提交（`-n` 与日志名可加版本后缀），04–07 在前台运行；V3/V4 的 04–07 必须与 03 一样先导出 `FILTER_MAX_SITES=1000000`：
+
+```bash
+# V1：min≥300k max≤1200k（默认参数，无需额外 env）
+bash 03_run_upstream_pipeline.sh run-to-smooth 300k 10 1 all
+bash 04_run_celltype_dmr.sh run 2 2 24
+bash 05_select_top200_dmrs.sh
+bash 06_compute_top200_dmr_matrix.sh
+bash 07_plot_all_top200_heatmaps.sh all
+bash 07_plot_all_top200_heatmaps.sh links
+
+# V2：min≥200k max≤1200k
+bash 03_run_upstream_pipeline.sh run-to-smooth 200k 10 1 all
+bash 04_run_celltype_dmr.sh run 2 2 24
+bash 05_select_top200_dmrs.sh
+bash 06_compute_top200_dmr_matrix.sh
+bash 07_plot_all_top200_heatmaps.sh all
+bash 07_plot_all_top200_heatmaps.sh links
+
+# V3：min≥300k max≤1000k（跑完 07 再 unset）
+export FILTER_MAX_SITES=1000000
+bash 03_run_upstream_pipeline.sh run-to-smooth 300k 10 1 all
+bash 04_run_celltype_dmr.sh run 2 2 24
+bash 05_select_top200_dmrs.sh
+bash 06_compute_top200_dmr_matrix.sh
+bash 07_plot_all_top200_heatmaps.sh all
+bash 07_plot_all_top200_heatmaps.sh links
+unset FILTER_MAX_SITES
+
+# V4：min≥200k max≤1000k
+export FILTER_MAX_SITES=1000000
+bash 03_run_upstream_pipeline.sh run-to-smooth 200k 10 1 all
+bash 04_run_celltype_dmr.sh run 2 2 24
+bash 05_select_top200_dmrs.sh
+bash 06_compute_top200_dmr_matrix.sh
+bash 07_plot_all_top200_heatmaps.sh all
+bash 07_plot_all_top200_heatmaps.sh links
+unset FILTER_MAX_SITES
+```
+
+`07 links` 默认替换 `Methscan/20260815/Results/01_Upstream`（旧链接自动归档到 `Scripts/archive/legacy_result_links`）；如需保留 4 版热图链接，可每版用 `RESULT_LINK_DIR=.../Results/01_Upstream_<版本名>` 覆盖后运行。
 
 ## 服务器提交与修改记录
 
@@ -106,6 +161,7 @@ dsub \
 | 2026-08-18 | `a18e95e` | 新增 upstream 筛选报告，记录 coverage、Scanpy clean-cell、smooth 参数及逐样本细胞统计 | 表格总数核对、Markdown 内容审计 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-19 | `993db3b` | 适配 Scanpy 20260819 新 17-cluster 注释：QC 标签从 `scanpy0815gemxclean` 更新为 `scanpy0815gemxclean_v2`，避免复用旧注释结果；`EXCLUDED_CELL_TYPES` 清空（原 `Platelet_erythroid_contamination` 在新注释中已不存在，本轮无整群排除） | Shell 语法检查（`bash -n`）、QC 标签与注释路径审计 | GitHub 已推送，服务器待 `git pull` |
 | 2026-08-19 | `43a07c5` | `01_check_cov_duplicates.sh` 只读性重构（行为不变）：删除重复 `die`、复用 `is_positive_integer`、简化 gzip 管道与 xargs wrapper、合并 per-file cat、注明 chrM 审计口径 | `bash -n`、合成 cov 数据（OK/READ_ERROR/空/坏列/重复/乱序）输出逐字节对比 | GitHub 已推送，服务器待 `git pull` |
+| 2026-08-20 | `3c659de` | 支持 4 个 min_sites/max_sites 过滤版本：`00_workflow_common.sh` 的 `QC_TAG` 默认值改为按 `FILTER_MIN_METH`/`FILTER_MAX_METH`/`FILTER_MAX_SITES`/`SCANPY_FILTER_LABEL` 自动派生（默认输出与旧硬编码值逐字符相同，显式 `QC_TAG` 仍优先）；`03` 的 `VALID_THRESHOLDS` 与 usage 增加 `200k`；`04`（单样本 30k/200k/300k、批处理 200k/300k）、`05`/`06`/`07`（200k/300k）THRESHOLD 保守护栏放宽；`08` 输出路径注释改为 `methdiff_celltype_${THRESHOLD}` | `bash -n` 全部脚本；QC_TAG 派生等价测试（默认=旧值逐字符、`FILTER_MAX_SITES=1000000`→`maxsites1000000`、显式 `QC_TAG` 优先）；03 内部 QC_TAG 与 00 派生目录名一致性核对 | GitHub 已提交，服务器待 `git pull` |
 
 以后每次修改服务器脚本或参数，必须追加一行：
 
