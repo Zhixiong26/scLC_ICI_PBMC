@@ -13,7 +13,7 @@
 | 数据根目录 | `/share/LCZX_Data/data/allcools` |
 | 旧版 MCDS | `/share/LCZX_Data/data/allcools/methylvi_5kb_300k/mcg_5kb.mcds` |
 | blacklist 版 ALLCools 输出 | `/share/LCZX_Data/data/allcools/methylvi_5kb_300k_blacklist_f0p2` |
-| 当前 Scanpy clean + blacklist 版 MethylVI 输出 | `/share/LCZX_Data/data/allcools/methylVI_results_300k_blacklist_f0p2_scanpy0815gemxclean` |
+| 当前 Scanpy clean + blacklist 版 MethylVI 输出 | `/share/LCZX_Data/data/allcools/methylVI_results_300k_blacklist_f0p2_scanpy0815gemxclean_v2` |
 | 历史 MethylVI 输出 | `/share/LCZX_Data/data/allcools/methylVI_results_300k_blacklist_f0p2` |
 | 图片 | `MethylVI/20260816/Results/blacklist_f0p2` |
 | Scanpy 注释 | `Scanpy/20260815/Results/annotation/02_cell_annotation_all_cells.csv` |
@@ -65,11 +65,11 @@ bash 13_run_target_bin_profile.sh 50k refresh-labels
 
 | 类别 | 参数 | 当前值 |
 |---|---|---|
-| 变体 | `MVI_USE_BLACKLIST` / `MVI_VARIANT_ID` | `1` / `blacklist_f0p2_scanpy0815gemxclean` |
+| 变体 | `MVI_USE_BLACKLIST` / `MVI_VARIANT_ID` | `1` / `blacklist_f0p2_scanpy0815gemxclean_v2` |
 | blacklist | accession / MD5 / overlap fraction | `ENCFF356LFX` / `393688b4f06c9ce26165d47433dd8c37` / `0.2` |
-| 预期数据 | samples / IR / NR / cells | `10` / `5` / `5` / `4998` |
+| 预期数据 | samples / IR / NR / cells | `10` / `5` / `5` / `5014` |
 | MethSCAn QC | threshold / min sites / max sites / min meth | `300k` / `300000` / `1200000` / `55` |
-| MethSCAn QC | `MVI_QC_TAG` | `minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_covdedupprob` |
+| MethSCAn QC | `MVI_QC_TAG` | `minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_v2_covdedupprob` |
 | 计数 | bin size / context | `5000` / `CGN` |
 | ALLCools 特征 | binarize cutoff / hypo percent | `0.95` / 按目标最终 bins 计算 |
 | 批次校正 | `MVI_BATCH_KEY` | `sample_id` |
@@ -100,14 +100,14 @@ MVI_HYPO_PERCENT = boundary + 一个很小的正 epsilon
 
 ALLCools 保留满足 `n_nonzero > threshold` 的 bins。如果把 boundary 截断到过少小数，实际值可能略低于整数阈值，从而错误保留 `n_nonzero == threshold` 的 bins。
 
-当前 4,998-cell 数据的计算结果：
+4,998-cell（scanpy0815gemxclean 标签）旧版数据的计算结果（仅作历史参考，不得用于当前数据）：
 
 | 目标最终 bins | 阈值 | 实际保留 bins | `MVI_HYPO_PERCENT` |
 |---:|---:|---:|---:|
 | 100,000 | `>49` | 99,109 | `0.980392157` |
 | 50,000 | `>110` | 49,935 | `2.200880372` |
 
-旧版本 6,199-cell 数据得到的 `1.169543` 和 `2.669785` 不得直接用于当前 4,998-cell 数据。每次计算应同时记录细胞数、blacklist 后 bins、阈值、实际最终 bins 和对应 `MVI_HYPO_PERCENT`。
+当前 5,014-cell（scanpy0815gemxclean_v2 标签）数据的计算结果：**待重算**（03 upstream 完成后按上述步骤在 5,014 细胞和 blacklist 后的 MCDS 上重新计算，100k/50k 各一个，并同步更新 `13_run_target_bin_profile.sh` 的 `HYP_PERCENT`/`EXPECTED_BINS`）。每次计算应同时记录细胞数、blacklist 后 bins、阈值、实际最终 bins 和对应 `MVI_HYPO_PERCENT`。
 
 ## 输出约定
 
@@ -139,6 +139,7 @@ ALLCools 保留满足 `n_nonzero > threshold` 的 bins。如果把 boundary 截�
 | 2026-08-18 | 本次提交 | 新增 100k/50k profile 统一 wrapper；每个任务内部顺序执行 blacklist 和全部下游，并移除不符合本流程定义的方差 top-N 入口 | Shell/Python 语法、目标 bins 硬检查 | 待提交、待 GitHub 推送 |
 | 2026-08-19 | 本次提交 | 为 target-bin wrapper 新增 `refresh-labels`，仅刷新 Scanpy 标签依赖的图形，不重建 H5MU 或重训 MethylVI | Shell 语法、阶段调用顺序检查 | 待 GitHub 推送，服务器待 `git pull` |
 | 2026-08-19 | 本次提交 | 修正 50k 的整数阈值边界：为 `MVI_HYPO_PERCENT` 加正 epsilon，避免截断后错误保留非零细胞数等于 110 的 bins | 服务器实测 2.200880352 得到 50,310 bins；修正目标为 49,935 | 待提交、待 GitHub 推送 |
+| 2026-08-20 | `7ab249d` | MethylVI 切换到 `scanpy0815gemxclean_v2` 标签：`MVI_VARIANT_ID`/`MVI_QC_TAG` 升 v2（输出目录隔离为 `blacklist_f0p2_scanpy0815gemxclean_v2`）；`MVI_EXPECTED_CELLS` 按 10 样本 v2 白名单实测更新为 5,014（旧 4,998）；`13_run_target_bin_profile.sh` `BASE_PROFILE` 升 v2 | `bash -n`；服务器核对 v2 `column_header.txt` 10 样本求和 = 5,014（逐样本对照旧标签 4,998）；provenance 校验路径审计 | GitHub 已提交，服务器待 `git pull` |
 
 以后每次修改服务器脚本或参数，必须追加：
 
