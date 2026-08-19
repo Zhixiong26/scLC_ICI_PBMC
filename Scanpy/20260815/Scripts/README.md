@@ -88,11 +88,18 @@ cd /share/home/rzli/scLC_ICI_PBMC
 git -c http.version=HTTP/1.1 pull --ff-only origin main
 git rev-parse --short HEAD
 
-# 若本次提交修改了 01_integration.py 的整合/降维参数，
-# 需要先重跑整合脚本，再执行注释与导图
-# bash Scanpy/20260815/Scripts/05_run_integration.sh
+# 语法检查（保留可以，但只是保险，不是执行）
+/share/home/rzli/miniconda3/envs/scanpy310/bin/python \
+  -m py_compile \
+  Scanpy/20260815/Scripts/01_integration.py
+
+# ★ 真正重算整合 + UMAP（新 min_dist=0.3 在这里生效，最耗时）
+bash Scanpy/20260815/Scripts/05_run_integration.sh
+
+# 之后才是注释和出图
 bash Scanpy/20260815/Scripts/06_run_annotation.sh
 bash Scanpy/20260815/Scripts/07_run_export_figures.sh
+
 ```
 
 | 日期 | Git 提交 | 修改 | 验证 | 服务器状态 |
