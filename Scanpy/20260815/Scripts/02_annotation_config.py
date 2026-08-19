@@ -17,12 +17,12 @@ CLUSTER_TO_CELLTYPE = {                                                         
     "8": "Gamma_delta_T_cells", # TRDV2, TRGV9, TRDC, NKG7, CCL5
     "9": "Monocytes",            # VCAN, LYZ, CTSS, CYBB；伴少量 platelet/erythroid signal
     "10": "Treg_cells",          # IKZF2, IL2RA, FOXP3, CTLA4
-    "11": "HLAII_high_APCs",     # HLA-DRA/B, CD74, CIITA, HLA-DP/DQ
+    "11": "cDC2",                # HLA-DRA/B, CD74, CIITA, HLA-DP/DQ；伴 monocyte/macrophage 标记
     "12": "MAIT_cells",          # SLC4A10, KLRB1, GZMK, DPP4, IL18RAP
     "13": "Cycling_cells",       # MKI67, STMN1, RRM2, CENPF, SMC4
     "14": "Plasma_cells",        # MZB1, JCHAIN, ELL2, POU2AF1, TXNDC5
-    "15": "pDCs",                # TCF4, BCL11A, GZMB, JCHAIN
-    "16": "cDCs",                # FLT3, CPNE3, ZNF366, CADM1
+    "15": "pDC",                 # TCF4, BCL11A, GZMB, JCHAIN
+    "16": "cDC1",                # FLT3, CPNE3, ZNF366, CADM1；伴 CLEC9A 标记
 }
 
 
@@ -121,7 +121,7 @@ MARKER_GENES = {                                                                
         "CTSS",
     ],
 
-    "HLAII_high_APCs": [
+    "cDC2": [
         "HLA-DRA",
         "HLA-DRB1",
         "HLA-DPA1",
@@ -156,7 +156,7 @@ MARKER_GENES = {                                                                
         "POU2AF1",
     ],
 
-    "pDCs": [
+    "pDC": [
         "TCF4",
         "IRF8",
         "BCL11A",
@@ -165,7 +165,7 @@ MARKER_GENES = {                                                                
         "JCHAIN",
     ],
 
-    "cDCs": [
+    "cDC1": [
         "FLT3",
         "CD74",
         "HLA-DRA",
