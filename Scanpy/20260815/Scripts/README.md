@@ -61,8 +61,8 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 ## 注释与绘图参数
 
 - `02_annotation_config.py` 是 Leiden cluster → cell type 映射、marker genes 和绘图样式的唯一权威配置。
-- 当前映射覆盖 cluster `0–15`。
-- 当前主分析排除 `Platelets_Megakaryocytes`。
+- 当前映射覆盖全局 gene QC 重跑后的 cluster `0–16`。
+- 当前 17 个 cluster 均保留，无 cluster-level 排除类型。
 - 图片分辨率 `FIGURE_DPI=300`，UMAP 图例位于 `right margin`，dotplot 使用 `Reds` 和 `(16, 7)` 尺寸。
 - 每次人工调整 cluster 映射或 marker 后，必须在下方变更表中记录。
 
@@ -91,6 +91,7 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 | 2026-08-18 | `e86d9c4` | 按 GEM-X v4 新的 16 个 Leiden clusters 更新 `02_annotation_config.py` 的 cluster 注释映射 | Python 语法检查、marker 对照、cluster 覆盖检查 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-19 | 本次提交 | 按 marker 复核表修订 0–15 注释：cluster 2 改为 `T_cells_unresolved`，cluster 15 改为 `Platelets_Megakaryocytes`，并记录亚型倾向与置信度 | Python 语法、cluster 覆盖、排除类型与 Markdown 表格检查 | 待 GitHub 推送，服务器待 `git pull` |
 | 2026-08-19 | 本次提交 | raw counts/ID 硬校验；QC 改为使用完整原始基因集；`min_cells=3` 改为合并后全局执行并新增审计表；新样本 GEM-X doublet rate 动态计算；未知样本分组改为报错；兼容旧 Scrublet API；Leiden counts 按数值排序；删除冗余 log1p layer | Python 语法、函数边界、字段引用和 diff 检查 | 待 GitHub 推送，服务器待 `git pull` |
+| 2026-08-19 | 本次提交 | 按 20260819 新的 17 个 Leiden clusters 更新 0–16 映射；cluster 2 定为 `Naive_CD4_T_cells`，新增 Treg、MAIT 和 cDC 类型；不设 cluster-level 排除 | Python 语法、cluster 覆盖、marker 与 Markdown 检查 | 待 GitHub 推送，服务器待 `git pull` |
 
 以后每次修改服务器脚本、QC、cluster 映射或 marker 时，必须追加：
 
