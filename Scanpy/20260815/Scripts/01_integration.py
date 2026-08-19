@@ -4,18 +4,17 @@ import inspect
 import os
 from pathlib import Path
 
-os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
-os.environ.setdefault("GOTO_NUM_THREADS", "1")
-os.environ.setdefault("OMP_NUM_THREADS", "1")
-os.environ.setdefault("OMP_THREAD_LIMIT", "1")
-os.environ.setdefault("OMP_DYNAMIC", "FALSE")
-os.environ.setdefault("MKL_NUM_THREADS", "1")
-os.environ.setdefault("MKL_DYNAMIC", "FALSE")
-os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
-os.environ.setdefault("VECLIB_MAXIMUM_THREADS", "1")
-os.environ.setdefault("BLIS_NUM_THREADS", "1")
-os.environ.setdefault("NUMBA_NUM_THREADS", "1")
-os.environ.setdefault("LOKY_MAX_CPU_COUNT", "1")
+# 线程限制必须在导入任何数值计算库之前生效
+for _env_var in (
+    "OPENBLAS_NUM_THREADS", "GOTO_NUM_THREADS", "OMP_NUM_THREADS",
+    "OMP_THREAD_LIMIT", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS", "NUMBA_NUM_THREADS",
+    "LOKY_MAX_CPU_COUNT",
+):
+    os.environ.setdefault(_env_var, "1")
+
+for _env_var in ("OMP_DYNAMIC", "MKL_DYNAMIC"):
+    os.environ.setdefault(_env_var, "FALSE")
 
 import anndata as ad
 import harmonypy  # noqa: F401
@@ -84,6 +83,9 @@ MIN_CELLS_PER_GENE = 3
 GEMX_DOUBLET_RATE_PER_1000_CELLS = 0.004
 SIM_DOUBLET_RATIO = 2.0
 SCRUBLET_N_PCS = 30
+# Scrublet 内部会跳过检测基因数低于该值的细胞；
+# 与 MIN_CELLS_PER_GENE 语义不同，只是数值恰好相同。
+SCRUBLET_MIN_GENES_PER_CELL = 3
 
 # Per-sample overrides based on the current recovered-cell counts.
 EXPECTED_DOUBLET_RATES: dict[str, float] = {
@@ -214,6 +216,26 @@ def clear_previous_analysis(adata: ad.AnnData) -> None:
     adata.varm.clear()
     adata.obsp.clear()
     adata.uns.clear()
+
+
+def neighbors_and_umap(adata: ad.AnnData, **neighbors_repr) -> None:
+    """
+    neighbors + UMAP 组合：表示矩阵参数（n_pcs / use_rep）
+    由调用方传入，其余参数 Harmony 前后保持一致。
+    """
+    sc.pp.neighbors(
+        adata,
+        n_neighbors=N_NEIGHBORS,
+        random_state=RANDOM_STATE,
+        **neighbors_repr,
+    )
+
+    sc.tl.umap(
+        adata,
+        min_dist=UMAP_MIN_DIST,
+        spread=UMAP_SPREAD,
+        random_state=RANDOM_STATE,
+    )
 
 
 # ============================================================
@@ -371,9 +393,8 @@ def save_scrublet_histogram(
 # 6. 单样本：raw -> Scrublet -> 一次性 QC
 # ============================================================
 
-def process_sample(
-    sample: str,
-) -> tuple[ad.AnnData, SummaryRow, pd.DataFrame, str]:
+def load_sample_adata(sample: str) -> tuple[ad.AnnData, str, Path]:
+    """读取单样本 raw counts 并初始化 obs 元数据。"""
 
     sample_name = get_sample_name(sample)
     input_h5ad = get_sample_path(sample)
@@ -412,30 +433,15 @@ def process_sample(
     adata.obs["batch"] = sample_name
     adata.obs["group"] = get_sample_group(sample_name)
 
-    n_cells_input = adata.n_obs
-    n_genes_input = adata.n_vars
-    expected_doublet_rate = get_expected_doublet_rate(
-        sample_name,
-        n_cells_input,
-    )
+    return adata, sample_name, input_h5ad
 
-    print(
-        "\n"
-        "============================================================"
-    )
-    print(f"Processing: {sample_name}")
-    print(f"Input: {input_h5ad}")
-    print(
-        "Expected doublet rate: "
-        f"{expected_doublet_rate:.4f}"
-    )
-    print(
-        "============================================================"
-    )
 
-    # --------------------------------------------------------
-    # 计算 QC 指标
-    # --------------------------------------------------------
+def run_doublet_detection(
+    adata: ad.AnnData,
+    sample_name: str,
+    expected_doublet_rate: float,
+) -> tuple[float, str, int, int]:
+    """计算 QC 指标、运行 Scrublet 并回填 doublet 结果。"""
 
     adata.var["mt"] = (
         adata.var_names
@@ -451,14 +457,13 @@ def process_sample(
         inplace=True,
     )
 
-    # --------------------------------------------------------
-    # Scrublet
-    # --------------------------------------------------------
-
     # Scanpy/Scrublet internally excludes cells with fewer than 3 detected
     # genes. Run it on an explicit eligible subset so those cells do not
     # receive an unaligned NaN that could become True during bool conversion.
-    scrublet_mask = adata.obs["n_genes_by_counts"] >= 3
+    scrublet_mask = (
+        adata.obs["n_genes_by_counts"]
+        >= SCRUBLET_MIN_GENES_PER_CELL
+    )
     if not scrublet_mask.any():
         raise ValueError(
             f"样本 {sample_name} 没有满足 Scrublet 最低基因数要求的细胞。"
@@ -510,11 +515,21 @@ def process_sample(
         threshold,
     )
 
-    # --------------------------------------------------------
-    # 保存过滤前的逐细胞 QC / doublet 信息
-    # --------------------------------------------------------
+    return (
+        threshold,
+        scrublet_api,
+        int(scrublet_mask.sum()),
+        int((~scrublet_mask).sum()),
+    )
 
-    calls = pd.DataFrame(
+
+def build_doublet_call_table(
+    adata: ad.AnnData,
+    sample_name: str,
+) -> pd.DataFrame:
+    """构建过滤前的逐细胞 QC / doublet 审计表。"""
+
+    return pd.DataFrame(
         {
             "cell_id": adata.obs_names.astype(str),
             "sample": sample_name,
@@ -537,54 +552,41 @@ def process_sample(
         }
     )
 
-    # --------------------------------------------------------
-    # 一次性最终 QC
-    # --------------------------------------------------------
+
+def apply_final_qc(
+    adata: ad.AnnData,
+    sample_name: str,
+    n_cells_input: int,
+    n_genes_input: int,
+    expected_doublet_rate: float,
+    threshold: float,
+    n_scrublet_eligible: int,
+    n_scrublet_ineligible: int,
+) -> tuple[ad.AnnData, SummaryRow]:
+    """doublet、基因数和线粒体比例一次性过滤，并生成样本级 summary。"""
 
     final_qc_mask = (
         (~adata.obs["predicted_doublet"])
-        & (
-            adata.obs["n_genes_by_counts"]
-            >= MIN_GENES_PER_CELL
-        )
-        & (
-            adata.obs["n_genes_by_counts"]
-            <= MAX_GENES_PER_CELL
-        )
-        & (
-            adata.obs["pct_counts_mt"]
-            < MAX_PCT_COUNTS_MT
-        )
+        & (adata.obs["n_genes_by_counts"] >= MIN_GENES_PER_CELL)
+        & (adata.obs["n_genes_by_counts"] <= MAX_GENES_PER_CELL)
+        & (adata.obs["pct_counts_mt"] < MAX_PCT_COUNTS_MT)
     )
 
-    n_doublets = int(
-        adata.obs["predicted_doublet"].sum()
-    )
+    n_doublets = int(adata.obs["predicted_doublet"].sum())
 
     n_low_gene = int(
-        (
-            adata.obs["n_genes_by_counts"]
-            < MIN_GENES_PER_CELL
-        ).sum()
+        (adata.obs["n_genes_by_counts"] < MIN_GENES_PER_CELL).sum()
     )
 
     n_high_gene = int(
-        (
-            adata.obs["n_genes_by_counts"]
-            > MAX_GENES_PER_CELL
-        ).sum()
+        (adata.obs["n_genes_by_counts"] > MAX_GENES_PER_CELL).sum()
     )
 
     n_high_mt = int(
-        (
-            adata.obs["pct_counts_mt"]
-            >= MAX_PCT_COUNTS_MT
-        ).sum()
+        (adata.obs["pct_counts_mt"] >= MAX_PCT_COUNTS_MT).sum()
     )
 
-    adata = adata[
-        final_qc_mask
-    ].copy()
+    adata = adata[final_qc_mask].copy()
 
     if adata.n_obs == 0:
         raise ValueError(
@@ -601,8 +603,8 @@ def process_sample(
         "n_cells_input": n_cells_input,
         "n_genes_input": n_genes_input,
         "n_genes_used_for_raw_qc": n_genes_input,
-        "n_cells_scrublet_eligible": int(scrublet_mask.sum()),
-        "n_cells_scrublet_ineligible": int((~scrublet_mask).sum()),
+        "n_cells_scrublet_eligible": n_scrublet_eligible,
+        "n_cells_scrublet_ineligible": n_scrublet_ineligible,
 
         "expected_doublet_rate": expected_doublet_rate,
         "scrublet_threshold": threshold,
@@ -623,6 +625,74 @@ def process_sample(
             2,
         ),
     }
+
+    return adata, summary
+
+
+def process_sample(
+    sample: str,
+) -> tuple[ad.AnnData, SummaryRow, pd.DataFrame, str]:
+
+    adata, sample_name, input_h5ad = load_sample_adata(sample)
+
+    n_cells_input = adata.n_obs
+    n_genes_input = adata.n_vars
+    expected_doublet_rate = get_expected_doublet_rate(
+        sample_name,
+        n_cells_input,
+    )
+
+    print(
+        "\n"
+        "============================================================"
+    )
+    print(f"Processing: {sample_name}")
+    print(f"Input: {input_h5ad}")
+    print(
+        "Expected doublet rate: "
+        f"{expected_doublet_rate:.4f}"
+    )
+    print(
+        "============================================================"
+    )
+
+    # --------------------------------------------------------
+    # 计算 QC 指标 + Scrublet
+    # --------------------------------------------------------
+
+    (
+        threshold,
+        scrublet_api,
+        n_scrublet_eligible,
+        n_scrublet_ineligible,
+    ) = run_doublet_detection(
+        adata,
+        sample_name,
+        expected_doublet_rate,
+    )
+
+    # --------------------------------------------------------
+    # 保存过滤前的逐细胞 QC / doublet 信息
+    # --------------------------------------------------------
+
+    calls = build_doublet_call_table(adata, sample_name)
+
+    # --------------------------------------------------------
+    # 一次性最终 QC
+    # --------------------------------------------------------
+
+    adata, summary = apply_final_qc(
+        adata,
+        sample_name,
+        n_cells_input,
+        n_genes_input,
+        expected_doublet_rate,
+        threshold,
+        n_scrublet_eligible,
+        n_scrublet_ineligible,
+    )
+
+    n_doublets = summary["n_predicted_doublets"]
 
     print(
         f"{sample_name}: "
@@ -767,15 +837,8 @@ if not adata.obs_names.is_unique:
         f"示例：{duplicated}"
     )
 
-adata.obs["sample"] = (
-    adata.obs["sample"]
-    .astype("category")
-)
-
-adata.obs["batch"] = (
-    adata.obs["batch"]
-    .astype("category")
-)
+for obs_column in ("sample", "batch"):
+    adata.obs[obs_column] = adata.obs[obs_column].astype("category")
 
 adata.obs["group"] = pd.Categorical(
     adata.obs["group"],
@@ -887,19 +950,7 @@ sc.tl.pca(
 # 12. Harmony 前 UMAP
 # ============================================================
 
-sc.pp.neighbors(
-    adata,
-    n_neighbors=N_NEIGHBORS,
-    n_pcs=N_PCS,
-    random_state=RANDOM_STATE,
-)
-
-sc.tl.umap(
-    adata,
-    min_dist=UMAP_MIN_DIST,
-    spread=UMAP_SPREAD,
-    random_state=RANDOM_STATE,
-)
+neighbors_and_umap(adata, n_pcs=N_PCS)
 
 adata.obsm["X_umap_before_harmony"] = (
     adata.obsm["X_umap"].copy()
@@ -913,37 +964,18 @@ adata.obsm["X_umap_before_harmony"] = (
 adata.uns["integration_parameters"] = {
     "method": "harmony",
     "batch_key": "sample",
-
     "n_top_genes": N_TOP_GENES,
     "n_pcs": N_PCS,
     "n_neighbors": N_NEIGHBORS,
-
-    "leiden_resolution":
-        LEIDEN_RESOLUTION,
-
-    "random_state":
-        RANDOM_STATE,
-
-    "normalize_target_sum":
-        1e4,
-
-    "scale_max_value":
-        10,
-
-    "umap_min_dist":
-        UMAP_MIN_DIST,
-
-    "umap_spread":
-        UMAP_SPREAD,
-
-    "doublet_method":
-        "Scrublet",
-
-    "doublet_fallback_rate_per_1000_cells":
-        GEMX_DOUBLET_RATE_PER_1000_CELLS,
-
-    "doublet_threshold":
-        "automatic_per_sample",
+    "leiden_resolution": LEIDEN_RESOLUTION,
+    "random_state": RANDOM_STATE,
+    "normalize_target_sum": 1e4,
+    "scale_max_value": 10,
+    "umap_min_dist": UMAP_MIN_DIST,
+    "umap_spread": UMAP_SPREAD,
+    "doublet_method": "Scrublet",
+    "doublet_fallback_rate_per_1000_cells": GEMX_DOUBLET_RATE_PER_1000_CELLS,
+    "doublet_threshold": "automatic_per_sample",
 }
 
 sce.pp.harmony_integrate(
@@ -958,19 +990,7 @@ sce.pp.harmony_integrate(
 # 14. Harmony 后 neighbors + UMAP + Leiden
 # ============================================================
 
-sc.pp.neighbors(
-    adata,
-    n_neighbors=N_NEIGHBORS,
-    use_rep="X_pca_harmony",
-    random_state=RANDOM_STATE,
-)
-
-sc.tl.umap(
-    adata,
-    min_dist=UMAP_MIN_DIST,
-    spread=UMAP_SPREAD,
-    random_state=RANDOM_STATE,
-)
+neighbors_and_umap(adata, use_rep="X_pca_harmony")
 
 sc.tl.leiden(
     adata,
@@ -1070,37 +1090,15 @@ adata.write(
 )
 
 
-print(
-    f"\nSaved integrated base h5ad: "
-    f"{OUTPUT_H5AD}"
-)
+saved_outputs = [
+    ("\nSaved integrated base h5ad: ", OUTPUT_H5AD),
+    ("Saved Leiden markers:       ", OUTPUT_MARKERS),
+    ("Saved Leiden counts:        ", OUTPUT_COUNTS),
+    ("Saved sample QC summary:    ", OUTPUT_QC),
+    ("Saved global gene QC:       ", OUTPUT_GENE_QC),
+    ("Saved doublet calls:        ", OUTPUT_DOUBLET_CALLS),
+    ("Saved Scrublet QC figures:  ", SCRUBLET_QC_DIR),
+]
 
-print(
-    f"Saved Leiden markers:       "
-    f"{OUTPUT_MARKERS}"
-)
-
-print(
-    f"Saved Leiden counts:        "
-    f"{OUTPUT_COUNTS}"
-)
-
-print(
-    f"Saved sample QC summary:    "
-    f"{OUTPUT_QC}"
-)
-
-print(
-    f"Saved global gene QC:       "
-    f"{OUTPUT_GENE_QC}"
-)
-
-print(
-    f"Saved doublet calls:        "
-    f"{OUTPUT_DOUBLET_CALLS}"
-)
-
-print(
-    f"Saved Scrublet QC figures:  "
-    f"{SCRUBLET_QC_DIR}"
-)
+for label, output_path in saved_outputs:
+    print(f"{label}{output_path}")
