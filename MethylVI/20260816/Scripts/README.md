@@ -85,17 +85,32 @@ bash 13_run_target_bin_profile.sh 50k refresh-labels
 
 `MVI_HYPO_PERCENT` 不是固定经验值。每次更换细胞白名单或目标特征数量时，必须在当前细胞集和 blacklist 后的 MCDS 上重新计算。
 
-计算步骤：
+计算步骤（也可直接运行 `14_compute_hypo_percent.py`，其 blacklist 与 binarize 步骤与 `03_cluster_allcools.py` 完全一致）：
+
+```bash
+# 以当前 5,014-cell v2 MCDS 为例（prepare 完成后在服务器执行）
+/share/home/rzli/miniconda3/envs/allcools/bin/python \
+  MethylVI/20260816/Scripts/14_compute_hypo_percent.py \
+  --mcds /share/LCZX_Data/data/allcools/methylvi_5kb_300k_blacklist_f0p2_scanpy0815gemxclean_v2/mcg_5kb.mcds \
+  --blacklist /share/home/rzli/scLC_ICI_PBMC/MethylVI/20260816/Supplementary_materials/ENCFF356LFX_GRCh38_blacklist.bed.gz \
+  --blacklist-accession ENCFF356LFX \
+  --blacklist-md5 393688b4f06c9ce26165d47433dd8c37 \
+  --blacklist-fraction 0.2 \
+  --binarize-cutoff 0.95 \
+  --target-bins 100000 --target-bins 50000
+```
+
+脚本原理与手工步骤一致：
 
 1. 打开当前 `mcg_5kb.mcds`，应用相同的 blacklist（`f=0.2`）。
 2. 生成 `CGN` 的 `hypo-score` 矩阵，并使用 `binarize_cutoff=0.95`。
 3. 对每个 5-kb bin 统计其非零细胞数 `n_nonzero`。
-4. 对目标 bins 数 `N`，寻找使 `sum(n_nonzero > threshold)` 最接近 `N` 的阈值。
-5. 将阈值换算后取一个略高于边界的数，避免小数截断把阈值落到整数边界下方：
+4. 对目标 bins 数 `N`，取使 `sum(n_nonzero > threshold)` ≤ `N` 的最小整数阈值 `T`。
+5. 输出 `MVI_HYPO_PERCENT = T / n_cells * 100 + 1e-6`（正 epsilon），有效浮点阈值严格落在 `(T, T+1)`：
 
 ```text
-boundary = threshold / n_cells * 100
-MVI_HYPO_PERCENT = boundary + 一个很小的正 epsilon
+boundary = T / n_cells * 100
+MVI_HYPO_PERCENT = boundary + 1e-6
 ```
 
 ALLCools 保留满足 `n_nonzero > threshold` 的 bins。如果把 boundary 截断到过少小数，实际值可能略低于整数阈值，从而错误保留 `n_nonzero == threshold` 的 bins。
@@ -140,6 +155,7 @@ ALLCools 保留满足 `n_nonzero > threshold` 的 bins。如果把 boundary 截�
 | 2026-08-19 | 本次提交 | 为 target-bin wrapper 新增 `refresh-labels`，仅刷新 Scanpy 标签依赖的图形，不重建 H5MU 或重训 MethylVI | Shell 语法、阶段调用顺序检查 | 待 GitHub 推送，服务器待 `git pull` |
 | 2026-08-19 | 本次提交 | 修正 50k 的整数阈值边界：为 `MVI_HYPO_PERCENT` 加正 epsilon，避免截断后错误保留非零细胞数等于 110 的 bins | 服务器实测 2.200880352 得到 50,310 bins；修正目标为 49,935 | 待提交、待 GitHub 推送 |
 | 2026-08-20 | `7ab249d` | MethylVI 切换到 `scanpy0815gemxclean_v2` 标签：`MVI_VARIANT_ID`/`MVI_QC_TAG` 升 v2（输出目录隔离为 `blacklist_f0p2_scanpy0815gemxclean_v2`）；`MVI_EXPECTED_CELLS` 按 10 样本 v2 白名单实测更新为 5,014（旧 4,998）；`13_run_target_bin_profile.sh` `BASE_PROFILE` 升 v2 | `bash -n`；服务器核对 v2 `column_header.txt` 10 样本求和 = 5,014（逐样本对照旧标签 4,998）；provenance 校验路径审计 | GitHub 已提交，服务器待 `git pull` |
+| 2026-08-20 | `1fe5db6` | 新增 `14_compute_hypo_percent.py`：按目标 bins 数重算 `MVI_HYPO_PERCENT`（复用 03 的 blacklist/binarize 步骤；对每个 `--target-bins` 输出最小整数阈值 T、retained bins 与 `MVI_HYPO_PERCENT = T/n_cells*100 + 1e-6`；结果写入 MCDS 旁的 `hypo_percent_recomputed.json`）；README 补计算步骤与命令 | `py_compile`；纯 Python 等价实现逻辑测试（阈值选择、epsilon 落在 `(T, T+1)`、超界报错；连续分布下 target 50,000 → T=110/49,935 与旧实测一致） | GitHub 已提交，服务器待 `git pull` |
 
 以后每次修改服务器脚本或参数，必须追加：
 
