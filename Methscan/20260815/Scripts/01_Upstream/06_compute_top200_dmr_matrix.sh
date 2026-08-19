@@ -58,7 +58,8 @@ process_sample() {
 }
 
 activate_conda
-[[ "$THRESHOLD" == 300k ]] || die "current workflow requires THRESHOLD=300k"
+[[ "$THRESHOLD" == 200k || "$THRESHOLD" == 300k ]] ||
+    die "current workflow requires THRESHOLD=200k or 300k"
 is_positive_integer "$SAMPLE_JOBS" || die "SAMPLE_JOBS must be positive"
 is_positive_integer "$CELL_JOBS" || die "CELL_JOBS must be positive"
 collect_samples

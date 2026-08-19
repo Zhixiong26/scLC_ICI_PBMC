@@ -281,7 +281,8 @@ esac
 
 [[ "${#SELECTED_VARIANTS[@]}" -gt 0 ]] || die "no variants selected for: $ACTION"
 activate_conda
-[[ "$THRESHOLD" == 300k ]] || die "current workflow requires THRESHOLD=300k"
+[[ "$THRESHOLD" == 200k || "$THRESHOLD" == 300k ]] ||
+    die "current workflow requires THRESHOLD=200k or 300k"
 is_positive_integer "$SAMPLE_JOBS" || die "SAMPLE_JOBS must be positive"
 is_positive_integer "$PLOT_DPI" || die "PLOT_DPI must be positive"
 is_positive_integer "$ZSCORE_MIN_OBSERVED_CELLS" ||

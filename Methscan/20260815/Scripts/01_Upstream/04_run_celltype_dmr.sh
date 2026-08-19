@@ -249,8 +249,8 @@ initialize_compute_environment() {
     is_positive_integer "$MIN_CELLS" || die "MIN_CELLS must be positive"
     is_positive_integer "$MAX_UNMATCHED_CELLS" || die "MAX_UNMATCHED_CELLS must be positive"
     is_positive_integer "$PYTHON_NUM_THREADS" || die "PYTHON_NUM_THREADS must be positive"
-    [[ "$THRESHOLD" == 30k || "$THRESHOLD" == 300k ]] ||
-        die "this single-sample script currently supports THRESHOLD=30k or 300k"
+    [[ "$THRESHOLD" == 30k || "$THRESHOLD" == 200k || "$THRESHOLD" == 300k ]] ||
+        die "this single-sample script currently supports THRESHOLD=30k, 200k or 300k"
 
     activate_conda
     command -v methscan >/dev/null 2>&1 || die "methscan is unavailable"
@@ -872,7 +872,8 @@ run_all_samples() {
     local action="$1"
     shift
 
-    [[ "$THRESHOLD" == 300k ]] || die "current batch workflow requires THRESHOLD=300k"
+    [[ "$THRESHOLD" == 200k || "$THRESHOLD" == 300k ]] ||
+        die "current batch workflow requires THRESHOLD=200k or 300k"
     collect_samples
     case "$action" in
         prepare)

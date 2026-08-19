@@ -22,7 +22,7 @@ FILTER_MAX_METH="${FILTER_MAX_METH:-}"
 FILTER_MAX_SITES="${FILTER_MAX_SITES:-1200000}"
 SCANPY_FILTER_LABEL="${SCANPY_FILTER_LABEL:-scanpy0815gemxclean_v2}"
 SCANPY_KEEP_SCRIPT="${SCANPY_KEEP_SCRIPT:-${SCRIPT_DIR}/03a_build_scanpy_clean_cell_list.py}"
-VALID_THRESHOLDS=(10k 20k 30k 50k 300k)
+VALID_THRESHOLDS=(10k 20k 30k 50k 200k 300k)
 
 FILTER_MAX_METH_LABEL="${FILTER_MAX_METH:-none}"
 QC_TAG="minmeth${FILTER_MIN_METH}_maxmeth${FILTER_MAX_METH_LABEL}_maxsites${FILTER_MAX_SITES}_${SCANPY_FILTER_LABEL}"
@@ -35,7 +35,7 @@ STOP_AFTER_SMOOTH="${STOP_AFTER_SMOOTH:-0}"
 usage() {
     cat <<'EOF'
 Usage:
-  bash 03_run_upstream_pipeline.sh status [10k|20k|30k|50k|300k]
+  bash 03_run_upstream_pipeline.sh status [10k|20k|30k|50k|200k|300k]
   bash 03_run_upstream_pipeline.sh run <threshold> [max_jobs] [threads] [sample|all]
   bash 03_run_upstream_pipeline.sh run-to-compact <threshold> [max_jobs] [threads] [sample|all]
   bash 03_run_upstream_pipeline.sh run-to-smooth <threshold> [max_jobs] [threads] [sample|all]

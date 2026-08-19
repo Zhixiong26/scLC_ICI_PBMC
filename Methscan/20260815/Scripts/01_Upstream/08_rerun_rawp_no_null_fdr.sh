@@ -12,7 +12,7 @@
 #       第12列转为 NA；第11列 raw p 保持 MethSCAn 的原始计算值。
 #
 # 不修改 site-packages，不覆盖原始 results/、logs/ 或 markers/。
-# 输出：<sample>/.../methdiff_celltype_300k/rawp_fallback_no_null_dmrs/
+# 输出：<sample>/.../methdiff_celltype_${THRESHOLD}/rawp_fallback_no_null_dmrs/
 # ==============================================================================
 
 set -euo pipefail
