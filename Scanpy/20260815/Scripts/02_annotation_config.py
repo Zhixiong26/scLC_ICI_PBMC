@@ -6,22 +6,22 @@ from __future__ import annotations
 # ============================================================
 
 CLUSTER_TO_CELLTYPE = {                                                                 # 基于 GEM-X v4 重跑 marker 的 Leiden 映射
-    "0": "CD8_T_cells",                         # CCL5, NKG7, GZMH, CD2
-    "1": "NK_cells",                            # KLRF1, KLRD1, GNLY, PRF1
-    "2": "CD4_T_cells",                         # LEF1, IL7R, BACH2
-    "3": "Monocytes",                           # VCAN, FCN1, LYZ, S100A8
-    "4": "CD4_T_cells",                         # IL7R, LEF1, BCL2, RORA
-    "5": "Monocytes",                           # VCAN, LYZ, CLEC7A, FCN1
-    "6": "Monocytes",                           # LST1, LYZ, CTSS, SLC8A1
-    "7": "T_cells_unresolved",                 # LEF1, SKAP1, BCL11B, CD28
-    "8": "B_cells",                             # MS4A1, CD79A, BANK1, CD74
-    "9": "Gamma_delta_T_cells",                # TRDV2, TRGV9, TRDC, KLRD1
-    "10": "HLAII_high_APCs",                   # HLA-DRA, CD74, CIITA
-    "11": "Monocytes",                          # VCAN, LYZ, CTSS, CYBB
-    "12": "Cycling_cells",                      # MKI67, STMN1, CENPF, EZH2
-    "13": "Plasma_cells",                       # MZB1, JCHAIN, TXNDC5
-    "14": "pDCs",                               # TCF4, IRF8, BCL11A, RHEX
-    "15": "Platelet_erythroid_contamination",  # PPBP, TUBB1, SLC40A1, STOM
+    "0": "CD8_T_cells",                # CCL5, NKG7, GZMH, GZMA, CD2, THEMIS；高置信度
+    "1": "NK_cells",                   # KLRF1, KLRD1, GNLY, NKG7, GZMB, PRF1, KLRC2/3；很高
+    "2": "T_cells_unresolved",         # LEF1, IL7R, BACH2, FOXP1, CAMK4；naive T 倾向，中高
+    "3": "Monocytes",                  # VCAN, FCN1, LYZ, S100A8, CTSS, CD36；classical/FCN1+ 倾向，很高
+    "4": "CD4_T_cells",                # IL7R, RORA, BCL2, THEMIS, CAMK4；IL7R+ memory/helper 倾向，高
+    "5": "Monocytes",                  # VCAN, LYZ, FCN1, CD36, CLEC7A；很高
+    "6": "Monocytes",                  # LST1, AIF1, MS4A7, CTSS, SERPINA1, CYBB；MS4A7+/mature 倾向，很高
+    "7": "T_cells_unresolved",         # LEF1, CD28, ITK, BCL11B, SKAP1, ETS1；naive T 倾向，高
+    "8": "B_cells",                    # MS4A1, CD79A, CD74, PAX5, EBF1, FCRL1；很高
+    "9": "Gamma_delta_T_cells",       # TRDV2, TRGV9, TRDC, NKG7, CCL5；极高
+    "10": "HLAII_high_APCs",          # HLA-DRA/B, CD74, CIITA, HLA-DP/DQ, CST3；cDC 倾向，高
+    "11": "Monocytes",                 # LYZ, VCAN, CTSS, LYN, CYBB, SLC8A1；很高
+    "12": "Cycling_cells",             # MKI67, STMN1, RRM2, CENPF, SMC4；极高
+    "13": "Plasma_cells",              # MZB1, JCHAIN, ELL2, POU2AF1, TXNDC5；极高
+    "14": "pDCs",                      # TCF4, IRF8, BCL11A, GZMB-related pDC program；高
+    "15": "Platelets_Megakaryocytes", # PPBP, TUBB1, SLC40A1, TRIM58, CAVIN2；极高
 }
 
 
@@ -30,7 +30,7 @@ CLUSTER_TO_CELLTYPE = {                                                         
 # ============================================================
 
 EXCLUDE_CELL_TYPES = {                                                                  # 定义不进入主分析的污染细胞类型
-    "Platelet_erythroid_contamination",
+    "Platelets_Megakaryocytes",
 }
 
 
@@ -181,7 +181,7 @@ MARKER_GENES = {                                                                
         "RRM2",
     ],
 
-    "Platelet_erythroid_contamination": [
+    "Platelets_Megakaryocytes": [
         "PPBP",
         "PF4",
         "TUBB1",

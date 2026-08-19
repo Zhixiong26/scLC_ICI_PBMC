@@ -175,24 +175,24 @@ cluster 15: NCOA4 SLC40A1 STOM MOB1B PRKAR2B TRIM58 GPX1 SNCA CAVIN2 TSC22D1 MPP
 
 ### 6.2 当前 cluster → cell type 映射
 
-| Cluster | 注释 |
-|---:|---|
-| 0 | CD8_T_cells |
-| 1 | NK_cells |
-| 2 | CD4_T_cells |
-| 3 | Monocytes |
-| 4 | CD4_T_cells |
-| 5 | Monocytes |
-| 6 | Monocytes |
-| 7 | T_cells_unresolved |
-| 8 | B_cells |
-| 9 | Gamma_delta_T_cells |
-| 10 | HLAII_high_APCs |
-| 11 | Monocytes |
-| 12 | Cycling_cells |
-| 13 | Plasma_cells |
-| 14 | pDCs |
-| 15 | Platelet_erythroid_contamination |
+| Cluster | 注释 | 亚型倾向/备注 | 置信度 |
+|---:|---|---|---|
+| 0 | CD8_T_cells | — | 高 |
+| 1 | NK_cells | — | 很高 |
+| 2 | T_cells_unresolved | naive T 倾向 | 中高 |
+| 3 | Monocytes | classical/FCN1+ 倾向 | 很高 |
+| 4 | CD4_T_cells | IL7R+ memory/helper 倾向 | 高 |
+| 5 | Monocytes | — | 很高 |
+| 6 | Monocytes | MS4A7+/mature 倾向 | 很高 |
+| 7 | T_cells_unresolved | naive T 倾向 | 高 |
+| 8 | B_cells | — | 很高 |
+| 9 | Gamma_delta_T_cells | — | 极高 |
+| 10 | HLAII_high_APCs | cDC 倾向 | 高 |
+| 11 | Monocytes | — | 很高 |
+| 12 | Cycling_cells | — | 极高 |
+| 13 | Plasma_cells | — | 极高 |
+| 14 | pDCs | — | 高 |
+| 15 | Platelets_Megakaryocytes | 从主分析排除 | 极高 |
 
 ## 7. 复现与审计文件
 

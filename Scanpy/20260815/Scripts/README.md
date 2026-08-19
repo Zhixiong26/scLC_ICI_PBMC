@@ -61,8 +61,8 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 ## 注释与绘图参数
 
 - `02_annotation_config.py` 是 Leiden cluster → cell type 映射、marker genes 和绘图样式的唯一权威配置。
-- 当前映射覆盖 cluster `0–20`。
-- 当前主分析排除 `Platelet_erythroid_contamination`。
+- 当前映射覆盖 cluster `0–15`。
+- 当前主分析排除 `Platelets_Megakaryocytes`。
 - 图片分辨率 `FIGURE_DPI=300`，UMAP 图例位于 `right margin`，dotplot 使用 `Reds` 和 `(16, 7)` 尺寸。
 - 每次人工调整 cluster 映射或 marker 后，必须在下方变更表中记录。
 
@@ -88,6 +88,7 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 | 2026-08-18 | `e67e607` | 新增 `Report.md`，记录版本差异、逐样本过滤结果、降维参数和 PCA/marker gene 提取方法 | Markdown 内容审计、结果总数核对 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `bb3f70d` | 将本次 16 个 Leiden cluster 的 Top 20 marker genes 原样补入 `Report.md`，并区分 cluster marker 与 PCA component genes | marker 日志逐项核对 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `e86d9c4` | 按 GEM-X v4 新的 16 个 Leiden clusters 更新 `02_annotation_config.py` 的 cluster 注释映射 | Python 语法检查、marker 对照、cluster 覆盖检查 | GitHub 已提交，服务器待 `git pull` |
+| 2026-08-19 | 本次提交 | 按 marker 复核表修订 0–15 注释：cluster 2 改为 `T_cells_unresolved`，cluster 15 改为 `Platelets_Megakaryocytes`，并记录亚型倾向与置信度 | Python 语法、cluster 覆盖、排除类型与 Markdown 表格检查 | 待 GitHub 推送，服务器待 `git pull` |
 
 以后每次修改服务器脚本、QC、cluster 映射或 marker 时，必须追加：
 
