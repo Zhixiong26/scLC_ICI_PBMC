@@ -10,21 +10,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/00_workflow_common.sh"
 
 run_one() (
-    set -uo pipefail
-
 COV_DIR="${1:-}"
 OUTPUT_DIR="${2:-}"
 PARALLEL_JOBS="${3:-8}"
 
-die() {
-    echo "ERROR: $*" >&2
-    exit 1
-}
-
 [[ -n "$COV_DIR" ]] || die "cov_dir is required"
 [[ -n "$OUTPUT_DIR" ]] || die "output_dir is required"
 [[ -d "$COV_DIR" ]] || die "cov directory not found: $COV_DIR"
-[[ "$PARALLEL_JOBS" =~ ^[1-9][0-9]*$ ]] || die "parallel_jobs must be a positive integer"
+is_positive_integer "$PARALLEL_JOBS" || die "parallel_jobs must be a positive integer"
 
 mkdir -p "$OUTPUT_DIR"
 WORK_DIR="$(mktemp -d /tmp/check_cov_duplicates.XXXXXX)" || die "failed to create temporary directory"
@@ -32,11 +25,13 @@ trap 'rm -rf "$WORK_DIR"' EXIT
 
 check_one_cov() {
     local cov_file="$1"
-    local result_file="$2"
+    local result_dir="$2"
+    local result_file="$result_dir/$(basename "$cov_file").tsv"
     local stats
 
     set -o pipefail
-    if stats="$({ gzip -cd -- "$cov_file" || exit $?; } | awk -F '\t' '
+    if stats="$(gzip -cd -- "$cov_file" | awk -F '\t' '
+        # 审计口径有意包含 chrM；04 DMR 的 primary 为 chr1-22,X,Y（不含 M）
         function is_primary_chrom(chrom) {
             return chrom ~ /^chr([1-9]|1[0-9]|2[0-2]|X|Y|M)$/
         }
@@ -141,10 +136,7 @@ shopt -u nullglob
 echo "Checking ${#COV_FILES[@]} cov files with $PARALLEL_JOBS parallel workers"
 printf '%s\0' "${COV_FILES[@]}" |
     xargs -0 -n 1 -P "$PARALLEL_JOBS" bash -c '
-        result_dir="$1"
-        input_file="$2"
-        result_name="$(basename "$input_file").tsv"
-        check_one_cov "$input_file" "$result_dir/$result_name"
+        check_one_cov "$2" "$1"
     ' _ "$WORK_DIR"
 
 PER_FILE_REPORT="$OUTPUT_DIR/per_file_duplicate_summary.tsv"
@@ -155,9 +147,9 @@ printf 'file\tstatus\ttotal_rows\tinvalid_column_rows\tduplicate_loci\tduplicate
 shopt -s nullglob
 RESULT_FILES=("$WORK_DIR"/*.tsv)
 shopt -u nullglob
-for result_file in "${RESULT_FILES[@]}"; do
-    cat "$result_file" >>"$PER_FILE_REPORT"
-done
+if [[ "${#RESULT_FILES[@]}" -gt 0 ]]; then
+    cat "${RESULT_FILES[@]}" >>"$PER_FILE_REPORT"
+fi
 
 awk -F '\t' '
     NR == 1 { next }
