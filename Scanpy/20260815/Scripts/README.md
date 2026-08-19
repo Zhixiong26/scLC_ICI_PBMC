@@ -115,6 +115,8 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 | 2026-08-19 | `7bef6b2` | raw counts/ID 硬校验；QC 改为使用完整原始基因集；`min_cells=3` 改为合并后全局执行并新增审计表；新样本 GEM-X doublet rate 动态计算；未知样本分组改为报错；兼容旧 Scrublet API；Leiden counts 按数值排序；删除冗余 log1p layer | Python 语法、函数边界、字段引用和 diff 检查 | GitHub 已推送，服务器待 `git pull` |
 | 2026-08-19 | `a1c4998` | 按 20260819 新的 17 个 Leiden clusters 更新 0–16 映射；cluster 2 定为 `Naive_CD4_T_cells`，新增 Treg、MAIT 和 cDC 类型；不设 cluster-level 排除 | Python 语法、cluster 覆盖、marker 与 Markdown 检查 | GitHub 已推送，服务器待 `git pull` |
 | 2026-08-19 | `4a79636` | UMAP `min_dist` 由 `0.5` 改为 `0.3`（Harmony 前后两次 UMAP 均生效）；仅改变 UMAP 布局，不影响邻居图与 Leiden 聚类，cluster 映射无需调整 | 参数逐项核对（PCA 30/arpack、neighbors 30、UMAP min_dist 0.3/spread 1.0、Leiden 0.8 与脚本调用一致） | GitHub 已推送（SSH），服务器待 `git pull` |
+| 2026-08-19 | `e1f366f` | 整合参数调整试验：`n_neighbors` 由 `30` 改为 `20`（`n_pcs=30`、`min_dist=0.3` 保持） | 参数逐项核对 | GitHub 已提交；同日被 `9aa4f13` 回滚 |
+| 2026-08-19 | `9aa4f13` | 回滚整合参数调整：恢复 `n_neighbors=30`、`min_dist=0.5`（原始流水线参数）；fc9fa38 服务器重跑实际使用该参数 | 参数逐项核对 | 已部署 |
 | 2026-08-19 | `fd36bd5` | 终端打印的 Leiden marker 由 Top 20 改为 Top 50（仅影响运行日志；`01_leiden_top_markers.csv` 仍写全基因排序，注释与下游结果不变） | Python 语法检查（`py_compile`） | GitHub 已推送，服务器待 `git pull` |
 | 2026-08-19 | `fc9fa38` | 服务器完整重跑（05→06→07，git pull 至 fc9fa38）：10 样本 Scrublet/QC、合并 55,280 细胞 × 32,162 基因、17 Leiden clusters、14 种细胞类型，clean = 全部 55,280（本轮无 cluster-level 排除）；Top-50 marker 终端打印生效 | 与 `Report.md` 2.3/6.1/6.3 数字逐项核对一致 | 已部署 |
 | 2026-08-19 | `5466b4b` | DC 注释改名：cluster 11 `HLAII_high_APCs` → `cDC2`、cluster 15 `pDCs` → `pDC`、cluster 16 `cDCs` → `cDC1`；仅改类型名，marker 与 cluster 映射不变，需重跑 06/07 生效 | Python 语法检查（`py_compile`）、旧名全仓库引用审计（无残留） | GitHub 已提交，服务器待 `git pull` |

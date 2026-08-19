@@ -13,7 +13,7 @@
 | 20260819 全局 gene QC 修正版 | `7bef6b2` | 样本特异，新样本动态计算 | 55,280 | 32,162 | 17 |
 | 20260819 全流程最终重跑 | `fc9fa38` | 样本特异，新样本动态计算 | 55,280 | 32,162 | 17 |
 
-`fc9fa38` 为当前服务器 HEAD：`7bef6b2`（QC 修正）+ `a1c4998`（17-cluster 注释）+ `4a79636`（UMAP `min_dist=0.3`）+ `fd36bd5`（终端 Top-50 marker 日志）。逐样本数字与 `7bef6b2` 行相同（聚类划分未变），本次重跑仅改变 UMAP 布局与注释映射。
+`fc9fa38` 为当前服务器 HEAD。`4a79636`（UMAP `min_dist=0.3`）与 `e1f366f`（`n_neighbors=20`）的参数调整已被 `9aa4f13` 完整回滚（恢复 `min_dist=0.5`、`n_neighbors=30`），实际生效的是 `a1c4998`（17-cluster 注释）+ `fd36bd5`（终端 Top-50 marker 日志）。逐样本数字与 `7bef6b2` 行相同（聚类划分与 UMAP 参数均未变），本次重跑仅改变注释映射与终端日志。
 
 `20260810` 为归档流程，参数记录见第 5 节；仓库中没有该归档版本对应的完整 QC 输出，因此不虚构其逐样本细胞数。
 
@@ -111,10 +111,10 @@
 | Scale | `max_value=10` |
 | PCA | `n_comps=30`，`svd_solver='arpack'`，`random_state=0` |
 | PCA 前 neighbors | `n_neighbors=30`，`n_pcs=30` |
-| PCA 前 UMAP | `min_dist=0.3`，`spread=1.0`，`random_state=0` |
+| PCA 前 UMAP | `min_dist=0.5`，`spread=1.0`，`random_state=0` |
 | Harmony | `key='sample'`，`basis='X_pca'`，输出 `X_pca_harmony` |
 | Harmony 后 neighbors | `n_neighbors=30`，`use_rep='X_pca_harmony'` |
-| Harmony 后 UMAP | `min_dist=0.3`，`spread=1.0`，`random_state=0` |
+| Harmony 后 UMAP | `min_dist=0.5`，`spread=1.0`，`random_state=0` |
 | Leiden | `resolution=0.8`，`random_state=0`，输出 `leiden_integrated` |
 | Marker | `rank_genes_groups(method='wilcoxon', use_raw=True)` |
 
