@@ -18,10 +18,13 @@ os.environ.setdefault("NUMBA_NUM_THREADS", "1")
 os.environ.setdefault("LOKY_MAX_CPU_COUNT", "1")
 
 import anndata as ad
+import harmonypy  # noqa: F401
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import scanpy as sc
 import scanpy.external as sce
+from scipy import sparse
 
 
 # ============================================================
@@ -43,6 +46,7 @@ OUTPUT_H5AD = OUTPUT_DIR / "01_integrated_base.h5ad"
 OUTPUT_MARKERS = OUTPUT_DIR / "01_leiden_top_markers.csv"
 OUTPUT_COUNTS = OUTPUT_DIR / "01_leiden_cluster_counts.csv"
 OUTPUT_QC = OUTPUT_DIR / "01_sample_qc_summary.csv"
+OUTPUT_GENE_QC = OUTPUT_DIR / "01_global_gene_filter_summary.csv"
 OUTPUT_DOUBLET_CALLS = OUTPUT_DIR / "01_doublet_calls.csv"
 
 
@@ -76,8 +80,8 @@ MIN_CELLS_PER_GENE = 3
 
 # Scrublet
 # GEM-X Single Cell 3' v4: approximately 0.4% per 1,000 recovered cells.
-# This fallback applies only to future samples not listed below.
-DEFAULT_EXPECTED_DOUBLET_RATE = 0.004
+# Future samples not listed below are calculated dynamically from n_obs.
+GEMX_DOUBLET_RATE_PER_1000_CELLS = 0.004
 SIM_DOUBLET_RATIO = 2.0
 SCRUBLET_N_PCS = 30
 
@@ -125,13 +129,67 @@ def get_sample_path(sample: str) -> Path:
     return MATRIX_ROOT / sample / f"{sample}_raw.h5ad"
 
 
-def get_expected_doublet_rate(sample_name: str) -> float:
-    return float(
-        EXPECTED_DOUBLET_RATES.get(
-            sample_name,
-            DEFAULT_EXPECTED_DOUBLET_RATE,
+def get_expected_doublet_rate(
+    sample_name: str,
+    recovered_cells: int,
+) -> float:
+    if recovered_cells <= 0:
+        raise ValueError(
+            f"样本 {sample_name} 的 recovered cell 数必须大于 0。"
         )
+
+    rate = EXPECTED_DOUBLET_RATES.get(sample_name)
+    if rate is None:
+        rate = (
+            GEMX_DOUBLET_RATE_PER_1000_CELLS
+            * recovered_cells
+            / 1000
+        )
+
+    rate = float(rate)
+    if not 0 < rate < 1:
+        raise ValueError(
+            f"样本 {sample_name} 的 expected doublet rate 非法：{rate}"
+        )
+    return rate
+
+
+def get_sample_group(sample_name: str) -> str:
+    if sample_name.startswith("IR"):
+        return "IR"
+    if sample_name.startswith("NR"):
+        return "NR"
+    raise ValueError(
+        f"无法从样本名 {sample_name!r} 识别 IR/NR 分组。"
     )
+
+
+def validate_raw_counts(
+    adata: ad.AnnData,
+    sample_name: str,
+) -> None:
+    """确认 counts 层为有限、非负的整数原始计数。"""
+    matrix = adata.layers["counts"]
+    values = matrix.data if sparse.issparse(matrix) else np.asarray(matrix)
+
+    if not np.issubdtype(values.dtype, np.number):
+        raise TypeError(
+            f"样本 {sample_name} 的 counts 不是数值类型：{values.dtype}"
+        )
+    if not np.isfinite(values).all():
+        raise ValueError(
+            f"样本 {sample_name} 的 counts 包含 NaN 或无穷值。"
+        )
+    if (values < 0).any():
+        raise ValueError(
+            f"样本 {sample_name} 的 counts 包含负值。"
+        )
+    if not np.issubdtype(values.dtype, np.integer):
+        if not np.equal(values, np.floor(values)).all():
+            raise ValueError(
+                f"样本 {sample_name} 的 counts 包含非整数，"
+                "输入可能已经归一化或 log 转换。"
+            )
 
 
 def reset_to_raw_counts(adata: ad.AnnData) -> None:
@@ -187,7 +245,6 @@ def run_scrublet(
         "expected_doublet_rate": expected_doublet_rate,
         "sim_doublet_ratio": SIM_DOUBLET_RATIO,
         "n_prin_comps": SCRUBLET_N_PCS,
-        "verbose": True,
     }
 
     parameters = inspect.signature(scrublet_fn).parameters
@@ -196,6 +253,11 @@ def run_scrublet(
         kwargs["rng"] = RANDOM_STATE
     elif "random_state" in parameters:
         kwargs["random_state"] = RANDOM_STATE
+
+    # 旧版 scanpy.external.pp.scrublet 没有 verbose 参数，
+    # 无条件传入会抛 TypeError，因此按签名探测后再添加。
+    if "verbose" in parameters:
+        kwargs["verbose"] = True
 
     scrublet_fn(
         adata,
@@ -321,8 +383,40 @@ def process_sample(
             f"输入文件不存在：{input_h5ad}"
         )
 
+    # --------------------------------------------------------
+    # 读取 raw counts
+    # --------------------------------------------------------
+
+    adata = sc.read_h5ad(input_h5ad)
+
+    if not adata.obs_names.is_unique:
+        raise ValueError(
+            f"样本 {sample_name} 的原始 cell ID 不唯一。"
+        )
+    if not adata.var_names.is_unique:
+        raise ValueError(
+            f"样本 {sample_name} 的 gene ID 不唯一。"
+        )
+
+    clear_previous_analysis(adata)
+    reset_to_raw_counts(adata)
+    validate_raw_counts(adata, sample_name)
+
+    # 保证不同样本 barcode 全局唯一
+    adata.obs_names = [
+        f"{sample_name}_{cell_id}"
+        for cell_id in adata.obs_names
+    ]
+
+    adata.obs["sample"] = sample_name
+    adata.obs["batch"] = sample_name
+    adata.obs["group"] = get_sample_group(sample_name)
+
+    n_cells_input = adata.n_obs
+    n_genes_input = adata.n_vars
     expected_doublet_rate = get_expected_doublet_rate(
-        sample_name
+        sample_name,
+        n_cells_input,
     )
 
     print(
@@ -338,41 +432,6 @@ def process_sample(
     print(
         "============================================================"
     )
-
-    # --------------------------------------------------------
-    # 读取 raw counts
-    # --------------------------------------------------------
-
-    adata = sc.read_h5ad(input_h5ad)
-
-    clear_previous_analysis(adata)
-    reset_to_raw_counts(adata)
-
-    # 保证不同样本 barcode 全局唯一
-    adata.obs_names = [
-        f"{sample_name}_{cell_id}"
-        for cell_id in adata.obs_names
-    ]
-
-    adata.obs["sample"] = sample_name
-    adata.obs["batch"] = sample_name
-    adata.obs["group"] = (
-        "IR" if sample_name.startswith("IR") else "NR"
-    )
-
-    n_cells_input = adata.n_obs
-    n_genes_input = adata.n_vars
-
-    # --------------------------------------------------------
-    # 仅先过滤几乎不表达的基因
-    # --------------------------------------------------------
-
-    sc.pp.filter_genes(
-        adata,
-        min_cells=MIN_CELLS_PER_GENE,
-    )
-
-    n_genes_after_gene_filter = adata.n_vars
 
     # --------------------------------------------------------
     # 计算 QC 指标
@@ -541,7 +600,7 @@ def process_sample(
 
         "n_cells_input": n_cells_input,
         "n_genes_input": n_genes_input,
-        "n_genes_after_gene_filter": n_genes_after_gene_filter,
+        "n_genes_used_for_raw_qc": n_genes_input,
         "n_cells_scrublet_eligible": int(scrublet_mask.sum()),
         "n_cells_scrublet_ineligible": int((~scrublet_mask).sum()),
 
@@ -648,14 +707,50 @@ print(
 
 adata = ad.concat(
     adatas,
-    # Keep genes retained in at least one sample. An inner join here would
-    # require every gene to pass min_cells in all ten samples and could remove
-    # sample- or group-specific marker genes.
+    # Keep the union of input gene IDs. The global min_cells filter is applied
+    # only after concatenation so dispersed sample/group-specific genes are not
+    # removed independently within each sample.
     join="outer",
     merge="same",
     uns_merge=None,
     index_unique=None,
     fill_value=0,
+)
+
+n_genes_before_global_filter = adata.n_vars
+sc.pp.filter_genes(
+    adata,
+    min_cells=MIN_CELLS_PER_GENE,
+)
+n_genes_after_global_filter = adata.n_vars
+
+if n_genes_after_global_filter == 0:
+    raise ValueError(
+        "合并后执行全局基因过滤后没有保留任何基因。"
+    )
+
+print(
+    "Global gene filter: "
+    f"{n_genes_before_global_filter} -> "
+    f"{n_genes_after_global_filter} genes "
+    f"(min_cells={MIN_CELLS_PER_GENE})"
+)
+
+pd.DataFrame(
+    [
+        {
+            "min_cells": MIN_CELLS_PER_GENE,
+            "n_genes_before": n_genes_before_global_filter,
+            "n_genes_after": n_genes_after_global_filter,
+            "n_genes_removed": (
+                n_genes_before_global_filter
+                - n_genes_after_global_filter
+            ),
+        }
+    ]
+).to_csv(
+    OUTPUT_GENE_QC,
+    index=False,
 )
 
 if not adata.obs_names.is_unique:
@@ -693,8 +788,8 @@ adata.uns["doublet_detection"] = {
     "api": ", ".join(sorted(scrublet_apis)),
     "applied_per_sample": True,
     "input_matrix": "raw_counts",
-    "default_expected_doublet_rate":
-        DEFAULT_EXPECTED_DOUBLET_RATE,
+    "fallback_rate_per_1000_recovered_cells":
+        GEMX_DOUBLET_RATE_PER_1000_CELLS,
     "sample_specific_expected_rates":
         EXPECTED_DOUBLET_RATES.copy(),
     "sim_doublet_ratio": SIM_DOUBLET_RATIO,
@@ -705,6 +800,12 @@ adata.uns["doublet_detection"] = {
         int(row["n_predicted_doublets"])
         for row in qc_summary
     ),
+}
+
+adata.uns["global_gene_filter"] = {
+    "min_cells": MIN_CELLS_PER_GENE,
+    "n_genes_before": n_genes_before_global_filter,
+    "n_genes_after": n_genes_after_global_filter,
 }
 
 print(
@@ -736,10 +837,6 @@ sc.pp.log1p(adata)
 # 保存完整基因的 log-normalized expression，
 # 后续 marker gene 检测使用 raw。
 adata.raw = adata
-
-adata.layers["log1p_uncorrected"] = (
-    adata.X.copy()
-)
 
 
 # ============================================================
@@ -813,8 +910,6 @@ adata.obsm["X_umap_before_harmony"] = (
 # 13. Harmony
 # ============================================================
 
-import harmonypy  # noqa: F401
-
 adata.uns["integration_parameters"] = {
     "method": "harmony",
     "batch_key": "sample",
@@ -844,8 +939,8 @@ adata.uns["integration_parameters"] = {
     "doublet_method":
         "Scrublet",
 
-    "doublet_default_expected_rate":
-        DEFAULT_EXPECTED_DOUBLET_RATE,
+    "doublet_fallback_rate_per_1000_cells":
+        GEMX_DOUBLET_RATE_PER_1000_CELLS,
 
     "doublet_threshold":
         "automatic_per_sample",
@@ -913,9 +1008,18 @@ marker_names.to_csv(
 cluster_counts = (
     adata.obs["leiden_integrated"]
     .value_counts()
-    .sort_index()
     .rename_axis("leiden_integrated")
     .reset_index(name="cell_count")
+)
+
+# leiden 簇标签是 "0","1",...,"10" 这样的整数字符串，
+# 直接按字符串排序会把 "10" 排在 "2" 前面，
+# 因此先转成整数再排序。
+cluster_counts = (
+    cluster_counts
+    .astype({"leiden_integrated": int})
+    .sort_values("leiden_integrated")
+    .reset_index(drop=True)
 )
 
 cluster_counts.to_csv(
@@ -984,6 +1088,11 @@ print(
 print(
     f"Saved sample QC summary:    "
     f"{OUTPUT_QC}"
+)
+
+print(
+    f"Saved global gene QC:       "
+    f"{OUTPUT_GENE_QC}"
 )
 
 print(

@@ -54,10 +54,12 @@
 对每个样本，当前脚本按以下顺序记录：
 
 1. 输入 raw counts，记录 `n_cells_input` 和 `n_genes_input`。
-2. 基因过滤：保留至少在 3 个细胞中表达的基因，记录 `n_genes_after_gene_filter`。
+2. 在不预先删除低频基因的完整 raw-count 矩阵上计算 `n_genes_by_counts`、`total_counts` 和 `pct_counts_mt`，记录 `n_genes_used_for_raw_qc`。
 3. Scrublet：在至少检测到 3 个基因的细胞子集上运行；记录 `n_cells_scrublet_eligible`、`n_cells_scrublet_ineligible`、doublet score、自动 threshold 和预测 doublet。
 4. 细胞 QC：保留 `200 ≤ n_genes_by_counts ≤ 6000` 且 `pct_counts_mt < 5%` 的细胞。
-5. 过滤后的细胞进入多样本合并；完整逐细胞审计见 `01_doublet_calls.csv`。
+5. 过滤后的细胞进入多样本 outer join，再在合并矩阵上全局保留至少在 3 个细胞中表达的基因；完整逐细胞审计见 `01_doublet_calls.csv`。
+
+全局基因过滤前后的基因数单独写入 `01_global_gene_filter_summary.csv`。上表的 GEM-X v4 细胞数与 cluster 数来自此次修正前的已完成运行；新 QC 顺序可能改变临界细胞、HVG 和聚类，需在服务器重跑后追加新版本结果，不覆盖旧记录。
 
 ## 3. GEM-X v4 expected doublet rate
 
@@ -76,7 +78,7 @@
 | NR04 | 7,057 | 0.028 |
 | NR05 | 2,183 | 0.009 |
 
-未列出的新样本使用默认值 `DEFAULT_EXPECTED_DOUBLET_RATE = 0.004`。
+未列出的新样本不再固定使用 0.004，而是按实际 recovered-cell 数动态计算：`0.004 × n_cells / 1000`。当前 10 个样本仍使用表中的单独覆盖值。
 
 ## 4. 降维、整合与聚类参数
 
@@ -204,6 +206,7 @@ bash Scanpy/20260815/Scripts/05_run_integration.sh
 主要审计文件：
 
 - `Results/integration/01_sample_qc_summary.csv`：样本级输入、Scrublet eligibility、doublet、QC 和最终保留数。
+- `Results/integration/01_global_gene_filter_summary.csv`：合并后全局 `min_cells=3` 的基因过滤前后计数。
 - `Results/integration/01_doublet_calls.csv`：逐细胞 QC/doublet 判定。
 - `Results/integration/scrublet_qc/`：每个样本的 Scrublet score histogram。
 - `Results/integration/01_integrated_base.h5ad`：counts、normalized expression、PCA、Harmony、UMAP、Leiden 和 marker 结果。

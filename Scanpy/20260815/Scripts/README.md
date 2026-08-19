@@ -46,8 +46,8 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 | 细胞 QC | `MIN_GENES_PER_CELL` | `200` |
 | 细胞 QC | `MAX_GENES_PER_CELL` | `6000` |
 | 细胞 QC | `MAX_PCT_COUNTS_MT` | `<5.0%` |
-| 基因 QC | `MIN_CELLS_PER_GENE` | `3` |
-| Scrublet | expected doublet rate / simulated ratio / PCs | 样本覆盖率见 `01_integration.py`；默认 `0.004` / `2.0` / `30` |
+| 基因 QC | `MIN_CELLS_PER_GENE` | `3`（样本合并后全局执行） |
+| Scrublet | expected doublet rate / simulated ratio / PCs | 已列样本使用覆盖值；新样本按 `0.004 × n_cells / 1000`；`2.0` / `30` |
 | HVG | `N_TOP_GENES` | `2000` |
 | PCA | `N_PCS` | `30` |
 | 邻居图 | `N_NEIGHBORS` | `30` |
@@ -70,6 +70,7 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 
 - `integration/01_integrated_base.h5ad`：Scrublet singlet、Harmony、UMAP 和 Leiden 结果。
 - `integration/01_sample_qc_summary.csv` 和 `01_doublet_calls.csv`：QC/doublet 审计。
+- `integration/01_global_gene_filter_summary.csv`：合并后全局基因过滤审计。
 - `integration/01_leiden_top_markers.csv`：人工注释依据。
 - `../Report.md`：版本、逐样本过滤、降维参数和 PCA/marker 提取说明。
 - `annotation/02_cell_annotation_all_cells.csv`：Methscan 和 MethylVI 使用的全细胞注释。
@@ -89,6 +90,7 @@ bash Scanpy/20260815/Scripts/07_run_export_figures.sh
 | 2026-08-18 | `bb3f70d` | 将本次 16 个 Leiden cluster 的 Top 20 marker genes 原样补入 `Report.md`，并区分 cluster marker 与 PCA component genes | marker 日志逐项核对 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-18 | `e86d9c4` | 按 GEM-X v4 新的 16 个 Leiden clusters 更新 `02_annotation_config.py` 的 cluster 注释映射 | Python 语法检查、marker 对照、cluster 覆盖检查 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-19 | 本次提交 | 按 marker 复核表修订 0–15 注释：cluster 2 改为 `T_cells_unresolved`，cluster 15 改为 `Platelets_Megakaryocytes`，并记录亚型倾向与置信度 | Python 语法、cluster 覆盖、排除类型与 Markdown 表格检查 | 待 GitHub 推送，服务器待 `git pull` |
+| 2026-08-19 | 本次提交 | raw counts/ID 硬校验；QC 改为使用完整原始基因集；`min_cells=3` 改为合并后全局执行并新增审计表；新样本 GEM-X doublet rate 动态计算；未知样本分组改为报错；兼容旧 Scrublet API；Leiden counts 按数值排序；删除冗余 log1p layer | Python 语法、函数边界、字段引用和 diff 检查 | 待 GitHub 推送，服务器待 `git pull` |
 
 以后每次修改服务器脚本、QC、cluster 映射或 marker 时，必须追加：
 
