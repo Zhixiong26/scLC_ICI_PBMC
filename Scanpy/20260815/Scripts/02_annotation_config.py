@@ -38,166 +38,20 @@ EXCLUDE_CELL_TYPES: set[str] = set()                                            
 # ============================================================
 
 MARKER_GENES = {                                                                        # 定义人工注释复核和 dotplot 使用的 markers
-    "CD4_T_cells": [
-        "CD3D",
-        "CD3E",
-        "CD4",
-        "IL7R",
-        "LEF1",
-    ],
-
-    "CD8_T_cells": [
-        "CD3D",
-        "CD3E",
-        "CD8A",
-        "CD8B",
-        "CCL5",
-        "NKG7",
-        "GZMA",
-        "GZMH",
-    ],
-
-    "Naive_CD4_T_cells": [
-        "CD3D",
-        "CD3E",
-        "CD4",
-        "CCR7",
-        "SELL",
-        "LEF1",
-        "TCF7",
-        "BACH2",
-        "IL7R",
-    ],
-
-    "Treg_cells": [
-        "CD3D",
-        "CD4",
-        "IL2RA",
-        "FOXP3",
-        "CTLA4",
-        "IKZF2",
-    ],
-
-    "Gamma_delta_T_cells": [
-        "TRDC",
-        "TRGV9",
-        "TRDV2",
-        "NKG7",
-        "GNLY",
-        "CCL5",
-    ],
-
-    "MAIT_cells": [
-        "SLC4A10",
-        "KLRB1",
-        "RORA",
-        "IL18RAP",
-        "GZMK",
-        "DPP4",
-    ],
-
-    "NK_cells": [
-        "KLRF1",
-        "KLRD1",
-        "GNLY",
-        "NKG7",
-        "PRF1",
-    ],
-
-    "Monocytes": [
-        "LYZ",
-        "CD14",
-        "S100A8",
-        "S100A9",
-        "VCAN",
-        "FCN1",
-        "FCGR3A",
-        "MS4A7",
-        "LST1",
-        "IFITM3",
-        "COTL1",
-        "AIF1",
-        "LILRB1",
-        "CTSS",
-    ],
-
-    "cDC2": [
-        "HLA-DRA",
-        "HLA-DRB1",
-        "HLA-DPA1",
-        "HLA-DPB1",
-        "CD74",
-        "CIITA",
-        "LYZ",
-        "CST3",
-    ],
-
-    "B_cells": [
-        "MS4A1",
-        "CD79A",
-        "BANK1",
-        "CD74",
-        "HLA-DRA",
-    ],
-
-    "B_cells_unresolved": [
-        "MS4A1",
-        "BANK1",
-        "EBF1",
-        "FCRL1",
-        "BLK",
-        "CD74",
-    ],
-
-    "Plasma_cells": [
-        "MZB1",
-        "JCHAIN",
-        "TXNDC5",
-        "POU2AF1",
-    ],
-
-    "pDC": [
-        "TCF4",
-        "IRF8",
-        "BCL11A",
-        "RHEX",
-        "GZMB",
-        "JCHAIN",
-    ],
-
-    "cDC1": [
-        "FLT3",
-        "CD74",
-        "HLA-DRA",
-        "HLA-DPA1",
-        "HLA-DPB1",
-        "IRF8",
-        "CADM1",
-        "ZNF366",
-        "CPNE3",
-    ],
-
-    "Cycling_cells": [
-        "MKI67",
-        "STMN1",
-        "HMGB2",
-        "RRM2",
-    ],
-
-    "Platelets_Megakaryocytes": [
-        "PPBP",
-        "PF4",
-        "TUBB1",
-        "GP9",
-        "NRGN",
-        "RGS18",
-        "HBA1",
-        "HBA2",
-        "HBB",
-        "ALAS2",
-        "SLC40A1",
-        "TRIM58",
-    ],
+    "Monocytes": ["LYZ", "FCN1", "S100A8", "CTSS"],
+    "pDC": ["CLEC4C", "GZMB", "TCF4", "IL3RA"],
+    "cDC1": ["CLEC9A", "XCR1", "CADM1", "WDFY4"],
+    "cDC2": ["CD1C", "FCER1A", "CLEC10A", "GPR183"],
+    "B_cells": ["MS4A1", "CD79A", "CD19", "CD37"],
+    "Plasma_cells": ["MZB1", "JCHAIN", "XBP1", "TNFRSF17"],
+    "MAIT_cells": ["TRAV1-2", "SLC4A10", "KLRB1", "ZBTB16"],
+    "Treg_cells": ["FOXP3", "IL2RA", "CTLA4", "IKZF2"],
+    "CD4_T_cells": ["CD3D", "CD4", "IL7R", "LTB"],
+    "Naive_CD4_T_cells": ["CCR7", "SELL", "TCF7", "LEF1"],
+    "Cycling_cells": ["MKI67", "TOP2A", "STMN1", "CENPF"],
+    "CD8_T_cells": ["CD3D", "CD8A", "CD8B", "CCL5"],
+    "Gamma_delta_T_cells": ["TRDC", "TRGC1", "TRGV9", "TRDV2"],
+    "NK_cells": ["NKG7", "GNLY", "KLRD1", "KLRF1"],
 }
 
 
