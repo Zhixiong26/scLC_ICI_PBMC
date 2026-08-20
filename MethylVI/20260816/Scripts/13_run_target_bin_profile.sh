@@ -6,8 +6,9 @@ set -euo pipefail
 # prepare 仅生成该变体的 MCDS（profile 参数占位，不影响结果）。
 # 每个变体对应一个 Methscan QC 标签（threshold × max_sites），输出目录按
 # VARIANT_SUFFIX + profile 完全隔离，可并行。HYP_PERCENT/EXPECTED_BINS 为
-# 占位值（4,998-cell 旧数据），各自 MCDS 生成后必须用 14_compute_hypo_percent.py
-# 重算并更新下方默认值，否则 validate_bins 硬检查会报错。
+# 各变体 MCDS 生成后由 14_compute_hypo_percent.py 实测的重算值（见下方
+# VARIANT 配置块），换细胞白名单或目标 bins 时必须重算，否则
+# validate_bins 硬检查会报错。
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 VARIANT=${1:-}
@@ -23,6 +24,9 @@ case "$VARIANT" in
     MVI_FILTER_MAX_SITES=1200000
     MVI_EXPECTED_CELLS=5014
     VARIANT_SUFFIX=blacklist_f0p2_scanpy0815gemxclean_v2_300k_1200k
+    # 14 实测（5014 细胞）：T=49→99410 / T=111→49738
+    HYP_100K=0.977264662; BINS_100K=99410
+    HYP_50K=2.213802356;  BINS_50K=49738
     ;;
   v2)
     # min≥200k max≤1200k（MVI_EXPECTED_CELLS=12400 服务器实测）
@@ -32,6 +36,9 @@ case "$VARIANT" in
     MVI_FILTER_MAX_SITES=1200000
     MVI_EXPECTED_CELLS=12400
     VARIANT_SUFFIX=blacklist_f0p2_scanpy0815gemxclean_v2_200k_1200k
+    # 14 实测（12400 细胞）：T=89→99028 / T=199→49862
+    HYP_100K=0.717742935; BINS_100K=99028
+    HYP_50K=1.604839710;  BINS_50K=49862
     ;;
   v3)
     # min≥300k max≤1000k（MVI_EXPECTED_CELLS=4936 服务器实测）
@@ -41,6 +48,9 @@ case "$VARIANT" in
     MVI_FILTER_MAX_SITES=1000000
     MVI_EXPECTED_CELLS=4936
     VARIANT_SUFFIX=blacklist_f0p2_scanpy0815gemxclean_v2_300k_1000k
+    # 14 实测（4936 细胞）：T=47→99834 / T=107→49659
+    HYP_100K=0.952189006; BINS_100K=99834
+    HYP_50K=2.167748164;  BINS_50K=49659
     ;;
   v4)
     # min≥200k max≤1000k（MVI_EXPECTED_CELLS=12322 服务器实测）
@@ -50,6 +60,9 @@ case "$VARIANT" in
     MVI_FILTER_MAX_SITES=1000000
     MVI_EXPECTED_CELLS=12322
     VARIANT_SUFFIX=blacklist_f0p2_scanpy0815gemxclean_v2_200k_1000k
+    # 14 实测（12322 细胞）：T=87→99213 / T=195→49842
+    HYP_100K=0.706055212; BINS_100K=99213
+    HYP_50K=1.582536303;  BINS_50K=49842
     ;;
   *)
     echo "Usage: bash 13_run_target_bin_profile.sh {v1|v2|v3|v4} {100k|50k} {blacklist|downstream|refresh-labels|full}" >&2
@@ -59,15 +72,13 @@ esac
 
 case "$PROFILE" in
   100k)
-    # TODO 各变体 MCDS 生成后重算：bash 14_compute_hypo_percent.py --target-bins 100000 --target-bins 50000
-    HYP_PERCENT=0.980392157
-    EXPECTED_BINS=99109
+    # 各变体 14 实测值见上方 VARIANT 配置块
+    HYP_PERCENT="$HYP_100K"
+    EXPECTED_BINS="$BINS_100K"
     ;;
   50k)
-    # 110 / 4998 * 100 = 2.200880352140856；取略高值，确保
-    # ALLCools 的严格大于比较排除 nonzero_cells == 110 的 bins。
-    HYP_PERCENT=2.200880372
-    EXPECTED_BINS=49935
+    HYP_PERCENT="$HYP_50K"
+    EXPECTED_BINS="$BINS_50K"
     ;;
   *)
     echo "Usage: bash 13_run_target_bin_profile.sh {v1|v2|v3|v4} {100k|50k} {blacklist|downstream|refresh-labels|full}" >&2
