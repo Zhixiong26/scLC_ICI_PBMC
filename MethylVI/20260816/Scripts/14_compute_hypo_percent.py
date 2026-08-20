@@ -39,6 +39,12 @@ os.environ["PATH"] = (
 )
 
 import numpy as np
+import dask
+
+# 14 只做阈值统计，串行加载即可：登录节点 nproc 限制下 dask 默认
+# threaded 调度器按 CPU 核数建线程池会抛 "can't start new thread"。
+dask.config.set(scheduler="synchronous")
+
 from ALLCools.clustering import binarize_matrix
 from ALLCools.mcds import MCDS
 
