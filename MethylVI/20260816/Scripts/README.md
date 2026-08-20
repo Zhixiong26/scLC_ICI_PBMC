@@ -22,6 +22,13 @@
 
 blacklist、hg38 chromosome sizes 和 10 样本元数据位于 `MethylVI/20260816/Supplementary_materials/`。
 
+## 服务器git更新指令
+```bash
+cd /share/home/rzli/scLC_ICI_PBMC
+git -c http.version=HTTP/1.1 pull --ff-only origin main
+git rev-parse --short HEAD
+```
+
 ## 统一入口与阶段
 
 ```bash
@@ -175,6 +182,7 @@ ALLCools 保留满足 `n_nonzero > threshold` 的 bins。如果把 boundary 截�
 | 2026-08-20 | `47ba883` | 修正 13 `prepare` 输出路径：之前继承带 `_<profile>` 后缀的 `MVI_ALLCOOLS_OUTPUT`，变体 MCDS 落到了 `..._300k_1200k_100k/` 而非预期的 `..._300k_1200k/`，且 02 会连带用占位 `HYP_PERCENT` 做 blacklist/聚类；`prepare` 现覆盖 `MVI_ALLCOOLS_OUTPUT` 为不带 profile 的 `VARIANT_SUFFIX` 目录并设 `MVI_MCDS_ONLY=1`，`02_prepare_allcools.sh` 新增 `MVI_MCDS_ONLY` 开关在 `generate-dataset` 完成后提前退出（不产生占位聚类结果） | `bash -n` 两脚本；`MVI_MCDS_ONLY=1` 退出点在 MCDS 生成块之后、cluster 块之前的静态核对 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-20 | `9c77e84` | `14_compute_hypo_percent.py` 在导入 numpy 前固定数学库单线程（`OMP`/`MKL`/`OPENBLAS`/`NUMEXPR_NUM_THREADS=1`，与 02/09 一致）：登录节点 `RLIMIT_NPROC 400/420` 下 OpenBLAS 初始化 128 线程失败导致 numpy 导入段错误 | `py_compile`；线程环境变量在 import numpy 之前设置的静态核对 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-20 | `1ccfd16` | `14_compute_hypo_percent.py` 在 import 前把 allcools 环境 bin 加入 `PATH`（`MVI_ALLCOOLS_ENV` 优先，默认 `/share/home/rzli/miniconda3/envs/allcools`，与 02/09 的 `export PATH` 一致）：独立运行时 pybedtools 找不到 `intersectBed` 导致 `remove_black_list_region` 抛 `NotImplementedError` | `py_compile`；PATH 设置在 import ALLCools 之前的静态核对 | GitHub 已提交，服务器待 `git pull` |
+| 2026-08-20 | `12dfefe` | `14_compute_hypo_percent.py` 改用 dask 同步调度器（`dask.config.set(scheduler="synchronous")`）：`get_score_adata` 加载 chunk 时 dask 默认 threaded 调度器按 CPU 核数建线程池，登录节点 nproc 限制下抛 `RuntimeError: can't start new thread`；14 只做每 bin 非零细胞数统计，串行加载足够 | `py_compile`；scheduler 设置在 ALLCools import 前的静态核对 | GitHub 已提交，服务器待 `git pull` |
 
 以后每次修改服务器脚本或参数，必须追加：
 
