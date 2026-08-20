@@ -19,6 +19,12 @@ import hashlib
 import os
 from pathlib import Path
 
+# 与 02/09 脚本一致：数学库固定单线程，避免登录节点 nproc 限制下
+# OpenBLAS 初始化 128 线程失败导致 numpy 导入段错误。
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 os.environ.setdefault("MPLBACKEND", "Agg")
 
 import numpy as np
