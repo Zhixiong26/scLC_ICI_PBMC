@@ -142,7 +142,11 @@ echo "[$VARIANT/$PROFILE/$ACTION] qc_tag=$MVI_QC_TAG threshold=$MVI_FILTER_THRES
 
 case "$ACTION" in
   prepare)
-    # 仅生成变体 MCDS；profile 参数与 HYPO_PERCENT 在此阶段无关
+    # 生成变体基础 MCDS 到不带 profile 的目录（methylvi_5kb_300k_<VARIANT_SUFFIX>），
+    # 与 MVI_SOURCE_MCDS 一致；profile 只影响后续 bins 过滤，与 MCDS 无关。
+    # MVI_MCDS_ONLY=1 使 02 只生成 MCDS，跳过占位 HYP_PERCENT 的 blacklist/聚类。
+    export MVI_ALLCOOLS_OUTPUT="${DATA_ROOT}/methylvi_5kb_300k_${VARIANT_SUFFIX}"
+    export MVI_MCDS_ONLY=1
     bash "$HERE/09_run_pipeline.sh" prepare
     ;;
   blacklist) run_blacklist ;;

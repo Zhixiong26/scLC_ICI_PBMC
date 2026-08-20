@@ -451,6 +451,14 @@ else
     echo "[$(date)] existing completed MCDS detected; skipping generation"
 fi
 
+# 只生成 MCDS、跳过 blacklist 过滤与聚类。供 13 变体 prepare 使用：
+# MCDS 只依赖细胞白名单，与目标 bins 无关；HYPO_PERCENT 需先用
+# 14_compute_hypo_percent.py 重算，再由 blacklist 阶段按目标 bins 过滤。
+if [[ "${MVI_MCDS_ONLY:-0}" == 1 ]]; then
+    echo "[$(date)] MVI_MCDS_ONLY=1; MCDS generation completed, skipping blacklist/clustering"
+    exit 0
+fi
+
 cluster_args=(
     --mcds "$MCDS"
     --output "$OUTPUT"
