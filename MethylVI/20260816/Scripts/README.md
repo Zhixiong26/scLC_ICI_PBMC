@@ -137,14 +137,25 @@ MVI_HYPO_PERCENT = boundary + 1e-6
 
 ALLCools 保留满足 `n_nonzero > threshold` 的 bins。如果把 boundary 截断到过少小数，实际值可能略低于整数阈值，从而错误保留 `n_nonzero == threshold` 的 bins。
 
+4 个变体（scanpy0815gemxclean_v2 标签）的 14 实测结果（已写入 `13_run_target_bin_profile.sh` 各变体配置块；换细胞白名单或目标 bins 必须重算）：
+
+| 变体 | 细胞数 | 目标 bins | 阈值 | 实际保留 bins | `MVI_HYPO_PERCENT` |
+|---|---|---|---|---|---|
+| v1 (300k/1200k) | 5,014 | 100,000 | `>49` | 99,410 | `0.977264662` |
+| v1 (300k/1200k) | 5,014 | 50,000 | `>111` | 49,738 | `2.213802356` |
+| v2 (200k/1200k) | 12,400 | 100,000 | `>89` | 99,028 | `0.717742935` |
+| v2 (200k/1200k) | 12,400 | 50,000 | `>199` | 49,862 | `1.604839710` |
+| v3 (300k/1000k) | 4,936 | 100,000 | `>47` | 99,834 | `0.952189006` |
+| v3 (300k/1000k) | 4,936 | 50,000 | `>107` | 49,659 | `2.167748164` |
+| v4 (200k/1000k) | 12,322 | 100,000 | `>87` | 99,213 | `0.706055212` |
+| v4 (200k/1000k) | 12,322 | 50,000 | `>195` | 49,842 | `1.582536303` |
+
 4,998-cell（scanpy0815gemxclean 标签）旧版数据的计算结果（仅作历史参考，不得用于当前数据）：
 
 | 目标最终 bins | 阈值 | 实际保留 bins | `MVI_HYPO_PERCENT` |
 |---:|---:|---:|---:|
 | 100,000 | `>49` | 99,109 | `0.980392157` |
 | 50,000 | `>110` | 49,935 | `2.200880372` |
-
-4 个变体（scanpy0815gemxclean_v2 标签，5,014/12,400/4,936/12,322 细胞）数据的计算结果：**待重算**（每个变体的 `prepare` 完成后按上述步骤在其 MCDS 上重新计算，100k/50k 各一个，共 8 组，并同步更新 `13_run_target_bin_profile.sh` 各变体的 `HYP_PERCENT`/`EXPECTED_BINS`）。每次计算应同时记录细胞数、blacklist 后 bins、阈值、实际最终 bins 和对应 `MVI_HYPO_PERCENT`。
 
 ## 输出约定
 
@@ -183,6 +194,7 @@ ALLCools 保留满足 `n_nonzero > threshold` 的 bins。如果把 boundary 截�
 | 2026-08-20 | `9c77e84` | `14_compute_hypo_percent.py` 在导入 numpy 前固定数学库单线程（`OMP`/`MKL`/`OPENBLAS`/`NUMEXPR_NUM_THREADS=1`，与 02/09 一致）：登录节点 `RLIMIT_NPROC 400/420` 下 OpenBLAS 初始化 128 线程失败导致 numpy 导入段错误 | `py_compile`；线程环境变量在 import numpy 之前设置的静态核对 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-20 | `1ccfd16` | `14_compute_hypo_percent.py` 在 import 前把 allcools 环境 bin 加入 `PATH`（`MVI_ALLCOOLS_ENV` 优先，默认 `/share/home/rzli/miniconda3/envs/allcools`，与 02/09 的 `export PATH` 一致）：独立运行时 pybedtools 找不到 `intersectBed` 导致 `remove_black_list_region` 抛 `NotImplementedError` | `py_compile`；PATH 设置在 import ALLCools 之前的静态核对 | GitHub 已提交，服务器待 `git pull` |
 | 2026-08-20 | `12dfefe` | `14_compute_hypo_percent.py` 改用 dask 同步调度器（`dask.config.set(scheduler="synchronous")`）：`get_score_adata` 加载 chunk 时 dask 默认 threaded 调度器按 CPU 核数建线程池，登录节点 nproc 限制下抛 `RuntimeError: can't start new thread`；14 只做每 bin 非零细胞数统计，串行加载足够 | `py_compile`；scheduler 设置在 ALLCools import 前的静态核对 | GitHub 已提交，服务器待 `git pull` |
+| 2026-08-20 | `b264cb6` | `13_run_target_bin_profile.sh` 按变体写入 14 实测的 `HYP_PERCENT`/`EXPECTED_BINS`（各变体 MCDS 的 14 重算：v1 5,014→`>49`/99,410 与 `>111`/49,738；v2 12,400→`>89`/99,028 与 `>199`/49,862；v3 4,936→`>47`/99,834 与 `>107`/49,659；v4 12,322→`>87`/99,213 与 `>195`/49,842），移除 4,998-cell 占位值；PROFILE case 改为引用各变体配置 | `bash -n`；8 组值与 14 实测输出逐组核对、`hypo_percent_recomputed.json` 对照 | GitHub 已提交，服务器待 `git pull` |
 
 以后每次修改服务器脚本或参数，必须追加：
 
