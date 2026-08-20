@@ -27,6 +27,17 @@ os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 os.environ.setdefault("MPLBACKEND", "Agg")
 
+# pybedtools 需要 bedtools 可执行文件：把 allcools 环境 bin 加进 PATH
+#（与 02/09 脚本的 export PATH 一致；MVI_ALLCOOLS_ENV 优先）。
+_allcools_env = os.environ.get(
+    "MVI_ALLCOOLS_ENV", "/share/home/rzli/miniconda3/envs/allcools"
+)
+os.environ["PATH"] = (
+    os.path.join(_allcools_env, "bin")
+    + os.pathsep
+    + os.environ.get("PATH", "")
+)
+
 import numpy as np
 from ALLCools.clustering import binarize_matrix
 from ALLCools.mcds import MCDS
