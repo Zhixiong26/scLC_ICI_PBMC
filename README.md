@@ -250,6 +250,7 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
     │   │   ├── 01_doubletfinder.R
     │   │   ├── 01_integration.py
     │   │   ├── 01_run_integration.sh
+    │   │   ├── 01_submit_doublet_variants.sh
     │   │   ├── 02_annotation.py
     │   │   ├── 02_annotation_config.py
     │   │   ├── 02_run_annotation.sh

@@ -40,7 +40,8 @@ MATRIX_ROOT = Path(os.environ.get("SCLC_MATRIX_ROOT", "/share/LCZX_Data/data/mat
 OUTPUT_DIR = RESULTS_DIR / "integration"
 SCRUBLET_QC_DIR = OUTPUT_DIR / "scrublet_qc"
 DOUBLET_FINDER_QC_DIR = OUTPUT_DIR / "doubletfinder_qc"
-for _d in (OUTPUT_DIR, SCRUBLET_QC_DIR, DOUBLET_FINDER_QC_DIR):
+DOUBLET_LIST_DIR = OUTPUT_DIR / "doublet_cell_lists"
+for _d in (OUTPUT_DIR, SCRUBLET_QC_DIR, DOUBLET_FINDER_QC_DIR, DOUBLET_LIST_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 DOUBLET_FINDER_SCRIPT = Path(
@@ -90,9 +91,11 @@ DOUBLET_FINDER_PN = 0.25
 DOUBLET_FINDER_HOMOTYPIC_ADJUSTMENT = True
 
 # 联合判定策略：consensus 仅删两法都阳性；union 任一阳性即删（更激进）；
-# scrublet 仅按 Scrublet 删除；none 只标注不删除。
+# scrublet/doubletfinder 仅按对应单一方法删除；none 只标注不删除。
 DOUBLET_FILTER_MODE = os.environ.get("SCLC_DOUBLET_FILTER_MODE", "consensus").lower()
-VALID_DOUBLET_FILTER_MODES = {"consensus", "union", "scrublet", "none"}
+VALID_DOUBLET_FILTER_MODES = {
+    "none", "scrublet", "doubletfinder", "consensus", "union",
+}
 if DOUBLET_FILTER_MODE not in VALID_DOUBLET_FILTER_MODES:
     raise ValueError(
         "SCLC_DOUBLET_FILTER_MODE 必须是以下之一："
@@ -390,6 +393,8 @@ def assign_doublet_consensus(adata: ad.AnnData) -> None:
         remove = (tested & (s | d)).to_numpy()
     elif DOUBLET_FILTER_MODE == "scrublet":
         remove = s.to_numpy()
+    elif DOUBLET_FILTER_MODE == "doubletfinder":
+        remove = (tested & d).to_numpy()
     else:  # none
         remove = np.zeros(adata.n_obs, dtype=bool)
     adata.obs["remove_as_doublet"] = remove
@@ -513,6 +518,75 @@ def build_doublet_call_table(adata: ad.AnnData, sample_name: str) -> pd.DataFram
     df.insert(1, "sample", sample_name)
     df.insert(2, "group", adata.obs["group"].astype(str).to_numpy())
     return df
+
+
+def export_doublet_cell_lists(calls: pd.DataFrame) -> None:
+    """导出四个互斥 doublet 状态、任一方法异常并集和未检测名单。"""
+    status_labels = {
+        "both_negative": "两种方法均正常",
+        "scrublet_only": "仅Scrublet异常",
+        "doubletfinder_only": "仅DoubletFinder异常",
+        "both_positive": "两种方法均异常",
+        "not_tested": "未检测",
+    }
+    file_names = {
+        "both_negative": "01_doublet_both_normal.csv",
+        "scrublet_only": "01_doublet_scrublet_only_abnormal.csv",
+        "doubletfinder_only": "01_doublet_doubletfinder_only_abnormal.csv",
+        "both_positive": "01_doublet_both_abnormal.csv",
+        "not_tested": "01_doublet_not_tested.csv",
+    }
+    status_order = list(status_labels)
+    unknown = set(calls["doublet_consensus"].dropna().astype(str)) - set(status_order)
+    if unknown:
+        raise ValueError(f"发现未知 doublet_consensus 类别：{sorted(unknown)}")
+
+    annotated = calls.copy()
+    annotated["doublet_status_code"] = annotated["doublet_consensus"].astype(str)
+    annotated["doublet_status_zh"] = annotated["doublet_status_code"].map(status_labels)
+    leading_columns = [
+        "cell_id", "sample", "group", "doublet_status_code", "doublet_status_zh",
+    ]
+    remaining_columns = [
+        column for column in annotated.columns if column not in leading_columns
+    ]
+    output_columns = leading_columns + remaining_columns
+    annotated[output_columns].to_csv(
+        DOUBLET_LIST_DIR / "01_doublet_status_all_cells.csv", index=False,
+        encoding="utf-8-sig",
+    )
+
+    for status, file_name in file_names.items():
+        annotated.loc[
+            annotated["doublet_status_code"].eq(status), output_columns,
+        ].to_csv(DOUBLET_LIST_DIR / file_name, index=False, encoding="utf-8-sig")
+
+    abnormal_statuses = ["scrublet_only", "doubletfinder_only", "both_positive"]
+    any_abnormal = annotated.loc[
+        annotated["doublet_status_code"].isin(abnormal_statuses), output_columns,
+    ]
+    any_abnormal.to_csv(
+        DOUBLET_LIST_DIR / "01_doublet_any_method_abnormal.csv", index=False,
+        encoding="utf-8-sig",
+    )
+
+    summary = pd.crosstab(
+        annotated["sample"], annotated["doublet_status_code"],
+    ).reindex(columns=status_order, fill_value=0)
+    summary.loc["ALL"] = summary.sum(axis=0)
+    summary.rename(columns=status_labels).to_csv(
+        DOUBLET_LIST_DIR / "01_doublet_status_summary.csv", encoding="utf-8-sig",
+    )
+
+    any_summary = pd.crosstab(
+        any_abnormal["sample"], any_abnormal["doublet_status_code"],
+    ).reindex(columns=abnormal_statuses, fill_value=0)
+    any_summary["any_method_abnormal"] = any_summary.sum(axis=1)
+    any_summary.loc["ALL"] = any_summary.sum(axis=0)
+    any_summary.rename(columns=status_labels).to_csv(
+        DOUBLET_LIST_DIR / "01_doublet_any_method_abnormal_summary.csv",
+        encoding="utf-8-sig",
+    )
 
 
 def apply_final_qc(
@@ -639,9 +713,12 @@ for sample in SAMPLES:
     scrublet_apis.add(scrublet_api)
 
 pd.DataFrame(qc_summary).to_csv(OUTPUT_QC, index=False)
-pd.concat(doublet_calls, ignore_index=True).to_csv(OUTPUT_DOUBLET_CALLS, index=False)
+doublet_call_table = pd.concat(doublet_calls, ignore_index=True)
+doublet_call_table.to_csv(OUTPUT_DOUBLET_CALLS, index=False)
+export_doublet_cell_lists(doublet_call_table)
 print(f"\nSaved QC summary: {OUTPUT_QC}")
 print(f"Saved doublet calls: {OUTPUT_DOUBLET_CALLS}")
+print(f"Saved doublet cell lists: {DOUBLET_LIST_DIR}")
 
 
 # ============================================================
@@ -837,6 +914,7 @@ saved_outputs = [
     ("Saved doublet calls:        ", OUTPUT_DOUBLET_CALLS),
     ("Saved Scrublet QC figures:  ", SCRUBLET_QC_DIR),
     ("Saved DoubletFinder QC:      ", DOUBLET_FINDER_QC_DIR),
+    ("Saved doublet cell lists:    ", DOUBLET_LIST_DIR),
 ]
 for label, output_path in saved_outputs:
     print(f"{label}{output_path}")

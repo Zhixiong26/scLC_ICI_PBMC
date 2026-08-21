@@ -22,7 +22,10 @@ Leiden `flavor="leidenalg"` 以消除版本警告，不改变本次结果，无�
 
 ## 2. 逐样本过滤结果
 
-下面各表记录已部署的历史单 Scrublet 运行：“输入”是日志中的 `n_cells_input`，“Scrublet doublets”是预测为 doublet 的细胞数，“最终保留”是通过 doublet、基因数和线粒体比例联合 QC 后进入整合的细胞数。低基因、高基因和高线粒体三类计数可能重叠，不能简单相加。联合检测版部署后应新增一节记录两种算法、consensus 分层和最终删除数，不能覆盖这些历史表。
+第 2.1–2.3 节保留已部署的历史单 Scrublet 运行：“输入”是日志中的
+`n_cells_input`，“Scrublet doublets”是预测为 doublet 的细胞数，“最终保留”是通过
+doublet、基因数和线粒体比例联合 QC 后进入整合的细胞数。低基因、高基因和高线粒体计数
+可能重叠，不能简单相加。第 2.4 节单独记录已完成的联合检测结果，不覆盖历史表。
 
 ### 2.1 20260815 初始运行（全样本 expected rate = 0.05）
 
@@ -95,7 +98,24 @@ Leiden `flavor="leidenalg"` 以消除版本警告，不改变本次结果，无�
 主分析仅删除两法均异常的 537 个细胞。未进入共同待检集合的细胞单独标记为
 `not_tested`，不归入“两法均正常”。
 
-### 2.5 每一步过滤的定义
+### 2.5 五个完整 doublet 过滤版本
+
+五个版本从相同 raw counts 开始，均重新执行 cell QC、基因过滤、HVG、PCA、Harmony、
+UMAP、Leiden 和 marker 排名。不同版本仅在 doublet 删除规则上不同：
+
+| 版本 | `SCLC_DOUBLET_FILTER_MODE` | 删除集合 | 最终 doublet 状态 |
+|---|---|---|---|
+| 不过滤 doublet | `none` | 空集 | 保留四个已检测状态；常规 cell QC 仍生效 |
+| Scrublet 过滤 | `scrublet` | `scrublet_only ∪ both_positive` | 保留 `both_negative` 和 `doubletfinder_only` |
+| DoubletFinder 过滤 | `doubletfinder` | `doubletfinder_only ∪ both_positive` | 保留 `both_negative` 和 `scrublet_only` |
+| 两法共识过滤 | `consensus` | `both_positive` | 保留 `both_negative` 与两个单方法异常状态 |
+| 任一方法过滤 | `union` | `scrublet_only ∪ doubletfinder_only ∪ both_positive` | 只保留 `both_negative` |
+
+输出分别写入 `Results/doublet_versions/{none,scrublet,doubletfinder,consensus,union}/`，
+不覆盖已部署的 `Results/integration/` 共识版结果。五个版本的 Leiden cluster 编号和数量
+可能不同，必须分别复核 marker 后才能执行注释与导图。
+
+### 2.6 每一步过滤的定义
 
 当前本地联合检测脚本按以下顺序处理每个样本：
 
@@ -300,3 +320,5 @@ bash Scanpy/20260815/Scripts/03_run_export_figures.sh
 - `Results/integration/doubletfinder_qc/`：每个样本的 pK sweep 表和图片。
 - `Results/integration/01_integrated_base.h5ad`：counts、normalized expression、PCA、Harmony、UMAP、Leiden 和 marker 结果。
 - `Results/integration/01_leiden_top_markers.csv`：每个 cluster 的 marker 排名。
+- `Results/doublet_versions/{mode}/integration/`：五个完整 doublet 过滤版本的隔离整合输出。
+- `Scanpy/20260815/Logs/doublet_versions/`：五个 dsub 作业的 stdout/stderr 日志。
