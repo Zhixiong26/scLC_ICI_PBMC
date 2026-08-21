@@ -29,15 +29,14 @@ OUTPUT_COUNTS_BY_SAMPLE = OUTPUT_DIR / "02_cell_type_counts_by_sample.csv"
 OUTPUT_PROPORTIONS_BY_SAMPLE = OUTPUT_DIR / "02_cell_type_proportions_by_sample.csv"
 
 CONFIG_PATH = Path(os.environ.get(
-    "SCLC_ANNOTATION_CONFIG", SCRIPT_DIR / "02_annotation_config.py",
+    "SCLC_ANNOTATION_CONFIG", "",
 ))
-DOUBLET_VARIANT = os.environ.get("SCLC_DOUBLET_VARIANT", "").lower()
+DOUBLET_METHOD = os.environ.get("SCLC_DOUBLET_METHOD", "").lower()
 STATUS_LABELS = {False: "Keep", True: "Exclude"}
 ANNOTATION_COLUMNS = [
     "cell_id", "sample", "group", "batch",
-    "doublet_score", "predicted_doublet", "scrublet_predicted_doublet",
-    "doubletfinder_score", "doubletfinder_predicted_doublet", "doubletfinder_tested",
-    "doublet_consensus", "doublet_tier", "remove_as_doublet",
+    "doublet_method", "doublet_tested", "doublet_score",
+    "predicted_doublet", "doublet_status", "remove_as_doublet",
     "leiden_integrated", "cell_type_integrated",
     "exclude_from_main_analysis", "analysis_status",
 ]
@@ -50,6 +49,7 @@ annotation_config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(annotation_config)
 CLUSTER_TO_CELLTYPE = annotation_config.CLUSTER_TO_CELLTYPE
 EXCLUDE_CELL_TYPES = annotation_config.EXCLUDE_CELL_TYPES
+CONFIG_DOUBLET_METHOD = annotation_config.DOUBLET_METHOD
 
 
 # ============================================================
@@ -59,7 +59,7 @@ EXCLUDE_CELL_TYPES = annotation_config.EXCLUDE_CELL_TYPES
 if not INPUT_H5AD.exists():
     raise FileNotFoundError(
         f"基础整合文件不存在：{INPUT_H5AD}\n"
-        "请先运行 01_integration.py，或将已有整合 h5ad 复制到该位置。"
+        "请先运行 01_submit_doublet_methods.sh。"
     )
 print(f"Reading: {INPUT_H5AD}")
 adata = sc.read_h5ad(INPUT_H5AD)
@@ -68,34 +68,33 @@ if adata.n_obs == 0:
 if not adata.obs_names.is_unique:
     raise ValueError("基础整合对象的 cell ID 不唯一。")
 
-if DOUBLET_VARIANT:
-    valid_variants = {"none", "scrublet", "doubletfinder", "consensus", "union"}
-    if DOUBLET_VARIANT not in valid_variants:
-        raise ValueError(f"未知 doublet 版本：{DOUBLET_VARIANT!r}")
-    observed_variant = str(
-        adata.uns.get("integration_parameters", {}).get("doublet_filter_mode", "")
+if DOUBLET_METHOD not in {"scrublet", "doubletfinder"}:
+    raise ValueError("SCLC_DOUBLET_METHOD 必须为 scrublet 或 doubletfinder。")
+if CONFIG_DOUBLET_METHOD != DOUBLET_METHOD:
+    raise ValueError(
+        f"注释配置属于 {CONFIG_DOUBLET_METHOD!r}，"
+        f"不能用于 {DOUBLET_METHOD!r} 分支。"
     )
-    if observed_variant != DOUBLET_VARIANT:
-        raise ValueError(
-            f"输入 h5ad 的 doublet_filter_mode={observed_variant!r}，"
-            f"与要求的版本 {DOUBLET_VARIANT!r} 不一致。"
-        )
+observed_method = str(adata.uns.get("doublet_detection", {}).get("method", ""))
+if observed_method != DOUBLET_METHOD:
+    raise ValueError(
+        f"输入 h5ad 的 doublet method={observed_method!r}，"
+        f"与要求的方法 {DOUBLET_METHOD!r} 不一致。"
+    )
 
 missing_columns = {
     "leiden_integrated", "sample", "group",
-    "doublet_score", "predicted_doublet", "scrublet_predicted_doublet",
-    "doubletfinder_score", "doubletfinder_predicted_doublet", "doubletfinder_tested",
-    "doublet_consensus", "doublet_tier", "remove_as_doublet",
+    "doublet_method", "doublet_tested", "doublet_score",
+    "predicted_doublet", "doublet_status", "remove_as_doublet",
 } - set(adata.obs.columns)
 if missing_columns:
     raise KeyError(
         f"adata.obs 缺少必要字段：{sorted(missing_columns)}。"
-        "请重新运行包含 Scrublet + DoubletFinder 的 01_integration.py。"
+        "请重新运行当前单方法整合流程。"
     )
 
 boolean_columns = [
-    "predicted_doublet", "scrublet_predicted_doublet",
-    "doubletfinder_predicted_doublet", "doubletfinder_tested", "remove_as_doublet",
+    "doublet_tested", "predicted_doublet", "remove_as_doublet",
 ]
 invalid_boolean_columns = [
     column for column in boolean_columns
@@ -107,49 +106,20 @@ if invalid_boolean_columns:
         f"{invalid_boolean_columns}"
     )
 
-if not adata.obs["doubletfinder_tested"].all():
-    raise ValueError(
-        "整合对象包含未完成联合 doublet 检测的细胞；"
-        "通过最终 cell QC 的细胞应全部经过 Scrublet 和 DoubletFinder。"
-    )
+if not adata.obs["doublet_tested"].all():
+    raise ValueError("通过最终 QC 的细胞应全部经过当前 doublet 方法。")
 
-for score_column in ("doublet_score", "doubletfinder_score"):
-    scores = pd.to_numeric(adata.obs[score_column], errors="coerce")
-    if scores.isna().any() or not np.isfinite(scores.to_numpy()).all():
-        raise ValueError(f"adata.obs[{score_column!r}] 包含缺失值或非有限值。")
-
-scrublet_call = adata.obs["predicted_doublet"].to_numpy()
-if not np.array_equal(
-    scrublet_call, adata.obs["scrublet_predicted_doublet"].to_numpy()
-):
-    raise ValueError("predicted_doublet 与 scrublet_predicted_doublet 不一致。")
-
-doubletfinder_call = adata.obs["doubletfinder_predicted_doublet"].to_numpy()
-expected_consensus = np.select(
-    [scrublet_call & doubletfinder_call, scrublet_call & ~doubletfinder_call,
-     ~scrublet_call & doubletfinder_call],
-    ["both_positive", "scrublet_only", "doubletfinder_only"],
-    default="both_negative",
-)
-expected_tier = np.select(
-    [scrublet_call & doubletfinder_call, scrublet_call & ~doubletfinder_call,
-     ~scrublet_call & doubletfinder_call],
-    ["high_confidence_doublet", "scrublet_only_suspected_doublet",
-     "doubletfinder_only_suspected_doublet"],
-    default="singlet",
-)
-if not np.array_equal(
-    adata.obs["doublet_consensus"].astype(str).to_numpy(), expected_consensus
-):
-    raise ValueError("doublet_consensus 与两种算法的 call 不一致。")
-if not np.array_equal(
-    adata.obs["doublet_tier"].astype(str).to_numpy(), expected_tier
-):
-    raise ValueError("doublet_tier 与两种算法的 call 不一致。")
+scores = pd.to_numeric(adata.obs["doublet_score"], errors="coerce")
+if scores.isna().any() or not np.isfinite(scores.to_numpy()).all():
+    raise ValueError("adata.obs['doublet_score'] 包含缺失值或非有限值。")
+if not adata.obs["doublet_method"].astype(str).eq(DOUBLET_METHOD).all():
+    raise ValueError("adata.obs['doublet_method'] 与当前方法不一致。")
+if not adata.obs["doublet_status"].astype(str).eq("singlet").all():
+    raise ValueError("过滤后对象应只包含 singlet 状态。")
 
 if adata.obs["remove_as_doublet"].astype(bool).any():
     raise ValueError(
-        "整合对象仍包含 remove_as_doublet=True 的细胞，请先在 01_integration.py 中完成过滤。"
+        "整合对象仍包含 remove_as_doublet=True 的细胞。"
     )
 
 
@@ -230,7 +200,7 @@ df.loc[~df["exclude_from_main_analysis"], output_columns].to_csv(OUTPUT_CSV_CLEA
 clean_cell_count = int((~adata.obs["exclude_from_main_analysis"]).sum())
 adata.uns["annotation_metadata"] = {
     "config_file": str(CONFIG_PATH),
-    "doublet_variant": DOUBLET_VARIANT or "default",
+    "doublet_method": DOUBLET_METHOD,
     "excluded_cell_types": sorted(EXCLUDE_CELL_TYPES),
     "all_cell_count": int(adata.n_obs),
     "clean_cell_count": clean_cell_count,

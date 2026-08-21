@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# Per-sample DoubletFinder runner for 01_integration.py.
+# Per-sample DoubletFinder runner for 03_integration.py.
 # Input counts are genes x cells in Matrix Market format.
 
 args <- commandArgs(trailingOnly = TRUE)

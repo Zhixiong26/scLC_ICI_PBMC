@@ -21,7 +21,8 @@ OUTPUT_DIR = RESULTS_DIR / "figures"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 INPUT_H5AD = RESULTS_DIR / "annotation" / "02_annotated_final.h5ad"
-CONFIG_PATH = SCRIPT_DIR / "02_annotation_config.py"
+CONFIG_PATH = SCRIPT_DIR / "07_annotation_markers.py"
+DOUBLET_METHOD = os.environ.get("SCLC_DOUBLET_METHOD", "").lower()
 
 # 动态载入同目录配置（文件名以数字开头，不能直接 import）
 spec = importlib.util.spec_from_file_location("annotation_config", CONFIG_PATH)
@@ -40,13 +41,21 @@ DOTPLOT_FIGSIZE = annotation_config.DOTPLOT_FIGSIZE
 
 if not INPUT_H5AD.exists():
     raise FileNotFoundError(
-        f"最终注释 h5ad 不存在：{INPUT_H5AD}\n请先运行 02_annotation.py。"
+        f"最终注释 h5ad 不存在：{INPUT_H5AD}\n请先运行 10_submit_annotations.sh。"
     )
 adata = sc.read_h5ad(INPUT_H5AD)
 if adata.n_obs == 0:
     raise ValueError("最终注释对象不包含任何细胞。")
 if not adata.obs_names.is_unique:
     raise ValueError("最终注释对象的 cell ID 不唯一。")
+if DOUBLET_METHOD not in {"scrublet", "doubletfinder"}:
+    raise ValueError("SCLC_DOUBLET_METHOD 必须为 scrublet 或 doubletfinder。")
+observed_method = str(adata.uns.get("annotation_metadata", {}).get("doublet_method", ""))
+if observed_method != DOUBLET_METHOD:
+    raise ValueError(
+        f"注释 h5ad 属于 {observed_method!r}，"
+        f"与当前出图方法 {DOUBLET_METHOD!r} 不一致。"
+    )
 
 missing_columns = {
     "sample", "group", "leiden_integrated", "cell_type_integrated",

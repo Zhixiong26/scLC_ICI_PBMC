@@ -31,6 +31,13 @@ _SCLC_CONFIG_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 : "${SCLC_SCANPY_ROOT:=${SCLC_PROJECT_ROOT}/Scanpy/${SCLC_SCANPY_DATE}}"
 : "${SCLC_SCANPY_SCRIPTS:=${SCLC_SCANPY_ROOT}/Scripts}"
 : "${SCLC_SCANPY_RESULTS:=${SCLC_SCANPY_ROOT}/Results}"
+: "${SCLC_SCANPY_DOUBLET_METHODS:=${SCLC_SCANPY_RESULTS}/doublet_methods}"
+: "${SCLC_SCANPY_SCRUBLET_ANNOTATION:=${SCLC_SCANPY_DOUBLET_METHODS}/scrublet/annotation/02_cell_annotation_all_cells.csv}"
+: "${SCLC_SCANPY_SCRUBLET_CLEAN_ANNOTATION:=${SCLC_SCANPY_DOUBLET_METHODS}/scrublet/annotation/02_cell_annotation_clean_cells.csv}"
+: "${SCLC_SCANPY_DOUBTFINDER_ANNOTATION:=${SCLC_SCANPY_DOUBLET_METHODS}/doubletfinder/annotation/02_cell_annotation_all_cells.csv}"
+: "${SCLC_SCANPY_DOUBTFINDER_CLEAN_ANNOTATION:=${SCLC_SCANPY_DOUBLET_METHODS}/doubletfinder/annotation/02_cell_annotation_clean_cells.csv}"
+# Legacy single-result paths are retained so existing Methscan/MethylVI jobs do not
+# silently switch methods. New jobs should explicitly select one method above.
 : "${SCLC_SCANPY_ANNOTATION:=${SCLC_SCANPY_RESULTS}/annotation/02_cell_annotation_all_cells.csv}"
 : "${SCLC_SCANPY_CLEAN_ANNOTATION:=${SCLC_SCANPY_RESULTS}/annotation/02_cell_annotation_clean_cells.csv}"
 
@@ -41,6 +48,9 @@ export SCLC_METHSCAN_ROOT SCLC_METHSCAN_SCRIPTS SCLC_METHSCAN_RESULTS
 export SCLC_METHYLVI_ROOT SCLC_METHYLVI_SCRIPTS SCLC_METHYLVI_RESULTS
 export SCLC_METHYLVI_SUPPLEMENTARY
 export SCLC_SCANPY_ROOT SCLC_SCANPY_SCRIPTS SCLC_SCANPY_RESULTS
+export SCLC_SCANPY_DOUBLET_METHODS
+export SCLC_SCANPY_SCRUBLET_ANNOTATION SCLC_SCANPY_SCRUBLET_CLEAN_ANNOTATION
+export SCLC_SCANPY_DOUBTFINDER_ANNOTATION SCLC_SCANPY_DOUBTFINDER_CLEAN_ANNOTATION
 export SCLC_SCANPY_ANNOTATION SCLC_SCANPY_CLEAN_ANNOTATION
 
 unset _SCLC_CONFIG_DIR

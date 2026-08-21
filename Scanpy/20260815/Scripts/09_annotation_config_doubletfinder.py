@@ -1,4 +1,6 @@
-"""DoubletFinder-only filtering: cluster annotations from the marker audit."""
+"""DoubletFinder-only pipeline: provisional cluster annotations for manual review."""
+
+DOUBLET_METHOD = "doubletfinder"
 
 CLUSTER_TO_CELLTYPE = {
     "0": "CD8_T_cells",

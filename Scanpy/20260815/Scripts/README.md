@@ -1,239 +1,79 @@
-# Scanpy 20260815 脚本说明
+# Scanpy 双方法独立分析流程
 
-本文件记录 Scanpy 批次整合、人工注释和绘图流程的服务器路径、参数与变更历史。实际参数以 `01_integration.py`、`02_annotation_config.py` 和三个 Shell 入口为准。
+当前流程只保留两个完整分析分支：`scrublet` 和 `doubletfinder`。两个分支从原始 counts 独立开始，分别执行 doublet 检测与过滤，随后各自重新进行 QC、HVG、PCA、Harmony、neighbors、UMAP、Leiden、marker 分析、注释和出图。两个方法不共用聚类结果或 cluster 编号。
 
-Python 环境、必须包和版本核验命令见 [Supplementary materials 说明](../Supplementary_materials/README.md)。
+## 脚本顺序
 
-## 服务器路径
+所有可执行脚本都有唯一的两位数编号。
 
-| 项目 | 默认路径 |
-|---|---|
-| 仓库 | `/share/home/rzli/scLC_ICI_PBMC` |
-| 当前脚本 | `/share/home/rzli/scLC_ICI_PBMC/Scanpy/20260815/Scripts` |
-| 输入矩阵 | `/share/LCZX_Data/data/matrix` |
-| 整合结果 | `Scanpy/20260815/Results/integration` |
-| 五个 doublet 版本 | `Scanpy/20260815/Results/doublet_versions/{mode}` |
-| 注释结果 | `Scanpy/20260815/Results/annotation` |
-| 图片 | `Scanpy/20260815/Results/figures` |
-| Python | `/share/home/rzli/miniconda3/envs/scanpy310/bin/python` |
+| 编号 | 脚本 | 作用 |
+|---|---|---|
+| 00 | `00_config.sh` | 统一路径、Python 和线程参数 |
+| 01 | `01_submit_doublet_methods.sh` | dsub 提交两个独立整合作业 |
+| 02 | `02_run_integration.sh` | 单方法整合作业包装器 |
+| 03 | `03_integration.py` | QC、doublet 方法、HVG、PCA、Harmony、neighbors、UMAP、Leiden 和 markers |
+| 04 | `04_doubletfinder.R` | DoubletFinder R 实现，仅由 DoubletFinder 分支调用 |
+| 05 | `05_compare_doublet_methods.py` | 比较两方法细胞集合、规模和 cluster |
+| 06 | `06_review_doublet_method_markers.py` | 生成 marker panel 与 cluster crosswalk 审核表 |
+| 07 | `07_annotation_markers.py` | 共用 marker panel 和绘图样式 |
+| 08 | `08_annotation_config_scrublet.py` | Scrublet 分支独立 cluster 注释 |
+| 09 | `09_annotation_config_doubletfinder.py` | DoubletFinder 分支独立 cluster 注释 |
+| 10 | `10_submit_annotations.sh` | dsub 提交两个独立注释作业 |
+| 11 | `11_run_annotation.sh` | 单方法注释作业包装器 |
+| 12 | `12_annotation.py` | 校验 doublet 状态并应用方法特异注释 |
+| 13 | `13_submit_figures.sh` | dsub 提交两个独立出图作业 |
+| 14 | `14_run_export_figures.sh` | 单方法出图作业包装器 |
+| 15 | `15_export_figures.py` | 输出 UMAP、PCA、marker dotplot 和 clean-cell 图片 |
 
-路径由根目录 `project_config.sh` 和本目录 `00_config.sh` 统一派生，可通过 `SCLC_MATRIX_ROOT`、`SCLC_SCANPY_RESULTS` 或 `SCANPY_PYTHON` 覆盖。
-
-## 执行顺序
+## 服务器运行顺序
 
 ```bash
 cd /share/home/rzli/scLC_ICI_PBMC
-bash Scanpy/20260815/Scripts/01_run_integration.sh
-# 检查 Leiden marker 后，必要时修改 02_annotation_config.py
-bash Scanpy/20260815/Scripts/02_run_annotation.sh
-bash Scanpy/20260815/Scripts/03_run_export_figures.sh
-```
-
-需要比较五种 doublet 过滤策略时，使用 dsub 批量入口；五个作业的结果和日志完全隔离：
-
-```bash
-bash Scanpy/20260815/Scripts/01_submit_doublet_variants.sh
-# 五个作业完成后，验证集合关系并生成逐 cluster 注释审核表：
-"$SCANPY_PYTHON" Scanpy/20260815/Scripts/01_compare_doublet_variants.py
-# 完整经典 marker 定量和跨版本 cluster 交叉映射由计算节点运行：
-"$SCANPY_PYTHON" Scanpy/20260815/Scripts/01_review_doublet_variant_markers.py
-```
-
-```text
-Results/doublet_versions/
-  none/           # 不按 doublet call 删除，但仍执行常规 cell QC
-  scrublet/       # 删除 Scrublet 阳性（scrublet_only + both_positive）
-  doubletfinder/  # 删除 DoubletFinder 阳性（doubletfinder_only + both_positive）
-  consensus/      # 仅删除 both_positive
-  union/          # 删除任一方法阳性，最终只保留 both_negative
-```
-
-```text
-01_integration.py + 01_doubletfinder.R
-  → Results/integration/01_integrated_base.h5ad
-02_annotation_config.py + 02_annotation.py
-  → Results/annotation/02_annotated_final.h5ad
-  → 全细胞和clean-cell注释CSV
-03_export_figures.py
-  → Results/figures/*.png
-```
-
-## 分析流程
-
-### 01_integration.py + 01_doubletfinder.R：QC → 联合 doublet 检测 → 整合 → 聚类
-
-| 步骤 | 操作 | 关键输出 |
-|---|---|---|
-| 1 | 逐样本读取 `{sample}_raw.h5ad`，硬校验（cell/gene ID 唯一、counts 有限非负整数）；清空遗留降维/邻居/分析元数据，重置 `X = counts` | — |
-| 2 | 逐样本计算 QC 指标，用 `200–6000 genes` 且 `pct_counts_mt < 5%` 定义两种 doublet 算法的共同待检集合 | — |
-| 3 | 逐样本 Scrublet：使用 `EXPECTED_DOUBLET_RATES` 覆盖值或 GEM-X 动态公式，自动阈值 | Scrublet 直方图 |
-| 4 | 逐样本 DoubletFinder：Seurat 预处理、BCmetric 自动选 pK、根据初步 cluster 估计 homotypic proportion 并调整 nExp | pK sweep CSV/PNG |
-| 5 | 生成 `both_positive`、`scrublet_only`、`doubletfinder_only`、`both_negative` 分层；按 `none/scrublet/doubletfinder/consensus/union` 五种模式生成完整整合版本 | `01_sample_qc_summary.csv`、`01_doublet_calls.csv`、`doublet_cell_lists/` |
-| 6 | 合并 10 样本（`join="outer"` 取基因并集、`merge="same"` 保留一致的非轴注释、缺失表达填 0）；随后全局 `min_cells=3` 基因过滤 | `01_global_gene_filter_summary.csv` |
-| 7 | `normalize_total(1e4)` + `log1p`；全基因矩阵存为 `adata.raw` | — |
-| 8 | HVG：`seurat_v3`（counts 层，`batch_key="sample"`），2000 个 | — |
-| 9 | HVG 子集 → `scale(max_value=10)` → PCA（arpack，30 PCs） | — |
-| 10 | Harmony 前 neighbors(30) + UMAP(min_dist=0.5, spread=1.0) | `X_umap_before_harmony` |
-| 11 | Harmony 批次校正（key=`sample`） | `X_pca_harmony` |
-| 12 | Harmony 后 neighbors（`use_rep="X_pca_harmony"`）+ UMAP + Leiden(0.8) | `leiden_integrated` |
-| 13 | `rank_genes_groups`（wilcoxon，`use_raw=True`）；终端打印 Top 50 | `01_leiden_top_markers.csv`、`01_leiden_cluster_counts.csv` |
-| 14 | 剔除继承的人工注释列后保存 | `01_integrated_base.h5ad`（gzip） |
-
-### 02_annotation_config.py + 02_annotation.py：人工注释
-
-| 步骤 | 操作 | 关键输出 |
-|---|---|---|
-| 1 | 读取整合对象，校验两种 doublet score/call、`doublet_consensus`、`doublet_tier`、`remove_as_doublet` 等字段，确认无待删除的高置信 doublet 残留 | — |
-| 2 | cluster 覆盖校验：数据有而配置缺 → 报错停止；配置多而数据无 → 仅警告 | — |
-| 3 | 生成 `cell_type_integrated`（旧注释备份为 `cell_type_integrated_previous`）、`exclude_from_main_analysis`、`analysis_status`（Keep/Exclude） | — |
-| 4 | 导出注释映射、总体/分样本计数与比例表；全细胞与 clean 细胞注释 CSV | `02_cluster_annotation_mapping.csv`、`02_cell_type_counts*.csv`、`02_cell_type_proportions_by_sample.csv`、`02_cell_annotation_*_cells.csv` |
-| 5 | 写入 `annotation_metadata` 后保存 | `02_annotated_final.h5ad` |
-
-### 03_export_figures.py：出图
-
-| 步骤 | 操作 | 关键输出 |
-|---|---|---|
-| 1 | Harmony 前 UMAP：按样本、IR/NR 分组（临时切换 `X_umap_before_harmony`，绘制后恢复） | `01/02_before_harmony_umap_*.png` |
-| 2 | Harmony 后 UMAP：样本、分组、Leiden、最终细胞类型、分析状态共五张 | `03–07_*.png` |
-| 3 | PCA 方差解释率图；marker 可用性审计表 | `08_pca_variance_ratio.png`、`09_available_marker_genes.csv` |
-| 4 | 细胞类型 marker dotplot（dendrogram 排序，`use_raw=True`）；Leiden rank_genes_groups 图 | `10_dotplot_*.png`、`11_rank_genes_groups_leiden.png` |
-| 5 | 每样本一张细胞类型 UMAP；clean 细胞最终注释 UMAP | `12_umap_final_cell_type_*.png`、`13_umap_clean_cells_*.png` |
-
-## 当前整合与 QC 参数
-
-| 类别 | 参数 | 当前值 |
-|---|---|---|
-| 样本 | IR / NR | `5` / `5`，共 `10` 个表达矩阵 |
-| 细胞 QC | `MIN_GENES_PER_CELL` | `200` |
-| 细胞 QC | `MAX_GENES_PER_CELL` | `6000` |
-| 细胞 QC | `MAX_PCT_COUNTS_MT` | `<5.0%` |
-| 基因 QC | `MIN_CELLS_PER_GENE` | `3`（样本合并后全局执行） |
-| Scrublet | expected doublet rate / simulated ratio / PCs | 已列样本使用覆盖值；新样本按 `0.004 × n_cells / 1000`；`2.0` / `30` |
-| DoubletFinder | PCs / HVGs / pN / cluster resolution | `30` / `2000` / `0.25` / `0.8` |
-| DoubletFinder | pK / homotypic adjustment | 每样本 BCmetric 自动选择 / 启用 |
-| 联合 doublet | `SCLC_DOUBLET_FILTER_MODE` | `none`、`scrublet`、`doubletfinder`、`consensus`、`union`；默认 `consensus` |
-| HVG | `N_TOP_GENES` | `2000` |
-| PCA | `N_PCS` | `30` |
-| 邻居图 | `N_NEIGHBORS` | `30` |
-| 批次校正 | Harmony key | `sample` |
-| Leiden | `LEIDEN_RESOLUTION` | `0.8` |
-| UMAP | min_dist / spread | `0.5` / `1.0` |
-| 复现 | `RANDOM_STATE` | `0` |
-| 整合阶段线程 | BLAS/OpenMP/Numba/Joblib | 均限制为 `1` |
-| 注释和导图线程 | BLAS/OpenMP | 均限制为 `4` |
-
-## 注释与绘图参数
-
-- `02_annotation_config.py` 是默认整合结果的注释与绘图配置。
-- `02_annotation_configs/{none,scrublet,doubletfinder,consensus,union}.py` 是五个 doublet 版本各自的 Leiden cluster → cell type 映射，不跨版本共用 cluster ID。
-- 五版本注释保留 pDC/cDC1、Platelets 及 `*_mixed`/`Low_quality_*` 群，不在注释阶段额外删除细胞，以保持 doublet 过滤对照的定义。
-- 图片分辨率 `FIGURE_DPI=300`，UMAP 图例位于 `right margin`，dotplot 使用 `Reds` 和 `(16, 7)` 尺寸。
-- 每次人工调整 cluster 映射或 marker 后，必须在下方变更表中记录。
-
-## 主要输出
-
-- `integration/01_integrated_base.h5ad`：已去除高置信 doublet 的 Harmony、UMAP 和 Leiden 结果；保留两种单算法阳性的独立标签供复核。
-- `integration/01_sample_qc_summary.csv` 和 `01_doublet_calls.csv`：QC/doublet 审计。
-- `integration/doublet_cell_lists/`：四个互斥状态、任一方法异常并集、未检测名单和逐样本汇总。
-- `doublet_versions/{none,scrublet,doubletfinder,consensus,union}/integration/`：五种过滤策略的独立整合输出。
-- `doublet_versions/01_doublet_variant_comparison.csv`：五版本整体规模与集合验证表。
-- `doublet_versions/01_doublet_variant_cluster_review.csv`：五版本逐 cluster Top-20 marker、IR/NR 与 doublet 状态审核表。
-- `doublet_versions/01_doublet_variant_marker_gene_summary.csv`：逐 cluster 经典 marker 的平均 log 表达和阳性细胞比例。
-- `doublet_versions/01_doublet_variant_marker_panel_summary.csv`：逐 cluster 的细胞类型 marker panel 汇总。
-- `doublet_versions/01_doublet_variant_cluster_crosswalk.csv`：每个版本 cluster 到 `consensus`/`union` 参考 cluster 的最佳细胞重叠映射。
-- `doublet_versions/01_doublet_variant_annotation_evidence.csv`：五版本聚类大小、doublet 富集率、marker panel、Top-20 marker 与跨版本对应的合并审核表。
-- `doublet_versions/{mode}/annotation/`：五套独立注释 h5ad、逐细胞注释和统计表。
-- `doublet_versions/{mode}/figures/`：五套独立 UMAP、PCA、marker dotplot 和 clean-cell 图片。
-- `integration/01_global_gene_filter_summary.csv`：合并后全局基因过滤审计。
-- `integration/01_leiden_top_markers.csv`：人工注释依据。
-- `../Report.md`：版本、逐样本过滤、降维参数和 PCA/marker 提取说明。
-- `annotation/02_cell_annotation_all_cells.csv`：Methscan 和 MethylVI 使用的全细胞注释。
-- `annotation/02_cell_annotation_clean_cells.csv`：Methscan Scanpy clean-cell 筛选输入。
-- `annotation/02_annotated_final.h5ad`：最终注释对象。
-- `figures/`：Harmony 前后 UMAP、PCA、marker dotplot 和统计图。
-
-## 服务器提交与修改记录
-
-提交命令（服务器上执行，拉取最新代码后核对 HEAD）：
-
-```bash
-cd /share/home/rzli/scLC_ICI_PBMC
-
-git -c http.version=HTTP/1.1 pull --ff-only origin main
-git rev-parse --short HEAD
-
-# 语法检查（保留可以，但只是保险，不是执行）
-/share/home/rzli/miniconda3/envs/scanpy310/bin/python \
-  -m py_compile \
-  Scanpy/20260815/Scripts/01_integration.py
-
-# ★ 真正重算整合 + UMAP（新 min_dist=0.5 在这里生效，最耗时）
-bash Scanpy/20260815/Scripts/01_run_integration.sh
-
-# 之后才是注释和出图
-bash Scanpy/20260815/Scripts/02_run_annotation.sh
-bash Scanpy/20260815/Scripts/03_run_export_figures.sh
-
-```
-
-五版本整合应从仓库根目录一次提交，默认每个作业申请 2 CPU / 24 GB：
-
-```bash
 export SCANPY_PYTHON=/share/home/rzli/miniconda3/envs/scanpy310/bin/python
 export RSCRIPT_BIN=/share/home/rzli/miniconda3/envs/doubletfinder-r/bin/Rscript
 export R_LIBS_USER=/share/home/rzli/R/scDNAm-library
-bash Scanpy/20260815/Scripts/01_submit_doublet_variants.sh
+
+bash Scanpy/20260815/Scripts/01_submit_doublet_methods.sh
 ```
 
-提交器如果发现某个版本的输出目录已非空会直接拒绝提交，防止覆盖已有结果。五个版本会产生不同的
-Leiden cluster，因此使用五个独立映射。整合完成后批量提交注释：
+两个整合作业成功后，生成比较与 marker 审核表：
 
 ```bash
-export SCANPY_PYTHON=/share/home/rzli/miniconda3/envs/scanpy310/bin/python
-bash Scanpy/20260815/Scripts/02_submit_doublet_variant_annotations.sh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+"$SCANPY_PYTHON" Scanpy/20260815/Scripts/05_compare_doublet_methods.py
+
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+"$SCANPY_PYTHON" Scanpy/20260815/Scripts/06_review_doublet_method_markers.py
 ```
 
-注释完成后提交五版本导图：
+分别校对 `08_annotation_config_scrublet.py` 与 `09_annotation_config_doubletfinder.py`。两个配置中的映射是方法特异的，不应直接相互复制。确认后依次提交：
 
 ```bash
-bash Scanpy/20260815/Scripts/03_submit_doublet_variant_figures.sh
+bash Scanpy/20260815/Scripts/10_submit_annotations.sh
+# 两个注释作业成功后：
+bash Scanpy/20260815/Scripts/13_submit_figures.sh
 ```
 
-| 日期 | Git 提交 | 修改 | 验证 | 服务器状态 |
-|---|---|---|---|---|
-| 2026-08-17 | `aa28116` | 纳入 Scanpy 20260815 整合、注释和导图脚本 | 文件结构审计 | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-17 | `17ff80b` | 增加 `00_config.sh`；改为统一仓库、矩阵和 Results 路径 | Shell/Python 语法与路径审计 | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-18 | `d50f53e` | 修复 Scrublet 低基因细胞缺失值被误判为 doublet；跨样本合并改为 outer join 并以 0 填充，保留样本/组别特异基因 | Python 语法检查、Shell 语法检查、`git diff --check` | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-18 | `037b4e1` | 按 GEM-X Single Cell 3' v4 的 recovered-cell 规则更新 10 个样本 expected doublet rate，并将新样本默认值从 `0.05` 改为 `0.004` | Python/Shell 语法检查、`git diff --check` | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-18 | `e67e607` | 新增 `Report.md`，记录版本差异、逐样本过滤结果、降维参数和 PCA/marker gene 提取方法 | Markdown 内容审计、结果总数核对 | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-18 | `bb3f70d` | 将本次 16 个 Leiden cluster 的 Top 20 marker genes 原样补入 `Report.md`，并区分 cluster marker 与 PCA component genes | marker 日志逐项核对 | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-18 | `e86d9c4` | 按 GEM-X v4 新的 16 个 Leiden clusters 更新 `02_annotation_config.py` 的 cluster 注释映射 | Python 语法检查、marker 对照、cluster 覆盖检查 | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-19 | `1385617` | 按 marker 复核表修订 0–15 注释：cluster 2 改为 `T_cells_unresolved`，cluster 15 改为 `Platelets_Megakaryocytes`，并记录亚型倾向与置信度 | Python 语法、cluster 覆盖、排除类型与 Markdown 表格检查 | GitHub 已推送，服务器待 `git pull` |
-| 2026-08-19 | `7bef6b2` | raw counts/ID 硬校验；QC 改为使用完整原始基因集；`min_cells=3` 改为合并后全局执行并新增审计表；新样本 GEM-X doublet rate 动态计算；未知样本分组改为报错；兼容旧 Scrublet API；Leiden counts 按数值排序；删除冗余 log1p layer | Python 语法、函数边界、字段引用和 diff 检查 | GitHub 已推送，服务器待 `git pull` |
-| 2026-08-19 | `a1c4998` | 按 20260819 新的 17 个 Leiden clusters 更新 0–16 映射；cluster 2 定为 `Naive_CD4_T_cells`，新增 Treg、MAIT 和 cDC 类型；不设 cluster-level 排除 | Python 语法、cluster 覆盖、marker 与 Markdown 检查 | GitHub 已推送，服务器待 `git pull` |
-| 2026-08-19 | `4a79636` | UMAP `min_dist` 由 `0.5` 改为 `0.3`（Harmony 前后两次 UMAP 均生效）；仅改变 UMAP 布局，不影响邻居图与 Leiden 聚类，cluster 映射无需调整 | 参数逐项核对（PCA 30/arpack、neighbors 30、UMAP min_dist 0.3/spread 1.0、Leiden 0.8 与脚本调用一致） | GitHub 已推送（SSH），服务器待 `git pull` |
-| 2026-08-19 | `e1f366f` | 整合参数调整试验：`n_neighbors` 由 `30` 改为 `20`（`n_pcs=30`、`min_dist=0.3` 保持） | 参数逐项核对 | GitHub 已提交；同日被 `9aa4f13` 回滚 |
-| 2026-08-19 | `9aa4f13` | 回滚整合参数调整：恢复 `n_neighbors=30`、`min_dist=0.5`（原始流水线参数）；fc9fa38 服务器重跑实际使用该参数 | 参数逐项核对 | 已部署 |
-| 2026-08-19 | `fd36bd5` | 终端打印的 Leiden marker 由 Top 20 改为 Top 50（仅影响运行日志；`01_leiden_top_markers.csv` 仍写全基因排序，注释与下游结果不变） | Python 语法检查（`py_compile`） | GitHub 已推送，服务器待 `git pull` |
-| 2026-08-19 | `fc9fa38` | 服务器完整重跑（当时旧编号 05→06→07，git pull 至 fc9fa38）：10 样本 Scrublet/QC、合并 55,280 细胞 × 32,162 基因、17 Leiden clusters、14 种细胞类型，clean = 全部 55,280（本轮无 cluster-level 排除）；Top-50 marker 终端打印生效 | 与 `Report.md` 2.3/6.1/6.3 数字逐项核对一致 | 已部署 |
-| 2026-08-19 | `5466b4b` | DC 注释改名：cluster 11 `HLAII_high_APCs` → `cDC2`、cluster 15 `pDCs` → `pDC`、cluster 16 `cDCs` → `cDC1`；仅改类型名，marker 与 cluster 映射不变，需重跑注释/导图阶段生效 | Python 语法检查（`py_compile`）、旧名全仓库引用审计（无残留） | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-19 | `b29f3ef` | dotplot `MARKER_GENES` 改为 14 种细胞类型 × 4 个经典 marker（按 Monocytes/pDC/cDC1/cDC2/B/Plasma/MAIT/Treg/CD4/Naive_CD4/Cycling/CD8/Gamma_delta/NK 顺序）；删除未使用的 `B_cells_unresolved` 与 `Platelets_Megakaryocytes` 条目；dotplot 基因列顺序与 `09_available_marker_genes.csv` 审计表随之更新，需重跑导图阶段生效 | Python 语法检查（`py_compile`）、`MARKER_GENES` 引用审计（现为 `03_export_figures.py`） | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-20 | `6f4d9a8` | `01_integration.py` 行为不变简化：278 行 `process_sample` 拆为 `load_sample_adata`/`run_doublet_detection`/`build_doublet_call_table`/`apply_final_qc` 四个纯逻辑子函数（所有 print 留原位、调用顺序不变）；线程环境变量循环化；Scrublet 最低基因数提为常量；QC 计数器与过滤条件紧凑化；两处 neighbors+UMAP 提为 `neighbors_and_umap`；参数字典重排；末尾 Saved 输出循环化 | `py_compile`；末尾 7 条 Saved 标签与原版逐字节比对一致；服务器当时使用旧编号 05 重跑：447 行 stdout 与 fc9fa38 基线归一化（时序/时间戳/警告行号）后逐字节一致，55,280×32,162、17 clusters、Top-50 markers 全部相同 | 已部署 |
-| 2026-08-20 | `4144d89` | 行为不变简化注释/导图脚本/三个包装器（现为 `02_annotation.py`/`03_export_figures.py`）：多行赋值折行、映射表改用 `.items()`、clean 细胞数提取为变量复用、去掉冗余 `.copy()`；五张 Harmony 后 UMAP 改列表驱动、marker 过滤合并为单循环、sample 字符串化提出循环外；包装器线程 export 改为 `THREADS`+变量数组循环 | `py_compile`、`bash -n`；包装器改动前后环境变量 dump 逐字节一致（12/8/8 个变量） | 已部署（服务器当时使用旧编号 06/07 重跑） |
-| 2026-08-21 | `735ca36` | 修正两处文档/参数不一致：① README 参数表与命令注释 min_dist 恢复为 `0.5`（`9aa4f13` 回滚后未同步）；② `01_integration.py` 合并改为 `merge="different"` 以匹配"基因并集"注释（当前 10 样本基因集一致，输出不变，`fill_value=0` 由此生效）；③ `harmony_integrate` 显式传 `random_state=RANDOM_STATE`（harmonypy 默认即 0，行为不变）；④ README 新增"分析流程"节，三脚本步骤表格化 | `py_compile`；行为核对：基因集一致时 `same`/`different` 结果相同、harmonypy 默认 random_state=0 | GitHub 已提交，服务器待 `git pull` |
-| 2026-08-21 | `未提交` | 加入 Scrublet + DoubletFinder 联合分层；按分析阶段统一脚本编号为 01 整合、02 注释、03 导图，并同步所有入口和文档引用 | Python/R/Shell 语法、路径引用与 `git diff --check` | 本地已修改，服务器待提交/部署 |
-| 2026-08-21 | `未提交` | 行为不变重构全部脚本（01_integration.py 1573→610 行、01_doubletfinder.R 281→140 行、02_annotation.py 287→168 行、03_export_figures.py 282→141 行）：删除冗余防御代码与重复校验，保留全部环境变量覆盖、常量、输出路径与 uns 元数据 key；R 侧保留 `_v3` 旧 API 回退与 14 参数检查。另修复两处：① 合并回退为 `merge="same"`（`735ca36` 的 `merge="different"` 非 anndata 合法值，当前 10 样本基因集一致时结果不变，但任何一次基因集不一致的合并都会直接报错）；② `calculate_qc_metrics` 恢复显式 `inplace=True`（scanpy ≥1.10 默认 `inplace=False` 不写回 obs，重构删参后 doublet 基础 QC 掩码会 KeyError） | 等价性回归：10 合成样本原版 vs 重构版同环境跑通三段流程，55 个输出文件（CSV/PNG）逐字节一致，两个 h5ad 逐字段深度比较一致（`annotation_metadata.config_file` 绝对路径除外） | 本地已修改，服务器待提交/部署 |
-| 2026-08-21 | `未提交` | 审查修复：恢复 raw counts/ID 硬校验；补齐注释阶段 doublet 类型、score 和 consensus 一致性检查；补齐导图阶段 obs、UMAP/PCA、raw、marker 与 clean-cell 前置检查；修正文档中的 `anndata.concat` 参数和旧入口命令 | `py_compile`、R `parse()`、`bash -n`、`git diff --check` 均通过 | 本地已修复，服务器待真实数据重跑 |
-| 2026-08-21 | `本次提交` | 新增 `doubletfinder` 单方法过滤模式、逐细胞状态名单自动导出与 `01_submit_doublet_variants.sh`；并行提交 `none/scrublet/doubletfinder/consensus/union` 五个隔离的完整整合版本 | Python/R/Shell 语法、五作业 mock dsub、路径与 diff 检查 | 服务器待 `git pull` 和 dsub |
-
-以后每次修改服务器脚本、QC、cluster 映射或 marker 时，必须追加：
+## 输出结构
 
 ```text
-| YYYY-MM-DD | commit | 参数/注释/脚本/输入输出变化 | 验证命令与结果 | 已部署/待git pull/已回滚 |
+Scanpy/20260815/Results/doublet_methods/
+├── scrublet/{integration,annotation,figures}/
+├── doubletfinder/{integration,annotation,figures}/
+├── 05_doublet_method_comparison.csv
+├── 05_doublet_method_cell_set_comparison.csv
+├── 05_doublet_method_cluster_review.csv
+├── 06_doublet_method_marker_gene_summary.csv
+├── 06_doublet_method_marker_panel_summary.csv
+└── 06_doublet_method_cluster_crosswalk.csv
 ```
 
-```bash
-cd /share/home/rzli/scLC_ICI_PBMC
-git pull --ff-only origin main
-git rev-parse --short HEAD
-```
+日志写入 `Scanpy/20260815/Logs/doublet_methods/`。历史的 `Results/doublet_versions/` 和 `Logs/doublet_versions/` 不属于当前入口，但保留用于追溯，本流程不会删除或覆盖它们。
+
+## 参数与重跑保护
+
+`03_integration.py` 中两个方法使用相同的基础 QC 和整合参数，但降维、图构建和聚类都在 doublet 过滤后对各自细胞集重新计算。因此两分支可以有不同的 cluster 数和结构。
+
+可用环境变量覆盖路径与资源，包括 `SCLC_DOUBLET_METHODS_ROOT`、`SCLC_DOUBLET_METHODS_LOG_DIR`、`SCLC_DOUBLET_METHOD_CPU`、`SCLC_DOUBLET_METHOD_MEM`、`SCLC_ANNOTATION_CPU`、`SCLC_ANNOTATION_MEM`、`SCLC_FIGURE_CPU` 和 `SCLC_FIGURE_MEM`。
+
+三个提交器在目标输出已存在时会中止，避免覆盖已有结果。需要重跑时，请先归档对应方法目录，或设置新的 `SCLC_DOUBLET_METHODS_ROOT`。

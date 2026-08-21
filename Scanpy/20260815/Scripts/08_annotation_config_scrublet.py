@@ -1,4 +1,6 @@
-"""Scrublet-only filtering: cluster annotations from the marker audit."""
+"""Scrublet-only pipeline: provisional cluster annotations for manual review."""
+
+DOUBLET_METHOD = "scrublet"
 
 CLUSTER_TO_CELLTYPE = {
     "0": "CD8_T_cells",

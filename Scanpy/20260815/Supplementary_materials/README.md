@@ -28,11 +28,11 @@
 | `umap-learn`、`scikit-learn` | UMAP、邻居搜索与 Scrublet 依赖 |
 | `h5py` | H5AD 底层存储 |
 
-环境必须实际包含 Scrublet API；仅安装 Scanpy 但没有 `scrublet` 时，`01_integration.py` 会明确拒绝运行。
+环境必须实际包含 Scrublet API；仅安装 Scanpy 但没有 `scrublet` 时，`03_integration.py` 会明确拒绝运行。
 
 ## R 与 DoubletFinder 依赖
 
-`01_integration.py` 会通过 `Rscript` 逐样本调用 `01_doubletfinder.R`。执行整合的同一运行环境需要：
+DoubletFinder 分支的 `03_integration.py` 会通过 `Rscript` 逐样本调用 `04_doubletfinder.R`。执行该分支的运行环境需要：
 
 - R 可执行文件 `Rscript`（可用 `RSCRIPT_BIN` 覆盖）。
 - R 包 `Matrix`、`Seurat`、`DoubletFinder`。
@@ -41,8 +41,8 @@
 ## 系统与运行约定
 
 - 服务器无图形界面时使用 Matplotlib 非交互绘图能力。
-- `01_run_integration.sh` 将 BLAS、OpenMP、Numba 和 Joblib 线程限制为 1，避免 Harmony/Scrublet/DoubletFinder 过度并行。
-- `02_run_annotation.sh` 和 `03_run_export_figures.sh` 将数学库线程限制为 4。
+- `02_run_integration.sh` 将 BLAS、OpenMP、Numba 和 Joblib 线程限制为 1，避免 Harmony/Scrublet/DoubletFinder 过度并行。
+- `11_run_annotation.sh` 和 `14_run_export_figures.sh` 将数学库线程限制为 4。
 - 不应在同一输出目录中混用不同 Scanpy/AnnData 版本生成的中间 H5AD；升级后应从 integration 重新生成。
 
 ## 部署后核验
@@ -69,7 +69,7 @@ conda list -n scanpy310 --explicit
 
 ## 更新规则
 
-更换 Scanpy、AnnData、Harmony、Scrublet、Seurat、DoubletFinder、Leiden 或 UMAP 版本后，必须重新运行 integration，并在 `../Scripts/README.md` 的服务器变更表中记录：
+更换 Scanpy、AnnData、Harmony、Scrublet、Seurat、DoubletFinder、Leiden 或 UMAP 版本后，必须重新运行两个 integration 分支，并记录：
 
 - 精确软件版本和 Git 提交。
 - 10 个样本的输入细胞数、QC 保留数和 doublet 数。

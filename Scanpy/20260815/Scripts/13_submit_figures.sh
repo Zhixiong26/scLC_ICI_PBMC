@@ -9,8 +9,8 @@ command -v dsub >/dev/null 2>&1 || {
     exit 1
 }
 
-: "${SCLC_DOUBLET_VARIANTS_ROOT:=${SCLC_SCANPY_RESULTS}/doublet_versions}"
-: "${SCLC_DOUBLET_VARIANTS_LOG_DIR:=${SCLC_SCANPY_ROOT}/Logs/doublet_versions}"
+: "${SCLC_DOUBLET_METHODS_ROOT:=${SCLC_SCANPY_RESULTS}/doublet_methods}"
+: "${SCLC_DOUBLET_METHODS_LOG_DIR:=${SCLC_SCANPY_ROOT}/Logs/doublet_methods}"
 : "${SCLC_FIGURE_CPU:=4}"
 : "${SCLC_FIGURE_MEM:=24576MB}"
 
@@ -19,11 +19,11 @@ command -v dsub >/dev/null 2>&1 || {
     exit 1
 }
 
-modes=(none scrublet doubletfinder consensus union)
-for mode in "${modes[@]}"; do
-    variant_results="${SCLC_DOUBLET_VARIANTS_ROOT}/${mode}"
-    input_h5ad="${variant_results}/annotation/02_annotated_final.h5ad"
-    output_dir="${variant_results}/figures"
+methods=(scrublet doubletfinder)
+for method in "${methods[@]}"; do
+    method_results="${SCLC_DOUBLET_METHODS_ROOT}/${method}"
+    input_h5ad="${method_results}/annotation/02_annotated_final.h5ad"
+    output_dir="${method_results}/figures"
     [[ -s "$input_h5ad" ]] || {
         echo "ERROR: annotated h5ad is missing: $input_h5ad" >&2
         exit 1
@@ -35,22 +35,22 @@ for mode in "${modes[@]}"; do
     }
 done
 
-mkdir -p "$SCLC_DOUBLET_VARIANTS_LOG_DIR"
-echo "Submitting five isolated figure-export jobs:"
-echo "  results: $SCLC_DOUBLET_VARIANTS_ROOT"
-echo "  logs:    $SCLC_DOUBLET_VARIANTS_LOG_DIR"
+mkdir -p "$SCLC_DOUBLET_METHODS_LOG_DIR"
+echo "Submitting two independent figure-export jobs:"
+echo "  results: $SCLC_DOUBLET_METHODS_ROOT"
+echo "  logs:    $SCLC_DOUBLET_METHODS_LOG_DIR"
 echo "  resource per job: cpu=${SCLC_FIGURE_CPU};mem=${SCLC_FIGURE_MEM}"
 
-for mode in "${modes[@]}"; do
-    variant_results="${SCLC_DOUBLET_VARIANTS_ROOT}/${mode}"
-    job_name="scanpy_fig_${mode}"
+for method in "${methods[@]}"; do
+    method_results="${SCLC_DOUBLET_METHODS_ROOT}/${method}"
+    job_name="scanpy_fig_${method}"
 
     dsub \
         -n "$job_name" \
         -R "cpu=${SCLC_FIGURE_CPU};mem=${SCLC_FIGURE_MEM}" \
         --cwd "$SCLC_PROJECT_ROOT" \
-        -oo "${SCLC_DOUBLET_VARIANTS_LOG_DIR}/${job_name}.%J.out" \
-        -eo "${SCLC_DOUBLET_VARIANTS_LOG_DIR}/${job_name}.%J.err" \
+        -oo "${SCLC_DOUBLET_METHODS_LOG_DIR}/${job_name}.%J.out" \
+        -eo "${SCLC_DOUBLET_METHODS_LOG_DIR}/${job_name}.%J.err" \
         env \
         PYTHONUNBUFFERED=1 \
         SCANPY_PYTHON="$SCANPY_PYTHON" \
@@ -58,8 +58,9 @@ for mode in "${modes[@]}"; do
         SCLC_DATA_ROOT="$SCLC_DATA_ROOT" \
         SCLC_CONDA_ROOT="$SCLC_CONDA_ROOT" \
         SCLC_SCANPY_ROOT="$SCLC_SCANPY_ROOT" \
-        SCLC_SCANPY_RESULTS="$variant_results" \
-        bash "$SCRIPT_DIR/03_run_export_figures.sh"
+        SCLC_SCANPY_RESULTS="$method_results" \
+        SCLC_DOUBLET_METHOD="$method" \
+        bash "$SCRIPT_DIR/14_run_export_figures.sh"
 done
 
-echo "All five figure-export jobs were submitted. Query them with: djob"
+echo "Both figure-export jobs were submitted. Query them with: djob"

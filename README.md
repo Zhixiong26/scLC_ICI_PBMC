@@ -247,17 +247,21 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
     │   ├── Scripts/
     │   │   ├── README.md
     │   │   ├── 00_config.sh
-    │   │   ├── 01_doubletfinder.R
-    │   │   ├── 01_compare_doublet_variants.py
-    │   │   ├── 01_integration.py
-    │   │   ├── 01_review_doublet_variant_markers.py
-    │   │   ├── 01_run_integration.sh
-    │   │   ├── 01_submit_doublet_variants.sh
-    │   │   ├── 02_annotation.py
-    │   │   ├── 02_annotation_config.py
-    │   │   ├── 02_run_annotation.sh
-    │   │   ├── 03_export_figures.py
-    │   │   └── 03_run_export_figures.sh
+    │   │   ├── 01_submit_doublet_methods.sh
+    │   │   ├── 02_run_integration.sh
+    │   │   ├── 03_integration.py
+    │   │   ├── 04_doubletfinder.R
+    │   │   ├── 05_compare_doublet_methods.py
+    │   │   ├── 06_review_doublet_method_markers.py
+    │   │   ├── 07_annotation_markers.py
+    │   │   ├── 08_annotation_config_scrublet.py
+    │   │   ├── 09_annotation_config_doubletfinder.py
+    │   │   ├── 10_submit_annotations.sh
+    │   │   ├── 11_run_annotation.sh
+    │   │   ├── 12_annotation.py
+    │   │   ├── 13_submit_figures.sh
+    │   │   ├── 14_run_export_figures.sh
+    │   │   └── 15_export_figures.py
     │   └── Supplementary_materials/
     │       ├── README.md
     │       └── .gitkeep

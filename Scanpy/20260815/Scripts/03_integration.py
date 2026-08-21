@@ -45,7 +45,7 @@ for _d in (OUTPUT_DIR, SCRUBLET_QC_DIR, DOUBLET_FINDER_QC_DIR, DOUBLET_LIST_DIR)
     _d.mkdir(parents=True, exist_ok=True)
 
 DOUBLET_FINDER_SCRIPT = Path(
-    os.environ.get("SCLC_DOUBLET_FINDER_SCRIPT", SCRIPT_DIR / "01_doubletfinder.R")
+    os.environ.get("SCLC_DOUBLET_FINDER_SCRIPT", SCRIPT_DIR / "04_doubletfinder.R")
 )
 RSCRIPT_BIN = os.environ.get("RSCRIPT_BIN", "Rscript")
 
@@ -90,17 +90,13 @@ DOUBLET_FINDER_CLUSTER_RESOLUTION = 0.8
 DOUBLET_FINDER_PN = 0.25
 DOUBLET_FINDER_HOMOTYPIC_ADJUSTMENT = True
 
-# 联合判定策略：consensus 仅删两法都阳性；union 任一阳性即删（更激进）；
-# scrublet/doubletfinder 仅按对应单一方法删除；none 只标注不删除。
-DOUBLET_FILTER_MODE = os.environ.get("SCLC_DOUBLET_FILTER_MODE", "consensus").lower()
-VALID_DOUBLET_FILTER_MODES = {
-    "none", "scrublet", "doubletfinder", "consensus", "union",
-}
-if DOUBLET_FILTER_MODE not in VALID_DOUBLET_FILTER_MODES:
+# 两条主流程完全独立：每次只运行并使用一种 doublet 方法。
+DOUBLET_METHOD = os.environ.get("SCLC_DOUBLET_METHOD", "").lower()
+VALID_DOUBLET_METHODS = {"scrublet", "doubletfinder"}
+if DOUBLET_METHOD not in VALID_DOUBLET_METHODS:
     raise ValueError(
-        "SCLC_DOUBLET_FILTER_MODE 必须是以下之一："
-        + ", ".join(sorted(VALID_DOUBLET_FILTER_MODES))
-        + f"；当前值为 {DOUBLET_FILTER_MODE!r}。"
+        "SCLC_DOUBLET_METHOD 必须为 scrublet 或 doubletfinder；"
+        f"当前值为 {DOUBLET_METHOD!r}。"
     )
 
 # 基于当前 recovered-cell 数的每样本覆盖值
@@ -357,51 +353,8 @@ def run_doublet_finder(
     return calls, metrics_table.iloc[0].to_dict()
 
 
-def assign_doublet_consensus(adata: ad.AnnData) -> None:
-    """生成联合分层标签，并按配置生成最终删除标记。"""
-    tested = adata.obs["doubletfinder_tested"].astype(bool)
-    s = adata.obs["predicted_doublet"].astype(bool)
-    d = adata.obs["doubletfinder_predicted_doublet"].astype(bool)
-    both = tested & s & d
-    scrublet_only = tested & s & ~d
-    df_only = tested & ~s & d
-    neither = tested & ~s & ~d
-
-    adata.obs["doublet_consensus"] = pd.Categorical(
-        np.select(
-            [both, scrublet_only, df_only, neither],
-            ["both_positive", "scrublet_only", "doubletfinder_only", "both_negative"],
-            default="not_tested",
-        ),
-        categories=["both_positive", "scrublet_only", "doubletfinder_only",
-                    "both_negative", "not_tested"],
-    )
-    adata.obs["doublet_tier"] = pd.Categorical(
-        np.select(
-            [both, scrublet_only, df_only, neither],
-            ["high_confidence_doublet", "scrublet_only_suspected_doublet",
-             "doubletfinder_only_suspected_doublet", "singlet"],
-            default="not_tested",
-        ),
-        categories=["high_confidence_doublet", "scrublet_only_suspected_doublet",
-                    "doubletfinder_only_suspected_doublet", "singlet", "not_tested"],
-    )
-
-    if DOUBLET_FILTER_MODE == "consensus":
-        remove = both.to_numpy()
-    elif DOUBLET_FILTER_MODE == "union":
-        remove = (tested & (s | d)).to_numpy()
-    elif DOUBLET_FILTER_MODE == "scrublet":
-        remove = s.to_numpy()
-    elif DOUBLET_FILTER_MODE == "doubletfinder":
-        remove = (tested & d).to_numpy()
-    else:  # none
-        remove = np.zeros(adata.n_obs, dtype=bool)
-    adata.obs["remove_as_doublet"] = remove
-
-
 # ============================================================
-# 单样本：raw -> 两种 doublet 算法 -> 一次性 QC
+# 单样本：raw -> 指定 doublet 算法 -> 一次性 QC
 # ============================================================
 
 def load_sample_adata(sample: str) -> tuple[ad.AnnData, str, Path]:
@@ -441,7 +394,7 @@ def run_doublet_detection(
     sample_name: str,
     expected_doublet_rate: float,
 ) -> dict[str, int | float | str]:
-    """计算 QC 指标，运行两种 doublet 算法并生成联合分层。"""
+    """计算 QC 指标，并且只运行当前指定的 doublet 方法。"""
     adata.var["mt"] = adata.var_names.str.upper().str.startswith("MT-")
     sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], percent_top=None, log1p=False, inplace=True)
 
@@ -454,64 +407,74 @@ def run_doublet_detection(
     if not doublet_mask.any():
         raise ValueError(f"样本 {sample_name} 没有满足 doublet 检测前基础 QC 要求的细胞。")
 
-    adata_scrublet = adata[doublet_mask].copy()
-    scrublet_api = run_scrublet(adata_scrublet, expected_doublet_rate)
-
-    adata_scrublet.obs["doublet_score"] = pd.to_numeric(
-        adata_scrublet.obs["doublet_score"], errors="raise"
-    ).astype(float)
-    adata_scrublet.obs["predicted_doublet"] = adata_scrublet.obs["predicted_doublet"].astype(bool)
-
-    # 审计表保留全部细胞；基础 QC 不合格者不参与 doublet call
+    # 审计表保留全部细胞；基础 QC 不合格者不参与 doublet call。
+    adata.obs["doublet_method"] = DOUBLET_METHOD
+    adata.obs["doublet_tested"] = False
     adata.obs["doublet_score"] = np.nan
     adata.obs["predicted_doublet"] = False
-    adata.obs.loc[doublet_mask, "doublet_score"] = adata_scrublet.obs["doublet_score"].to_numpy()
-    adata.obs.loc[doublet_mask, "predicted_doublet"] = adata_scrublet.obs["predicted_doublet"].to_numpy()
-    adata.obs["scrublet_predicted_doublet"] = adata.obs["predicted_doublet"].astype(bool)
+    adata.obs.loc[doublet_mask, "doublet_tested"] = True
 
-    threshold = get_scrublet_threshold(adata_scrublet)
-    save_scrublet_histogram(adata_scrublet, sample_name, threshold)
-
-    df_calls, df_metrics = run_doublet_finder(
-        adata[doublet_mask].copy(), sample_name, expected_doublet_rate
-    )
-    df_calls = df_calls.set_index("cell_id")
-    adata.obs["doubletfinder_score"] = np.nan
-    adata.obs["doubletfinder_predicted_doublet"] = False
-    adata.obs["doubletfinder_tested"] = False
-    adata.obs.loc[df_calls.index, "doubletfinder_score"] = df_calls["doubletfinder_score"].to_numpy()
-    adata.obs.loc[df_calls.index, "doubletfinder_predicted_doublet"] = df_calls[
-        "doubletfinder_predicted_doublet"
-    ].to_numpy()
-    adata.obs.loc[df_calls.index, "doubletfinder_tested"] = True
-
-    adata.obs["doubletfinder_predicted_doublet"] = adata.obs[
-        "doubletfinder_predicted_doublet"
-    ].astype(bool)
-    adata.obs["doubletfinder_tested"] = adata.obs["doubletfinder_tested"].astype(bool)
-
-    assign_doublet_consensus(adata)
-
-    return {
-        "scrublet_threshold": threshold,
-        "scrublet_api": scrublet_api,
+    metrics: dict[str, int | float | str] = {
+        "doublet_method": DOUBLET_METHOD,
         "n_doublet_eligible": int(doublet_mask.sum()),
         "n_doublet_ineligible": int((~doublet_mask).sum()),
-        "doubletfinder_pK": float(df_metrics["pK"]),
-        "doubletfinder_homotypic_proportion": float(df_metrics["homotypic_proportion"]),
-        "doubletfinder_n_expected_unadjusted": int(df_metrics["n_expected_unadjusted"]),
-        "doubletfinder_n_expected_used": int(df_metrics["n_expected_used"]),
-        "doubletfinder_n_pcs_used": int(df_metrics["n_pcs_used"]),
+        "scrublet_api": "not_run",
+        "scrublet_threshold": float("nan"),
+        "doubletfinder_pK": float("nan"),
+        "doubletfinder_homotypic_proportion": float("nan"),
+        "doubletfinder_n_expected_unadjusted": 0,
+        "doubletfinder_n_expected_used": 0,
+        "doubletfinder_n_pcs_used": 0,
     }
+
+    if DOUBLET_METHOD == "scrublet":
+        detected = adata[doublet_mask].copy()
+        metrics["scrublet_api"] = run_scrublet(detected, expected_doublet_rate)
+        scores = pd.to_numeric(detected.obs["doublet_score"], errors="raise").astype(float)
+        calls = detected.obs["predicted_doublet"].astype(bool)
+        threshold = get_scrublet_threshold(detected)
+        metrics["scrublet_threshold"] = threshold
+        save_scrublet_histogram(detected, sample_name, threshold)
+        adata.obs.loc[doublet_mask, "doublet_score"] = scores.to_numpy()
+        adata.obs.loc[doublet_mask, "predicted_doublet"] = calls.to_numpy()
+    else:
+        calls, df_metrics = run_doublet_finder(
+            adata[doublet_mask].copy(), sample_name, expected_doublet_rate
+        )
+        calls = calls.set_index("cell_id")
+        adata.obs.loc[calls.index, "doublet_score"] = calls["doubletfinder_score"].to_numpy()
+        adata.obs.loc[calls.index, "predicted_doublet"] = calls[
+            "doubletfinder_predicted_doublet"
+        ].to_numpy()
+        metrics.update({
+            "doubletfinder_pK": float(df_metrics["pK"]),
+            "doubletfinder_homotypic_proportion": float(df_metrics["homotypic_proportion"]),
+            "doubletfinder_n_expected_unadjusted": int(df_metrics["n_expected_unadjusted"]),
+            "doubletfinder_n_expected_used": int(df_metrics["n_expected_used"]),
+            "doubletfinder_n_pcs_used": int(df_metrics["n_pcs_used"]),
+        })
+
+    adata.obs["doublet_tested"] = adata.obs["doublet_tested"].astype(bool)
+    adata.obs["predicted_doublet"] = adata.obs["predicted_doublet"].astype(bool)
+    adata.obs["remove_as_doublet"] = (
+        adata.obs["doublet_tested"] & adata.obs["predicted_doublet"]
+    ).astype(bool)
+    adata.obs["doublet_status"] = pd.Categorical(
+        np.select(
+            [~adata.obs["doublet_tested"], adata.obs["predicted_doublet"]],
+            ["not_tested", "doublet"], default="singlet",
+        ),
+        categories=["singlet", "doublet", "not_tested"],
+    )
+    return metrics
 
 
 def build_doublet_call_table(adata: ad.AnnData, sample_name: str) -> pd.DataFrame:
     """构建过滤前的逐细胞 QC / doublet 审计表。"""
     columns = [
         "n_genes_by_counts", "total_counts", "pct_counts_mt",
-        "doublet_score", "predicted_doublet", "scrublet_predicted_doublet",
-        "doubletfinder_score", "doubletfinder_predicted_doublet", "doubletfinder_tested",
-        "doublet_consensus", "doublet_tier", "remove_as_doublet",
+        "doublet_method", "doublet_tested", "doublet_score",
+        "predicted_doublet", "doublet_status", "remove_as_doublet",
     ]
     df = adata.obs[columns].copy()
     df.insert(0, "cell_id", adata.obs_names.astype(str))
@@ -521,72 +484,27 @@ def build_doublet_call_table(adata: ad.AnnData, sample_name: str) -> pd.DataFram
 
 
 def export_doublet_cell_lists(calls: pd.DataFrame) -> None:
-    """导出四个互斥 doublet 状态、任一方法异常并集和未检测名单。"""
-    status_labels = {
-        "both_negative": "两种方法均正常",
-        "scrublet_only": "仅Scrublet异常",
-        "doubletfinder_only": "仅DoubletFinder异常",
-        "both_positive": "两种方法均异常",
-        "not_tested": "未检测",
-    }
-    file_names = {
-        "both_negative": "01_doublet_both_normal.csv",
-        "scrublet_only": "01_doublet_scrublet_only_abnormal.csv",
-        "doubletfinder_only": "01_doublet_doubletfinder_only_abnormal.csv",
-        "both_positive": "01_doublet_both_abnormal.csv",
-        "not_tested": "01_doublet_not_tested.csv",
-    }
-    status_order = list(status_labels)
-    unknown = set(calls["doublet_consensus"].dropna().astype(str)) - set(status_order)
-    if unknown:
-        raise ValueError(f"发现未知 doublet_consensus 类别：{sorted(unknown)}")
-
+    """导出当前单方法的 doublet、singlet 和未检测名单。"""
+    status_order = ["singlet", "doublet", "not_tested"]
     annotated = calls.copy()
-    annotated["doublet_status_code"] = annotated["doublet_consensus"].astype(str)
-    annotated["doublet_status_zh"] = annotated["doublet_status_code"].map(status_labels)
-    leading_columns = [
-        "cell_id", "sample", "group", "doublet_status_code", "doublet_status_zh",
-    ]
-    remaining_columns = [
-        column for column in annotated.columns if column not in leading_columns
-    ]
-    output_columns = leading_columns + remaining_columns
-    annotated[output_columns].to_csv(
+    annotated["doublet_status"] = annotated["doublet_status"].astype(str)
+    annotated.to_csv(
         DOUBLET_LIST_DIR / "01_doublet_status_all_cells.csv", index=False,
         encoding="utf-8-sig",
     )
-
-    for status, file_name in file_names.items():
-        annotated.loc[
-            annotated["doublet_status_code"].eq(status), output_columns,
-        ].to_csv(DOUBLET_LIST_DIR / file_name, index=False, encoding="utf-8-sig")
-
-    abnormal_statuses = ["scrublet_only", "doubletfinder_only", "both_positive"]
-    any_abnormal = annotated.loc[
-        annotated["doublet_status_code"].isin(abnormal_statuses), output_columns,
-    ]
-    any_abnormal.to_csv(
-        DOUBLET_LIST_DIR / "01_doublet_any_method_abnormal.csv", index=False,
-        encoding="utf-8-sig",
+    for status, filename in {
+        "singlet": "01_singlets.csv",
+        "doublet": "01_predicted_doublets.csv",
+        "not_tested": "01_not_tested.csv",
+    }.items():
+        annotated.loc[annotated["doublet_status"].eq(status)].to_csv(
+            DOUBLET_LIST_DIR / filename, index=False, encoding="utf-8-sig",
+        )
+    summary = pd.crosstab(annotated["sample"], annotated["doublet_status"]).reindex(
+        columns=status_order, fill_value=0,
     )
-
-    summary = pd.crosstab(
-        annotated["sample"], annotated["doublet_status_code"],
-    ).reindex(columns=status_order, fill_value=0)
     summary.loc["ALL"] = summary.sum(axis=0)
-    summary.rename(columns=status_labels).to_csv(
-        DOUBLET_LIST_DIR / "01_doublet_status_summary.csv", encoding="utf-8-sig",
-    )
-
-    any_summary = pd.crosstab(
-        any_abnormal["sample"], any_abnormal["doublet_status_code"],
-    ).reindex(columns=abnormal_statuses, fill_value=0)
-    any_summary["any_method_abnormal"] = any_summary.sum(axis=1)
-    any_summary.loc["ALL"] = any_summary.sum(axis=0)
-    any_summary.rename(columns=status_labels).to_csv(
-        DOUBLET_LIST_DIR / "01_doublet_any_method_abnormal_summary.csv",
-        encoding="utf-8-sig",
-    )
+    summary.to_csv(DOUBLET_LIST_DIR / "01_doublet_status_summary.csv")
 
 
 def apply_final_qc(
@@ -597,16 +515,15 @@ def apply_final_qc(
     expected_doublet_rate: float,
     doublet_metrics: dict[str, int | float | str],
 ) -> tuple[ad.AnnData, SummaryRow]:
-    """联合 doublet、基因数和线粒体比例一次性过滤。"""
+    """指定方法 doublet、基因数和线粒体比例一次性过滤。"""
     final_qc_mask = (
         (~adata.obs["remove_as_doublet"])
         & (adata.obs["n_genes_by_counts"] >= MIN_GENES_PER_CELL)
         & (adata.obs["n_genes_by_counts"] <= MAX_GENES_PER_CELL)
         & (adata.obs["pct_counts_mt"] < MAX_PCT_COUNTS_MT)
     )
-    consensus_counts = adata.obs["doublet_consensus"].value_counts().to_dict()
-    n_scrublet = int(adata.obs["scrublet_predicted_doublet"].sum())
-    n_df = int(adata.obs["doubletfinder_predicted_doublet"].sum())
+    n_predicted = int(adata.obs["predicted_doublet"].sum())
+    n_not_tested = int((~adata.obs["doublet_tested"]).sum())
     n_doublets_removed = int(adata.obs["remove_as_doublet"].sum())
     n_low_gene = int((adata.obs["n_genes_by_counts"] < MIN_GENES_PER_CELL).sum())
     n_high_gene = int((adata.obs["n_genes_by_counts"] > MAX_GENES_PER_CELL).sum())
@@ -626,9 +543,7 @@ def apply_final_qc(
         "n_genes_used_for_raw_qc": n_genes_input,
         "n_cells_doublet_eligible": int(d["n_doublet_eligible"]),
         "n_cells_doublet_ineligible": int(d["n_doublet_ineligible"]),
-        # 旧列名别名；两种算法现在使用同一待检集合
-        "n_cells_scrublet_eligible": int(d["n_doublet_eligible"]),
-        "n_cells_scrublet_ineligible": int(d["n_doublet_ineligible"]),
+        "doublet_method": DOUBLET_METHOD,
         "expected_doublet_rate": expected_doublet_rate,
         "scrublet_threshold": float(d["scrublet_threshold"]),
         "doubletfinder_pK": float(d["doubletfinder_pK"]),
@@ -636,20 +551,8 @@ def apply_final_qc(
         "doubletfinder_n_expected_unadjusted": int(d["doubletfinder_n_expected_unadjusted"]),
         "doubletfinder_n_expected_used": int(d["doubletfinder_n_expected_used"]),
         "doubletfinder_n_pcs_used": int(d["doubletfinder_n_pcs_used"]),
-        "doublet_filter_mode": DOUBLET_FILTER_MODE,
-        "n_scrublet_predicted_doublets": n_scrublet,
-        "n_doubletfinder_predicted_doublets": n_df,
-        "n_both_positive": int(consensus_counts.get("both_positive", 0)),
-        "n_scrublet_only": int(consensus_counts.get("scrublet_only", 0)),
-        "n_doubletfinder_only": int(consensus_counts.get("doubletfinder_only", 0)),
-        "n_suspected_doublets": int(
-            consensus_counts.get("scrublet_only", 0)
-            + consensus_counts.get("doubletfinder_only", 0)
-        ),
-        "n_both_negative": int(consensus_counts.get("both_negative", 0)),
-        "n_doublet_not_tested": int(consensus_counts.get("not_tested", 0)),
-        # 旧列名别名；现在表示按联合 filter mode 最终删除的细胞数
-        "n_predicted_doublets": n_doublets_removed,
+        "n_predicted_doublets": n_predicted,
+        "n_doublet_not_tested": n_not_tested,
         "n_doublets_removed": n_doublets_removed,
         "predicted_doublet_rate_pct": round(n_doublets_removed / n_cells_input * 100, 2),
         "n_cells_low_genes": n_low_gene,
@@ -661,7 +564,9 @@ def apply_final_qc(
     return adata, summary
 
 
-def process_sample(sample: str) -> tuple[ad.AnnData, SummaryRow, pd.DataFrame, str]:
+def process_sample(
+    sample: str,
+) -> tuple[ad.AnnData, SummaryRow, pd.DataFrame, dict[str, int | float | str]]:
     adata, sample_name, input_h5ad = load_sample_adata(sample)
     n_cells_input = adata.n_obs
     n_genes_input = adata.n_vars
@@ -681,19 +586,18 @@ def process_sample(sample: str) -> tuple[ad.AnnData, SummaryRow, pd.DataFrame, s
     )
 
     print(f"{sample_name}: {n_cells_input} input -> {adata.n_obs} final cells")
-    print(f"  doublets removed ({DOUBLET_FILTER_MODE}): {summary['n_doublets_removed']} "
+    print(f"  doublets removed ({DOUBLET_METHOD}): {summary['n_doublets_removed']} "
           f"({summary['n_doublets_removed'] / n_cells_input * 100:.2f}%)")
-    print(f"  Scrublet threshold: {float(doublet_metrics['scrublet_threshold']):.4f}")
-    print("  DoubletFinder pK / homotypic proportion: "
-          f"{float(doublet_metrics['doubletfinder_pK']):.4f} / "
-          f"{float(doublet_metrics['doubletfinder_homotypic_proportion']):.4f}")
-    print(f"  consensus calls: both={summary['n_both_positive']}, "
-          f"Scrublet-only={summary['n_scrublet_only']}, "
-          f"DoubletFinder-only={summary['n_doubletfinder_only']}")
+    if DOUBLET_METHOD == "scrublet":
+        print(f"  Scrublet threshold: {float(doublet_metrics['scrublet_threshold']):.4f}")
+    else:
+        print("  DoubletFinder pK / homotypic proportion: "
+              f"{float(doublet_metrics['doubletfinder_pK']):.4f} / "
+              f"{float(doublet_metrics['doubletfinder_homotypic_proportion']):.4f}")
 
-    # 两种算法产生的降维等临时结果不带入整合；obs 的 score/call/consensus 字段保留
+    # doublet 算法产生的临时降维结果不带入整合。
     clear_previous_analysis(adata)
-    return adata, summary, calls, str(doublet_metrics["scrublet_api"])
+    return adata, summary, calls, doublet_metrics
 
 
 # ============================================================
@@ -703,14 +607,14 @@ def process_sample(sample: str) -> tuple[ad.AnnData, SummaryRow, pd.DataFrame, s
 adatas: list[ad.AnnData] = []
 qc_summary: list[SummaryRow] = []
 doublet_calls: list[pd.DataFrame] = []
-scrublet_apis: set[str] = set()
+detector_metrics: list[dict[str, int | float | str]] = []
 
 for sample in SAMPLES:
-    adata_one, summary, calls, scrublet_api = process_sample(sample)
+    adata_one, summary, calls, metrics = process_sample(sample)
     adatas.append(adata_one)
     qc_summary.append(summary)
     doublet_calls.append(calls)
-    scrublet_apis.add(scrublet_api)
+    detector_metrics.append(metrics)
 
 pd.DataFrame(qc_summary).to_csv(OUTPUT_QC, index=False)
 doublet_call_table = pd.concat(doublet_calls, ignore_index=True)
@@ -753,30 +657,33 @@ for obs_column in ("sample", "batch"):
 adata.obs["group"] = pd.Categorical(adata.obs["group"], categories=["IR", "NR"])
 
 adata.uns["doublet_detection"] = {
-    "methods": ["Scrublet", "DoubletFinder"],
-    "scrublet_api": ", ".join(sorted(scrublet_apis)),
+    "method": DOUBLET_METHOD,
     "applied_per_sample": True,
     "input_matrix": "raw_counts",
-    "filter_mode": DOUBLET_FILTER_MODE,
-    "consensus_categories": ["both_positive", "scrublet_only", "doubletfinder_only",
-                             "both_negative", "not_tested"],
-    "tier_categories": ["high_confidence_doublet", "scrublet_only_suspected_doublet",
-                        "doubletfinder_only_suspected_doublet", "singlet", "not_tested"],
+    "status_categories": ["singlet", "doublet", "not_tested"],
     "fallback_rate_per_1000_recovered_cells": GEMX_DOUBLET_RATE_PER_1000_CELLS,
     "sample_specific_expected_rates": EXPECTED_DOUBLET_RATES.copy(),
-    "sim_doublet_ratio": SIM_DOUBLET_RATIO,
-    "n_prin_comps": SCRUBLET_N_PCS,
-    "threshold": "automatic_per_sample",
-    "doubletfinder_n_pcs": DOUBLET_FINDER_N_PCS,
-    "doubletfinder_n_features": DOUBLET_FINDER_N_FEATURES,
-    "doubletfinder_cluster_resolution": DOUBLET_FINDER_CLUSTER_RESOLUTION,
-    "doubletfinder_pN": DOUBLET_FINDER_PN,
-    "doubletfinder_pK": "BCmetric_optimized_per_sample",
-    "doubletfinder_homotypic_adjustment": DOUBLET_FINDER_HOMOTYPIC_ADJUSTMENT,
     "random_state": RANDOM_STATE,
 }
-for key in ("n_scrublet_predicted_doublets", "n_doubletfinder_predicted_doublets",
-            "n_both_positive", "n_doublets_removed"):
+if DOUBLET_METHOD == "scrublet":
+    adata.uns["doublet_detection"].update({
+        "scrublet_api": ", ".join(sorted(
+            {str(row["scrublet_api"]) for row in detector_metrics}
+        )),
+        "sim_doublet_ratio": SIM_DOUBLET_RATIO,
+        "n_prin_comps": SCRUBLET_N_PCS,
+        "threshold": "automatic_per_sample",
+    })
+else:
+    adata.uns["doublet_detection"].update({
+        "doubletfinder_n_pcs": DOUBLET_FINDER_N_PCS,
+        "doubletfinder_n_features": DOUBLET_FINDER_N_FEATURES,
+        "doubletfinder_cluster_resolution": DOUBLET_FINDER_CLUSTER_RESOLUTION,
+        "doubletfinder_pN": DOUBLET_FINDER_PN,
+        "doubletfinder_pK": "BCmetric_optimized_per_sample",
+        "doubletfinder_homotypic_adjustment": DOUBLET_FINDER_HOMOTYPIC_ADJUSTMENT,
+    })
+for key in ("n_predicted_doublets", "n_doublets_removed"):
     adata.uns["doublet_detection"][f"{key}_total"] = sum(int(r[key]) for r in qc_summary)
 
 adata.uns["global_gene_filter"] = {
@@ -845,12 +752,8 @@ adata.uns["integration_parameters"] = {
     "scale_max_value": 10,
     "umap_min_dist": UMAP_MIN_DIST,
     "umap_spread": UMAP_SPREAD,
-    "doublet_methods": ["Scrublet", "DoubletFinder"],
-    "doublet_filter_mode": DOUBLET_FILTER_MODE,
+    "doublet_method": DOUBLET_METHOD,
     "doublet_fallback_rate_per_1000_cells": GEMX_DOUBLET_RATE_PER_1000_CELLS,
-    "scrublet_threshold": "automatic_per_sample",
-    "doubletfinder_pK": "BCmetric_optimized_per_sample",
-    "doubletfinder_homotypic_adjustment": DOUBLET_FINDER_HOMOTYPIC_ADJUSTMENT,
 }
 sce.pp.harmony_integrate(
     adata, key="sample", basis="X_pca", adjusted_basis="X_pca_harmony",
@@ -912,9 +815,11 @@ saved_outputs = [
     ("Saved sample QC summary:    ", OUTPUT_QC),
     ("Saved global gene QC:       ", OUTPUT_GENE_QC),
     ("Saved doublet calls:        ", OUTPUT_DOUBLET_CALLS),
-    ("Saved Scrublet QC figures:  ", SCRUBLET_QC_DIR),
-    ("Saved DoubletFinder QC:      ", DOUBLET_FINDER_QC_DIR),
     ("Saved doublet cell lists:    ", DOUBLET_LIST_DIR),
 ]
+if DOUBLET_METHOD == "scrublet":
+    saved_outputs.append(("Saved Scrublet QC figures:  ", SCRUBLET_QC_DIR))
+else:
+    saved_outputs.append(("Saved DoubletFinder QC:      ", DOUBLET_FINDER_QC_DIR))
 for label, output_path in saved_outputs:
     print(f"{label}{output_path}")
