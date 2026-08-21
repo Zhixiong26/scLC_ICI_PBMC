@@ -4,10 +4,14 @@ import os
 from pathlib import Path
 
 for _env_var in (
-    "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
-    "NUMEXPR_NUM_THREADS", "NUMBA_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS", "GOTO_NUM_THREADS", "OMP_NUM_THREADS",
+    "OMP_THREAD_LIMIT", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS", "NUMBA_NUM_THREADS",
+    "LOKY_MAX_CPU_COUNT",
 ):
-    os.environ.setdefault(_env_var, "1")
+    os.environ[_env_var] = "1"
+os.environ["OMP_DYNAMIC"] = "FALSE"
+os.environ["MKL_DYNAMIC"] = "FALSE"
 
 import pandas as pd
 import scanpy as sc
