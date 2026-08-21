@@ -777,11 +777,11 @@ print(
 
 adata = ad.concat(
     adatas,
-    # Keep the union of input gene IDs. The global min_cells filter is applied
-    # only after concatenation so dispersed sample/group-specific genes are not
-    # removed independently within each sample.
+    # 保留所有样本基因 ID 的并集（某样本缺失的基因以 0 填充）。
+    # 全局 min_cells 过滤放在合并之后执行，
+    # 避免样本/组别特异性基因在单样本内被提前删除。
     join="outer",
-    merge="same",
+    merge="different",
     uns_merge=None,
     index_unique=None,
     fill_value=0,
@@ -983,6 +983,7 @@ sce.pp.harmony_integrate(
     key="sample",
     basis="X_pca",
     adjusted_basis="X_pca_harmony",
+    random_state=RANDOM_STATE,
 )
 
 
