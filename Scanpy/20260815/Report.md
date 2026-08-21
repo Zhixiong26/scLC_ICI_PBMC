@@ -1,6 +1,6 @@
 # Scanpy 20260815 integration report
 
-更新日期：2026-08-19
+更新日期：2026-08-21
 输入：10 个 `25110891_*_E_raw.h5ad` 样本  
 主脚本：[Scripts/01_integration.py](Scripts/01_integration.py)
 
@@ -15,11 +15,13 @@
 
 `fc9fa38` 为当前服务器 HEAD。`4a79636`（UMAP `min_dist=0.3`）与 `e1f366f`（`n_neighbors=20`）的参数调整已被 `9aa4f13` 完整回滚（恢复 `min_dist=0.5`、`n_neighbors=30`），实际生效的是 `a1c4998`（17-cluster 注释）+ `fd36bd5`（终端 Top-50 marker 日志）。逐样本数字与 `7bef6b2` 行相同（聚类划分与 UMAP 参数均未变），本次重跑仅改变注释映射与终端日志。
 
+> 当前本地脚本已升级为 Scrublet + DoubletFinder 联合检测，但尚未在服务器真实数据上重跑。下列 55,280-cell 结果仍是 `fc9fa38` 的单 Scrublet 已部署基线，不应当作联合检测版本的新结果。
+
 `20260810` 为归档流程，参数记录见第 5 节；仓库中没有该归档版本对应的完整 QC 输出，因此不虚构其逐样本细胞数。
 
 ## 2. 逐样本过滤结果
 
-下面的“输入”是日志中的 `n_cells_input`，“Scrublet doublets”是预测为 doublet 的细胞数，“最终保留”是通过 doublet、基因数和线粒体比例联合 QC 后进入整合的细胞数。低基因、高基因和高线粒体三类计数的精确值保存在 `01_sample_qc_summary.csv`；它们可能重叠，不能简单相加。
+下面各表记录已部署的历史单 Scrublet 运行：“输入”是日志中的 `n_cells_input`，“Scrublet doublets”是预测为 doublet 的细胞数，“最终保留”是通过 doublet、基因数和线粒体比例联合 QC 后进入整合的细胞数。低基因、高基因和高线粒体三类计数可能重叠，不能简单相加。联合检测版部署后应新增一节记录两种算法、consensus 分层和最终删除数，不能覆盖这些历史表。
 
 ### 2.1 20260815 初始运行（全样本 expected rate = 0.05）
 
@@ -73,13 +75,15 @@
 
 ### 2.4 每一步过滤的定义
 
-对每个样本，当前脚本按以下顺序记录：
+当前本地联合检测脚本按以下顺序处理每个样本：
 
-1. 输入 raw counts，记录 `n_cells_input` 和 `n_genes_input`。
-2. 在不预先删除低频基因的完整 raw-count 矩阵上计算 `n_genes_by_counts`、`total_counts` 和 `pct_counts_mt`，记录 `n_genes_used_for_raw_qc`。
-3. Scrublet：在至少检测到 3 个基因的细胞子集上运行；记录 `n_cells_scrublet_eligible`、`n_cells_scrublet_ineligible`、doublet score、自动 threshold 和预测 doublet。
-4. 细胞 QC：保留 `200 ≤ n_genes_by_counts ≤ 6000` 且 `pct_counts_mt < 5%` 的细胞。
-5. 过滤后的细胞进入多样本 outer join，再在合并矩阵上全局保留至少在 3 个细胞中表达的基因；完整逐细胞审计见 `01_doublet_calls.csv`。
+1. 读取 raw counts，硬校验 cell/gene ID 唯一及 counts 为有限、非负整数，并记录输入 cell/gene 数。
+2. 在完整原始基因集上计算 `n_genes_by_counts`、`total_counts` 和 `pct_counts_mt`；用 `200 ≤ n_genes_by_counts ≤ 6000` 且 `pct_counts_mt < 5%` 定义两种 doublet 算法的共同待检集合。
+3. 对共同待检集合运行 Scrublet，记录 score、自动 threshold 和 call。
+4. 对同一集合运行 DoubletFinder，自动选择 pK、估计 homotypic proportion，并记录 pANN score 和 call。
+5. 生成 `both_positive`、`scrublet_only`、`doubletfinder_only`、`both_negative` 分层；默认 `consensus` 模式仅删除 `both_positive`。
+6. 一次性应用 doublet、基因数和线粒体比例过滤，并保留逐细胞审计表。
+7. 过滤后的细胞以 `join="outer"` 合并，再在合并矩阵上全局保留至少在 3 个细胞中表达的基因。
 
 全局基因过滤前后的基因数单独写入 `01_global_gene_filter_summary.csv`。历史版本与 20260819 修正版分别记录，不用新结果覆盖旧记录。
 
@@ -250,14 +254,18 @@ cluster 16: WDFY4 CLNK CCSER1 HDAC9 NEGR1 SHTN1 CPVL FLT3 CPNE3 IRF8 HLA-DPA1 DS
 
 ```bash
 cd /share/home/rzli/scLC_ICI_PBMC
-bash Scanpy/20260815/Scripts/05_run_integration.sh
+bash Scanpy/20260815/Scripts/01_run_integration.sh
+# 复核新 Leiden markers 并确认 02_annotation_config.py 后：
+bash Scanpy/20260815/Scripts/02_run_annotation.sh
+bash Scanpy/20260815/Scripts/03_run_export_figures.sh
 ```
 
 主要审计文件：
 
-- `Results/integration/01_sample_qc_summary.csv`：样本级输入、Scrublet eligibility、doublet、QC 和最终保留数。
+- `Results/integration/01_sample_qc_summary.csv`：样本级输入、联合检测 eligibility、两种算法 call、consensus、QC 和最终保留数。
 - `Results/integration/01_global_gene_filter_summary.csv`：合并后全局 `min_cells=3` 的基因过滤前后计数。
-- `Results/integration/01_doublet_calls.csv`：逐细胞 QC/doublet 判定。
+- `Results/integration/01_doublet_calls.csv`：逐细胞 QC、Scrublet、DoubletFinder、consensus 和最终删除判定。
 - `Results/integration/scrublet_qc/`：每个样本的 Scrublet score histogram。
+- `Results/integration/doubletfinder_qc/`：每个样本的 pK sweep 表和图片。
 - `Results/integration/01_integrated_base.h5ad`：counts、normalized expression、PCA、Harmony、UMAP、Leiden 和 marker 结果。
 - `Results/integration/01_leiden_top_markers.csv`：每个 cluster 的 marker 排名。

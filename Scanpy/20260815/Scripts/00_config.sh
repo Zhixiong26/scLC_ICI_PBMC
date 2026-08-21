@@ -13,3 +13,10 @@ source "$SCLC_PROJECT_CONFIG"
 
 : "${SCANPY_PYTHON:=${SCLC_CONDA_ROOT}/envs/scanpy310/bin/python}"
 export SCANPY_SCRIPT_DIR SCANPY_PYTHON
+
+# 限制数值库线程数；调用方式: limit_threads <N> <VAR...>
+limit_threads() {
+    local n="$1"
+    shift
+    for var in "$@"; do export "$var=$n"; done
+}

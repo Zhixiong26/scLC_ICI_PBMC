@@ -247,13 +247,14 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
     │   ├── Scripts/
     │   │   ├── README.md
     │   │   ├── 00_config.sh
+    │   │   ├── 01_doubletfinder.R
     │   │   ├── 01_integration.py
+    │   │   ├── 01_run_integration.sh
+    │   │   ├── 02_annotation.py
     │   │   ├── 02_annotation_config.py
-    │   │   ├── 03_annotation.py
-    │   │   ├── 04_export_figures.py
-    │   │   ├── 05_run_integration.sh
-    │   │   ├── 06_run_annotation.sh
-    │   │   └── 07_run_export_figures.sh
+    │   │   ├── 02_run_annotation.sh
+    │   │   ├── 03_export_figures.py
+    │   │   └── 03_run_export_figures.sh
     │   └── Supplementary_materials/
     │       ├── README.md
     │       └── .gitkeep

@@ -30,11 +30,19 @@
 
 环境必须实际包含 Scrublet API；仅安装 Scanpy 但没有 `scrublet` 时，`01_integration.py` 会明确拒绝运行。
 
+## R 与 DoubletFinder 依赖
+
+`01_integration.py` 会通过 `Rscript` 逐样本调用 `01_doubletfinder.R`。执行整合的同一运行环境需要：
+
+- R 可执行文件 `Rscript`（可用 `RSCRIPT_BIN` 覆盖）。
+- R 包 `Matrix`、`Seurat`、`DoubletFinder`。
+- 新版 DoubletFinder 使用 `paramSweep`/`doubletFinder`；脚本也兼容旧版 `_v3` 函数名。
+
 ## 系统与运行约定
 
 - 服务器无图形界面时使用 Matplotlib 非交互绘图能力。
-- `05_run_integration.sh` 将 BLAS、OpenMP、Numba 和 Joblib 线程限制为 1，避免 Harmony/Scrublet 过度并行。
-- `06_run_annotation.sh` 和 `07_run_export_figures.sh` 将数学库线程限制为 4。
+- `01_run_integration.sh` 将 BLAS、OpenMP、Numba 和 Joblib 线程限制为 1，避免 Harmony/Scrublet/DoubletFinder 过度并行。
+- `02_run_annotation.sh` 和 `03_run_export_figures.sh` 将数学库线程限制为 4。
 - 不应在同一输出目录中混用不同 Scanpy/AnnData 版本生成的中间 H5AD；升级后应从 integration 重新生成。
 
 ## 部署后核验
@@ -45,6 +53,7 @@ SCANPY_PYTHON=/share/home/rzli/miniconda3/envs/scanpy310/bin/python
 "$SCANPY_PYTHON" -c 'import anndata, harmonypy, matplotlib, numpy, pandas, scanpy, scipy, scrublet, sklearn, umap; print("Scanpy environment OK")'
 "$SCANPY_PYTHON" -c 'import igraph, leidenalg; print("Leiden environment OK")'
 "$SCANPY_PYTHON" -c 'import scanpy as sc, scanpy.external as sce; assert hasattr(sc.pp, "scrublet") or hasattr(sce.pp, "scrublet"); print("Scrublet API OK")'
+Rscript -e 'stopifnot(requireNamespace("Matrix", quietly=TRUE), requireNamespace("Seurat", quietly=TRUE), requireNamespace("DoubletFinder", quietly=TRUE)); cat("DoubletFinder environment OK\n")'
 bash -n /share/home/rzli/scLC_ICI_PBMC/Scanpy/20260815/Scripts/*.sh
 ```
 
@@ -60,7 +69,7 @@ conda list -n scanpy310 --explicit
 
 ## 更新规则
 
-更换 Scanpy、AnnData、Harmony、Scrublet、Leiden 或 UMAP 版本后，必须重新运行 integration，并在 `../Scripts/README.md` 的服务器变更表中记录：
+更换 Scanpy、AnnData、Harmony、Scrublet、Seurat、DoubletFinder、Leiden 或 UMAP 版本后，必须重新运行 integration，并在 `../Scripts/README.md` 的服务器变更表中记录：
 
 - 精确软件版本和 Git 提交。
 - 10 个样本的输入细胞数、QC 保留数和 doublet 数。
