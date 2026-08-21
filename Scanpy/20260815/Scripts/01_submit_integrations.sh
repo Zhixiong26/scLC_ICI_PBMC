@@ -13,8 +13,8 @@ command -v dsub >/dev/null 2>&1 || {
 : "${R_LIBS_USER:=/share/home/rzli/R/scDNAm-library}"
 : "${SCLC_DOUBLET_METHODS_ROOT:=${SCLC_SCANPY_RESULTS}/doublet_methods}"
 : "${SCLC_DOUBLET_METHODS_LOG_DIR:=${SCLC_SCANPY_ROOT}/Logs/doublet_methods}"
-: "${SCLC_DOUBLET_METHOD_CPU:=2}"
-: "${SCLC_DOUBLET_METHOD_MEM:=24576MB}"
+: "${SCLC_DOUBLET_METHOD_CPU:=8}"
+: "${SCLC_DOUBLET_METHOD_MEM:=65536MB}"
 
 [[ -x "$SCANPY_PYTHON" ]] || {
     echo "ERROR: Python is not executable: $SCANPY_PYTHON" >&2
@@ -26,6 +26,10 @@ command -v dsub >/dev/null 2>&1 || {
 }
 [[ -d "$R_LIBS_USER" ]] || {
     echo "ERROR: R_LIBS_USER does not exist: $R_LIBS_USER" >&2
+    exit 1
+}
+[[ "$SCLC_DOUBLET_METHOD_CPU" =~ ^[1-9][0-9]*$ ]] || {
+    echo "ERROR: SCLC_DOUBLET_METHOD_CPU must be a positive integer." >&2
     exit 1
 }
 
@@ -59,16 +63,17 @@ for method in "${methods[@]}"; do
         -eo "${SCLC_DOUBLET_METHODS_LOG_DIR}/${job_name}.%J.err" \
         env \
         PYTHONUNBUFFERED=1 \
-        OPENBLAS_NUM_THREADS=1 \
-        GOTO_NUM_THREADS=1 \
-        OMP_NUM_THREADS=1 \
-        OMP_THREAD_LIMIT=1 \
-        MKL_NUM_THREADS=1 \
-        NUMEXPR_NUM_THREADS=1 \
-        VECLIB_MAXIMUM_THREADS=1 \
-        BLIS_NUM_THREADS=1 \
-        NUMBA_NUM_THREADS=1 \
-        LOKY_MAX_CPU_COUNT=1 \
+        SCLC_INTEGRATION_THREADS="$SCLC_DOUBLET_METHOD_CPU" \
+        OPENBLAS_NUM_THREADS="$SCLC_DOUBLET_METHOD_CPU" \
+        GOTO_NUM_THREADS="$SCLC_DOUBLET_METHOD_CPU" \
+        OMP_NUM_THREADS="$SCLC_DOUBLET_METHOD_CPU" \
+        OMP_THREAD_LIMIT="$SCLC_DOUBLET_METHOD_CPU" \
+        MKL_NUM_THREADS="$SCLC_DOUBLET_METHOD_CPU" \
+        NUMEXPR_NUM_THREADS="$SCLC_DOUBLET_METHOD_CPU" \
+        VECLIB_MAXIMUM_THREADS="$SCLC_DOUBLET_METHOD_CPU" \
+        BLIS_NUM_THREADS="$SCLC_DOUBLET_METHOD_CPU" \
+        NUMBA_NUM_THREADS="$SCLC_DOUBLET_METHOD_CPU" \
+        LOKY_MAX_CPU_COUNT="$SCLC_DOUBLET_METHOD_CPU" \
         OMP_DYNAMIC=FALSE \
         MKL_DYNAMIC=FALSE \
         SCANPY_PYTHON="$SCANPY_PYTHON" \

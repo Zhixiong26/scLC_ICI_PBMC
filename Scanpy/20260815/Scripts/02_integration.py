@@ -6,14 +6,19 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-# 线程限制必须在导入任何数值计算库之前生效
+# 线程数必须在导入任何数值计算库之前生效。
+THREADS = int(os.environ.get(
+    "SCLC_INTEGRATION_THREADS", os.environ.get("OMP_NUM_THREADS", "8")
+))
+if THREADS < 1:
+    raise ValueError("SCLC_INTEGRATION_THREADS must be a positive integer.")
 for _env_var in (
     "OPENBLAS_NUM_THREADS", "GOTO_NUM_THREADS", "OMP_NUM_THREADS",
     "OMP_THREAD_LIMIT", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS",
     "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS", "NUMBA_NUM_THREADS",
     "LOKY_MAX_CPU_COUNT",
 ):
-    os.environ.setdefault(_env_var, "1")
+    os.environ.setdefault(_env_var, str(THREADS))
 for _env_var in ("OMP_DYNAMIC", "MKL_DYNAMIC"):
     os.environ.setdefault(_env_var, "FALSE")
 
@@ -115,7 +120,9 @@ UMAP_MIN_DIST = 0.5
 UMAP_SPREAD = 1.0
 
 sc.settings.verbosity = 3
+sc.settings.n_jobs = THREADS
 sc.set_figure_params(dpi=100, facecolor="white")
+print(f"Numerical/Scanpy threads: {THREADS}")
 
 
 # ============================================================
@@ -753,6 +760,7 @@ adata.uns["integration_parameters"] = {
     "umap_min_dist": UMAP_MIN_DIST,
     "umap_spread": UMAP_SPREAD,
     "doublet_method": DOUBLET_METHOD,
+    "threads": THREADS,
     "doublet_fallback_rate_per_1000_cells": GEMX_DOUBLET_RATE_PER_1000_CELLS,
 }
 sce.pp.harmony_integrate(

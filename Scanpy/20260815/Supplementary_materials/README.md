@@ -41,7 +41,7 @@ DoubletFinder 分支的 `02_integration.py` 会通过 `Rscript` 逐样本调用 
 ## 系统与运行约定
 
 - 服务器无图形界面时使用 Matplotlib 非交互绘图能力。
-- `01_submit_integrations.sh` 将整合作业的 BLAS、OpenMP、Numba 和 Joblib 线程限制为 1。
+- `01_submit_integrations.sh` 默认为每个整合作业申请 8 CPU，并将 Scanpy、BLAS、OpenMP、Numba 和 Joblib 线程统一为 8。
 - `05_submit_annotations.sh` 按申请的 CPU 数限制注释与出图作业的数学库线程。
 - 不应在同一输出目录中混用不同 Scanpy/AnnData 版本生成的中间 H5AD；升级后应从 integration 重新生成。
 

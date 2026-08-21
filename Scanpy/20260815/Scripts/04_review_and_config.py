@@ -4,6 +4,11 @@ import gc
 import os
 from pathlib import Path
 
+REVIEW_THREADS = int(os.environ.get(
+    "SCLC_REVIEW_THREADS", os.environ.get("OMP_NUM_THREADS", "8")
+))
+if REVIEW_THREADS < 1:
+    raise ValueError("SCLC_REVIEW_THREADS must be a positive integer.")
 if __name__ == "__main__":
     for _env_var in (
         "OPENBLAS_NUM_THREADS", "GOTO_NUM_THREADS", "OMP_NUM_THREADS",
@@ -11,7 +16,7 @@ if __name__ == "__main__":
         "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS", "NUMBA_NUM_THREADS",
         "LOKY_MAX_CPU_COUNT",
     ):
-        os.environ[_env_var] = "1"
+        os.environ[_env_var] = str(REVIEW_THREADS)
     os.environ["OMP_DYNAMIC"] = "FALSE"
     os.environ["MKL_DYNAMIC"] = "FALSE"
 
@@ -22,6 +27,9 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 from scipy import sparse
+
+if __name__ == "__main__":
+    sc.settings.n_jobs = REVIEW_THREADS
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -306,6 +314,7 @@ def build_crosswalk(cluster_by_method: dict[str, pd.Series]) -> pd.DataFrame:
 
 
 def main() -> None:
+    print(f"Marker-review threads: {REVIEW_THREADS}")
     all_top_marker_rows: list[dict] = []
     all_template_rows: list[dict] = []
     all_gene_rows: list[dict] = []

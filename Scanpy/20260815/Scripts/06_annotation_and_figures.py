@@ -4,12 +4,28 @@ import importlib.util
 import os
 from pathlib import Path
 
+THREADS = int(os.environ.get(
+    "SCLC_FINAL_THREADS", os.environ.get("OMP_NUM_THREADS", "8")
+))
+if THREADS < 1:
+    raise ValueError("SCLC_FINAL_THREADS must be a positive integer.")
+for _env_var in (
+    "OPENBLAS_NUM_THREADS", "GOTO_NUM_THREADS", "OMP_NUM_THREADS",
+    "OMP_THREAD_LIMIT", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS", "NUMBA_NUM_THREADS",
+    "LOKY_MAX_CPU_COUNT",
+):
+    os.environ.setdefault(_env_var, str(THREADS))
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scanpy as sc
+
+sc.settings.n_jobs = THREADS
+print(f"Annotation/figure threads: {THREADS}")
 
 
 # ============================================================

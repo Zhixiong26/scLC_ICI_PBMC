@@ -11,11 +11,15 @@ command -v dsub >/dev/null 2>&1 || {
 
 : "${SCLC_DOUBLET_METHODS_ROOT:=${SCLC_SCANPY_RESULTS}/doublet_methods}"
 : "${SCLC_DOUBLET_METHODS_LOG_DIR:=${SCLC_SCANPY_ROOT}/Logs/doublet_methods}"
-: "${SCLC_ANNOTATION_CPU:=4}"
-: "${SCLC_ANNOTATION_MEM:=24576MB}"
+: "${SCLC_ANNOTATION_CPU:=8}"
+: "${SCLC_ANNOTATION_MEM:=32768MB}"
 
 [[ -x "$SCANPY_PYTHON" ]] || {
     echo "ERROR: Python is not executable: $SCANPY_PYTHON" >&2
+    exit 1
+}
+[[ "$SCLC_ANNOTATION_CPU" =~ ^[1-9][0-9]*$ ]] || {
+    echo "ERROR: SCLC_ANNOTATION_CPU must be a positive integer." >&2
     exit 1
 }
 
@@ -56,6 +60,7 @@ for method in "${methods[@]}"; do
         -eo "${SCLC_DOUBLET_METHODS_LOG_DIR}/${job_name}.%J.err" \
         env \
         PYTHONUNBUFFERED=1 \
+        SCLC_FINAL_THREADS="$SCLC_ANNOTATION_CPU" \
         OPENBLAS_NUM_THREADS="$SCLC_ANNOTATION_CPU" \
         GOTO_NUM_THREADS="$SCLC_ANNOTATION_CPU" \
         OMP_NUM_THREADS="$SCLC_ANNOTATION_CPU" \

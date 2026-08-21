@@ -33,11 +33,12 @@ bash Scanpy/20260815/Scripts/01_submit_integrations.sh
 mkdir -p Scanpy/20260815/Logs/doublet_methods
 dsub \
   -n scanpy_method_review \
-  -R "cpu=2;mem=24576MB" \
+  -R "cpu=8;mem=49152MB" \
   --cwd /share/home/rzli/scLC_ICI_PBMC \
   -oo Scanpy/20260815/Logs/doublet_methods/scanpy_method_review.%J.out \
   -eo Scanpy/20260815/Logs/doublet_methods/scanpy_method_review.%J.err \
-  env OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  env SCLC_REVIEW_THREADS=8 OPENBLAS_NUM_THREADS=8 OMP_NUM_THREADS=8 \
+  MKL_NUM_THREADS=8 NUMBA_NUM_THREADS=8 LOKY_MAX_CPU_COUNT=8 \
   "$SCANPY_PYTHON" Scanpy/20260815/Scripts/04_review_and_config.py
 ```
 
@@ -46,6 +47,8 @@ dsub \
 ```bash
 bash Scanpy/20260815/Scripts/05_submit_annotations.sh
 ```
+
+默认资源为：integration 每个方法 8 CPU/64 GB，marker review 8 CPU/48 GB，注释+出图每个方法 8 CPU/32 GB。可在提交前用 `SCLC_DOUBLET_METHOD_CPU`、`SCLC_DOUBLET_METHOD_MEM`、`SCLC_REVIEW_THREADS`、`SCLC_ANNOTATION_CPU` 和 `SCLC_ANNOTATION_MEM` 覆盖。
 
 ## 输出
 
