@@ -33,6 +33,8 @@ bash Scanpy/20260815/Scripts/03_run_export_figures.sh
 
 ```bash
 bash Scanpy/20260815/Scripts/01_submit_doublet_variants.sh
+# 五个作业完成后，验证集合关系并生成逐 cluster 注释审核表：
+"$SCANPY_PYTHON" Scanpy/20260815/Scripts/01_compare_doublet_variants.py
 ```
 
 ```text
@@ -132,6 +134,8 @@ Results/doublet_versions/
 - `integration/01_sample_qc_summary.csv` 和 `01_doublet_calls.csv`：QC/doublet 审计。
 - `integration/doublet_cell_lists/`：四个互斥状态、任一方法异常并集、未检测名单和逐样本汇总。
 - `doublet_versions/{none,scrublet,doubletfinder,consensus,union}/integration/`：五种过滤策略的独立整合输出。
+- `doublet_versions/01_doublet_variant_comparison.csv`：五版本整体规模与集合验证表。
+- `doublet_versions/01_doublet_variant_cluster_review.csv`：五版本逐 cluster Top-20 marker、IR/NR 与 doublet 状态审核表。
 - `integration/01_global_gene_filter_summary.csv`：合并后全局基因过滤审计。
 - `integration/01_leiden_top_markers.csv`：人工注释依据。
 - `../Report.md`：版本、逐样本过滤、降维参数和 PCA/marker 提取说明。

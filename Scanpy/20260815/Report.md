@@ -115,6 +115,21 @@ UMAP、Leiden 和 marker 排名。不同版本仅在 doublet 删除规则上不�
 不覆盖已部署的 `Results/integration/` 共识版结果。五个版本的 Leiden cluster 编号和数量
 可能不同，必须分别复核 marker 后才能执行注释与导图。
 
+2026-08-21 的五个 dsub 作业（`167433–167437`）均成功完成，且逐细胞 call 与过滤
+集合一致性检查通过：
+
+| 模式 | 最终细胞 | 相对 `none` 删除 | `adata.raw` 基因 | Leiden clusters |
+|---|---:|---:|---:|---:|
+| `none` | 56,749 | 0 | 32,296 | 20 |
+| `scrublet` | 55,205 | 1,544 | 32,153 | 18 |
+| `doubletfinder` | 55,446 | 1,303 | 32,149 | 20 |
+| `consensus` | 56,212 | 537 | 32,224 | 19 |
+| `union` | 54,439 | 2,310 | 32,072 | 17 |
+
+五个版本均保留 2,000 HVG。`none` 中四个已检测状态为 54,439 个
+`both_negative`、1,007 个 `scrublet_only`、766 个 `doubletfinder_only` 和 537 个
+`both_positive`；其他四个版本与对应集合的精确子集关系均已验证。
+
 ### 2.6 每一步过滤的定义
 
 当前本地联合检测脚本按以下顺序处理每个样本：
@@ -321,4 +336,6 @@ bash Scanpy/20260815/Scripts/03_run_export_figures.sh
 - `Results/integration/01_integrated_base.h5ad`：counts、normalized expression、PCA、Harmony、UMAP、Leiden 和 marker 结果。
 - `Results/integration/01_leiden_top_markers.csv`：每个 cluster 的 marker 排名。
 - `Results/doublet_versions/{mode}/integration/`：五个完整 doublet 过滤版本的隔离整合输出。
+- `Results/doublet_versions/01_doublet_variant_comparison.csv`：五版本细胞、基因、cluster 和保留 doublet 状态比较。
+- `Results/doublet_versions/01_doublet_variant_cluster_review.csv`：五版本逐 cluster 细胞数、IR/NR、doublet 状态和 Top-20 marker 注释审核表。
 - `Scanpy/20260815/Logs/doublet_versions/`：五个 dsub 作业的 stdout/stderr 日志。

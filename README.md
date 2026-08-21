@@ -248,6 +248,7 @@ printf '%s\n' "$SCLC_PROJECT_ROOT" "$SCLC_SCANPY_RESULTS"
     │   │   ├── README.md
     │   │   ├── 00_config.sh
     │   │   ├── 01_doubletfinder.R
+    │   │   ├── 01_compare_doublet_variants.py
     │   │   ├── 01_integration.py
     │   │   ├── 01_run_integration.sh
     │   │   ├── 01_submit_doublet_variants.sh
