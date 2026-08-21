@@ -45,7 +45,7 @@ for _d in (OUTPUT_DIR, SCRUBLET_QC_DIR, DOUBLET_FINDER_QC_DIR, DOUBLET_LIST_DIR)
     _d.mkdir(parents=True, exist_ok=True)
 
 DOUBLET_FINDER_SCRIPT = Path(
-    os.environ.get("SCLC_DOUBLET_FINDER_SCRIPT", SCRIPT_DIR / "04_doubletfinder.R")
+    os.environ.get("SCLC_DOUBLET_FINDER_SCRIPT", SCRIPT_DIR / "03_doubletfinder.R")
 )
 RSCRIPT_BIN = os.environ.get("RSCRIPT_BIN", "Rscript")
 

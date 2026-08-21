@@ -9,7 +9,7 @@
 
 两个分支都从原始 counts 开始，分别运行 cell/gene QC、doublet 检测与过滤、HVG、PCA、Harmony、neighbors、UMAP、Leiden、marker 分析、人工注释和出图。过滤后的 PCA 和图结构在每个分支内重新计算，所以 cluster 数和 cluster ID 可以不同。
 
-主脚本为 [Scripts/03_integration.py](Scripts/03_integration.py)，完整编号与运行方式见 [Scripts/README.md](Scripts/README.md)。
+主整合脚本为 [Scripts/02_integration.py](Scripts/02_integration.py)，完整编号与运行方式见 [Scripts/README.md](Scripts/README.md)。
 
 ## 输出路径
 
@@ -21,11 +21,11 @@ Scanpy/20260815/Results/doublet_methods/
 
 日志路径：`Scanpy/20260815/Logs/doublet_methods/`。
 
-每个 integration 目录主要包含 `01_integrated_base.h5ad`、`01_doublet_status_all_cells.csv`、`01_singlets.csv`、`01_predicted_doublets.csv`、`01_not_tested.csv`、`01_sample_qc_summary.csv` 和 `01_leiden_top_markers.csv`。两方法之间的规模、细胞集合、cluster marker 和 crosswalk 比较写入 `Results/doublet_methods/05_*.csv` 和 `06_*.csv`。`06_review_doublet_method_markers.py` 参考 `S12-2N.ipynb` 的人工注释顺序，会逐 cluster 打印 Top-50 marker，生成可填写的 `06_manual_annotation_template.csv`，并在每个方法的 `marker_review/` 目录输出 Leiden UMAP、marker feature UMAP、Leiden dotplot 和 Top-50 文本。
+每个 integration 目录主要包含 `01_integrated_base.h5ad`、`01_doublet_status_all_cells.csv`、`01_singlets.csv`、`01_predicted_doublets.csv`、`01_not_tested.csv`、`01_sample_qc_summary.csv` 和 `01_leiden_top_markers.csv`。[Scripts/04_review_and_config.py](Scripts/04_review_and_config.py) 合并完成两方法规模/细胞集合/crosswalk 比较，并参考 `S12-2N.ipynb` 的人工注释顺序，输出 Top-50、marker feature UMAP、Leiden dotplot 和手工注释模板。
 
 ## 注释校对
 
-Scrublet 与 DoubletFinder 分别使用 [Scripts/08_annotation_config_scrublet.py](Scripts/08_annotation_config_scrublet.py) 和 [Scripts/09_annotation_config_doubletfinder.py](Scripts/09_annotation_config_doubletfinder.py)。
+Scrublet 与 DoubletFinder 的独立映射统一保存在 [Scripts/04_review_and_config.py](Scripts/04_review_and_config.py) 顶部。
 
 这两个映射必须在新整合结果产生后分别校对。当前配置是根据之前的对应分支整理的候选映射，未检查 UMAP、Top markers 和经典 marker panel 前，不应用作最终生物学结论。重点检查：
 
@@ -54,7 +54,7 @@ export SCANPY_PYTHON=/share/home/rzli/miniconda3/envs/scanpy310/bin/python
 export RSCRIPT_BIN=/share/home/rzli/miniconda3/envs/doubletfinder-r/bin/Rscript
 export R_LIBS_USER=/share/home/rzli/R/scDNAm-library
 
-bash Scanpy/20260815/Scripts/01_submit_doublet_methods.sh
+bash Scanpy/20260815/Scripts/01_submit_integrations.sh
 ```
 
-两个整合作业完成后，先运行 `05_compare_doublet_methods.py` 和 `06_review_doublet_method_markers.py`，再分别校对 08/09 注释映射，最后提交 10 注释和 13 出图。
+两个整合作业完成后，运行 04，根据证据校对同一文件顶部的两套映射，最后由 05 提交两个 06 注释+出图作业。

@@ -23,17 +23,12 @@ methods=(scrublet doubletfinder)
 for method in "${methods[@]}"; do
     method_results="${SCLC_DOUBLET_METHODS_ROOT}/${method}"
     input_h5ad="${method_results}/integration/01_integrated_base.h5ad"
-    if [[ "$method" == "scrublet" ]]; then
-        config_path="${SCRIPT_DIR}/08_annotation_config_scrublet.py"
-    else
-        config_path="${SCRIPT_DIR}/09_annotation_config_doubletfinder.py"
-    fi
     [[ -s "$input_h5ad" ]] || {
         echo "ERROR: input h5ad is missing: $input_h5ad" >&2
         exit 1
     }
-    [[ -s "$config_path" ]] || {
-        echo "ERROR: annotation config is missing: $config_path" >&2
+    [[ -s "${SCRIPT_DIR}/04_review_and_config.py" ]] || {
+        echo "ERROR: annotation config is missing: ${SCRIPT_DIR}/04_review_and_config.py" >&2
         exit 1
     }
     [[ ! -e "${method_results}/annotation/02_annotated_final.h5ad" ]] || {
@@ -44,19 +39,14 @@ for method in "${methods[@]}"; do
 done
 
 mkdir -p "$SCLC_DOUBLET_METHODS_LOG_DIR"
-echo "Submitting two independent annotation jobs:"
+echo "Submitting two independent annotation + figure jobs:"
 echo "  results: $SCLC_DOUBLET_METHODS_ROOT"
 echo "  logs:    $SCLC_DOUBLET_METHODS_LOG_DIR"
 echo "  resource per job: cpu=${SCLC_ANNOTATION_CPU};mem=${SCLC_ANNOTATION_MEM}"
 
 for method in "${methods[@]}"; do
     method_results="${SCLC_DOUBLET_METHODS_ROOT}/${method}"
-    if [[ "$method" == "scrublet" ]]; then
-        config_path="${SCRIPT_DIR}/08_annotation_config_scrublet.py"
-    else
-        config_path="${SCRIPT_DIR}/09_annotation_config_doubletfinder.py"
-    fi
-    job_name="scanpy_ann_${method}"
+    job_name="scanpy_final_${method}"
 
     dsub \
         -n "$job_name" \
@@ -66,15 +56,26 @@ for method in "${methods[@]}"; do
         -eo "${SCLC_DOUBLET_METHODS_LOG_DIR}/${job_name}.%J.err" \
         env \
         PYTHONUNBUFFERED=1 \
+        OPENBLAS_NUM_THREADS="$SCLC_ANNOTATION_CPU" \
+        GOTO_NUM_THREADS="$SCLC_ANNOTATION_CPU" \
+        OMP_NUM_THREADS="$SCLC_ANNOTATION_CPU" \
+        OMP_THREAD_LIMIT="$SCLC_ANNOTATION_CPU" \
+        MKL_NUM_THREADS="$SCLC_ANNOTATION_CPU" \
+        NUMEXPR_NUM_THREADS="$SCLC_ANNOTATION_CPU" \
+        VECLIB_MAXIMUM_THREADS="$SCLC_ANNOTATION_CPU" \
+        BLIS_NUM_THREADS="$SCLC_ANNOTATION_CPU" \
+        NUMBA_NUM_THREADS="$SCLC_ANNOTATION_CPU" \
+        LOKY_MAX_CPU_COUNT="$SCLC_ANNOTATION_CPU" \
+        OMP_DYNAMIC=FALSE \
+        MKL_DYNAMIC=FALSE \
         SCANPY_PYTHON="$SCANPY_PYTHON" \
         SCLC_PROJECT_ROOT="$SCLC_PROJECT_ROOT" \
         SCLC_DATA_ROOT="$SCLC_DATA_ROOT" \
         SCLC_CONDA_ROOT="$SCLC_CONDA_ROOT" \
         SCLC_SCANPY_ROOT="$SCLC_SCANPY_ROOT" \
         SCLC_SCANPY_RESULTS="$method_results" \
-        SCLC_ANNOTATION_CONFIG="$config_path" \
         SCLC_DOUBLET_METHOD="$method" \
-        bash "$SCRIPT_DIR/11_run_annotation.sh"
+        "$SCANPY_PYTHON" "$SCRIPT_DIR/06_annotation_and_figures.py"
 done
 
-echo "Both annotation jobs were submitted. Query them with: djob"
+echo "Both annotation + figure jobs were submitted. Query them with: djob"

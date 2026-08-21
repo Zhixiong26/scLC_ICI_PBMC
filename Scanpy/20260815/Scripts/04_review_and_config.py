@@ -4,15 +4,16 @@ import gc
 import os
 from pathlib import Path
 
-for _env_var in (
-    "OPENBLAS_NUM_THREADS", "GOTO_NUM_THREADS", "OMP_NUM_THREADS",
-    "OMP_THREAD_LIMIT", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS",
-    "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS", "NUMBA_NUM_THREADS",
-    "LOKY_MAX_CPU_COUNT",
-):
-    os.environ[_env_var] = "1"
-os.environ["OMP_DYNAMIC"] = "FALSE"
-os.environ["MKL_DYNAMIC"] = "FALSE"
+if __name__ == "__main__":
+    for _env_var in (
+        "OPENBLAS_NUM_THREADS", "GOTO_NUM_THREADS", "OMP_NUM_THREADS",
+        "OMP_THREAD_LIMIT", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS", "NUMBA_NUM_THREADS",
+        "LOKY_MAX_CPU_COUNT",
+    ):
+        os.environ[_env_var] = "1"
+    os.environ["OMP_DYNAMIC"] = "FALSE"
+    os.environ["MKL_DYNAMIC"] = "FALSE"
 
 import matplotlib
 matplotlib.use("Agg")
@@ -30,6 +31,14 @@ METHODS_ROOT = Path(
     os.environ.get("SCLC_DOUBLET_METHODS_ROOT", RESULTS_DIR / "doublet_methods")
 )
 METHODS = ["scrublet", "doubletfinder"]
+REQUIRED_OUTPUTS = [
+    "01_integrated_base.h5ad",
+    "01_sample_qc_summary.csv",
+    "01_doublet_calls.csv",
+    "01_global_gene_filter_summary.csv",
+    "01_leiden_top_markers.csv",
+    "01_leiden_cluster_counts.csv",
+]
 MARKER_PANELS = {
     "Monocytes": ["LYZ", "FCN1", "S100A8", "LST1", "FCGR3A", "MS4A7"],
     "B_cells": ["MS4A1", "CD79A", "CD74", "CD37"],
@@ -38,7 +47,7 @@ MARKER_PANELS = {
     "cDC1": ["CLEC9A", "XCR1", "CADM1", "WDFY4"],
     "cDC2": ["CD1C", "FCER1A", "CLEC10A", "GPR183"],
     "Treg_cells": ["FOXP3", "IL2RA", "CTLA4", "IKZF2"],
-    "Naive_T_cells": ["CCR7", "SELL", "TCF7", "LEF1"],
+    "Naive_CD4_T_cells": ["CCR7", "SELL", "TCF7", "LEF1"],
     "CD4_T_cells": ["CD3D", "CD4", "IL7R", "LTB"],
     "CD8_T_cells": ["CD3D", "CD8A", "CD8B", "CCL5"],
     "Gamma_delta_T_cells": ["TRDC", "TRGC1", "TRGV9", "TRDV2"],
@@ -47,7 +56,35 @@ MARKER_PANELS = {
     "Cycling_cells": ["MKI67", "TOP2A", "STMN1", "CENPF"],
     "Platelets": ["PPBP", "PF4", "NRGN", "TUBB1"],
 }
-FIGURE_DPI = 200
+FIGURE_DPI = 300
+UMAP_LEGEND_LOCATION = "right margin"
+DOTPLOT_CMAP = "Reds"
+DOTPLOT_FIGSIZE = (16, 7)
+
+# 运行本脚本生成手工审核证据后，在这里分别修改两套映射。
+CLUSTER_TO_CELLTYPE_BY_METHOD = {
+    "scrublet": {
+        "0": "CD8_T_cells", "1": "Naive_CD4_T_cells", "2": "CD4_T_cells",
+        "3": "Monocytes", "4": "NK_Gamma_delta_T_mixed", "5": "Monocytes",
+        "6": "NK_cells", "7": "Monocytes", "8": "B_cells", "9": "Treg_cells",
+        "10": "cDC2", "11": "Low_quality_monocytes", "12": "MAIT_cells",
+        "13": "Cycling_cells", "14": "Plasma_cells", "15": "pDC",
+        "16": "Platelets", "17": "cDC1",
+    },
+    "doubletfinder": {
+        "0": "CD8_T_cells", "1": "NK_cells", "2": "Monocytes",
+        "3": "CD4_T_cells", "4": "Monocytes", "5": "Naive_CD4_T_cells",
+        "6": "Monocytes", "7": "B_cells", "8": "Naive_CD4_T_cells",
+        "9": "Gamma_delta_T_cells", "10": "Low_quality_monocytes",
+        "11": "B_cells", "12": "Treg_cells", "13": "cDC2", "14": "MAIT_cells",
+        "15": "Cycling_cells", "16": "Plasma_cells", "17": "T_NK_mixed",
+        "18": "pDC", "19": "Platelets",
+    },
+}
+EXCLUDE_CELL_TYPES_BY_METHOD = {"scrublet": set(), "doubletfinder": set()}
+
+# 最终出图与手工审核共用同一套 marker，避免两处维护不一致。
+MARKER_GENES = MARKER_PANELS
 
 
 def numeric_sort(values: set[str]) -> list[str]:
@@ -103,6 +140,8 @@ def save_manual_annotation_review_figures(adata: sc.AnnData, method: str) -> Pat
     """生成手工注释所需的 Leiden UMAP、marker UMAP 和 dotplot。"""
     if "X_umap" not in adata.obsm or adata.obsm["X_umap"].shape != (adata.n_obs, 2):
         raise ValueError(f"Method {method} does not contain a valid two-dimensional UMAP.")
+    if "X_pca_harmony" not in adata.obsm:
+        raise ValueError(f"Method {method} does not contain X_pca_harmony.")
     if adata.raw is None:
         raise ValueError(f"Method {method} does not contain adata.raw.")
 
@@ -126,7 +165,7 @@ def save_manual_annotation_review_figures(adata: sc.AnnData, method: str) -> Pat
         show=False,
     )
     plt.savefig(
-        review_dir / "06_umap_leiden_clusters.png",
+        review_dir / "04_umap_leiden_clusters.png",
         dpi=FIGURE_DPI,
         bbox_inches="tight",
     )
@@ -144,7 +183,7 @@ def save_manual_annotation_review_figures(adata: sc.AnnData, method: str) -> Pat
         plt.suptitle(f"{method}: {panel}", y=1.02)
         safe_panel = panel.lower().replace(" ", "_")
         plt.savefig(
-            review_dir / f"06_umap_marker_panel_{panel_index:02d}_{safe_panel}.png",
+            review_dir / f"04_umap_marker_panel_{panel_index:02d}_{safe_panel}.png",
             dpi=FIGURE_DPI,
             bbox_inches="tight",
         )
@@ -164,7 +203,7 @@ def save_manual_annotation_review_figures(adata: sc.AnnData, method: str) -> Pat
         show=False,
     )
     plt.savefig(
-        review_dir / "06_dotplot_marker_panels_by_leiden.png",
+        review_dir / "04_dotplot_marker_panels_by_leiden.png",
         dpi=FIGURE_DPI,
         bbox_inches="tight",
     )
@@ -181,7 +220,7 @@ def save_top_marker_text(rows: list[dict], method: str, review_dir: Path) -> Pat
             str(row["top50_markers"]),
             "",
         ])
-    output = review_dir / "06_top50_markers_for_manual_annotation.txt"
+    output = review_dir / "04_top50_markers_for_manual_annotation.txt"
     output.write_text("\n".join(lines), encoding="utf-8")
     return output
 
@@ -272,12 +311,58 @@ def main() -> None:
     all_gene_rows: list[dict] = []
     all_panel_rows: list[dict] = []
     cluster_by_method: dict[str, pd.Series] = {}
+    cell_sets: dict[str, set[str]] = {}
+    comparison_rows: list[dict] = []
+    cluster_review_rows: list[dict] = []
     for method in METHODS:
-        path = METHODS_ROOT / method / "integration" / "01_integrated_base.h5ad"
-        if not path.is_file():
-            raise FileNotFoundError(path)
+        integration_dir = METHODS_ROOT / method / "integration"
+        for name in REQUIRED_OUTPUTS:
+            required_path = integration_dir / name
+            if not required_path.is_file() or required_path.stat().st_size == 0:
+                raise FileNotFoundError(f"Missing or empty output: {required_path}")
+        path = integration_dir / "01_integrated_base.h5ad"
         print(f"Reading {method}: {path}")
         adata = sc.read_h5ad(path)
+        if adata.raw is None:
+            raise ValueError(f"Method {method} does not contain adata.raw.")
+        if adata.uns.get("doublet_detection", {}).get("method") != method:
+            raise ValueError(f"H5AD method mismatch for {method}.")
+        if adata.obs["remove_as_doublet"].astype(bool).any():
+            raise ValueError(f"Filtered H5AD still contains removable cells for {method}.")
+        if not adata.obs["doublet_tested"].astype(bool).all():
+            raise ValueError(f"Retained H5AD contains untested cells for {method}.")
+
+        qc = pd.read_csv(integration_dir / "01_sample_qc_summary.csv")
+        if len(qc) != 10 or not qc["doublet_method"].eq(method).all():
+            raise ValueError(f"Invalid QC summary for method={method}.")
+        clusters = adata.obs["leiden_integrated"].astype(str)
+        cluster_ids = numeric_sort(set(clusters))
+        cell_sets[method] = set(adata.obs_names.astype(str))
+        comparison_rows.append({
+            "method": method,
+            "n_cells": adata.n_obs,
+            "n_hvg": adata.n_vars,
+            "n_raw_genes": adata.raw.n_vars,
+            "n_clusters": len(cluster_ids),
+            "n_doublets_removed": int(qc["n_doublets_removed"].sum()),
+        })
+
+        marker_table = pd.read_csv(integration_dir / "01_leiden_top_markers.csv")
+        counts = adata.obs["leiden_integrated"].astype(str).value_counts()
+        group_counts = pd.crosstab(
+            clusters, adata.obs["group"].astype(str),
+        ).reindex(index=cluster_ids, columns=["IR", "NR"], fill_value=0)
+        for cluster in cluster_ids:
+            cluster_review_rows.append({
+                "method": method,
+                "cluster": cluster,
+                "n_cells": int(counts[cluster]),
+                "ir_cells": int(group_counts.loc[cluster, "IR"]),
+                "nr_cells": int(group_counts.loc[cluster, "NR"]),
+                "top20_markers": " ".join(
+                    marker_table[cluster].dropna().astype(str).head(20)
+                ),
+            })
         cluster_by_method[method] = pd.Series(
             adata.obs["leiden_integrated"].astype(str).to_numpy(),
             index=adata.obs_names.astype(str), name=method,
@@ -299,12 +384,28 @@ def main() -> None:
         del adata
         gc.collect()
 
+    scrublet_cells = cell_sets["scrublet"]
+    doubletfinder_cells = cell_sets["doubletfinder"]
+    shared_cells = scrublet_cells & doubletfinder_cells
+    set_comparison = pd.DataFrame([{
+        "scrublet_cells": len(scrublet_cells),
+        "doubletfinder_cells": len(doubletfinder_cells),
+        "shared_cells": len(shared_cells),
+        "scrublet_only_cells": len(scrublet_cells - doubletfinder_cells),
+        "doubletfinder_only_cells": len(doubletfinder_cells - scrublet_cells),
+        "jaccard": round(
+            len(shared_cells) / len(scrublet_cells | doubletfinder_cells), 6
+        ),
+    }])
     outputs = {
-        METHODS_ROOT / "06_doublet_method_top50_markers.csv": pd.DataFrame(all_top_marker_rows),
-        METHODS_ROOT / "06_manual_annotation_template.csv": pd.DataFrame(all_template_rows),
-        METHODS_ROOT / "06_doublet_method_marker_gene_summary.csv": pd.DataFrame(all_gene_rows),
-        METHODS_ROOT / "06_doublet_method_marker_panel_summary.csv": pd.DataFrame(all_panel_rows),
-        METHODS_ROOT / "06_doublet_method_cluster_crosswalk.csv": build_crosswalk(cluster_by_method),
+        METHODS_ROOT / "04_method_comparison.csv": pd.DataFrame(comparison_rows),
+        METHODS_ROOT / "04_cell_set_comparison.csv": set_comparison,
+        METHODS_ROOT / "04_cluster_review.csv": pd.DataFrame(cluster_review_rows),
+        METHODS_ROOT / "04_top50_markers.csv": pd.DataFrame(all_top_marker_rows),
+        METHODS_ROOT / "04_manual_annotation_template.csv": pd.DataFrame(all_template_rows),
+        METHODS_ROOT / "04_marker_gene_summary.csv": pd.DataFrame(all_gene_rows),
+        METHODS_ROOT / "04_marker_panel_summary.csv": pd.DataFrame(all_panel_rows),
+        METHODS_ROOT / "04_cluster_crosswalk.csv": build_crosswalk(cluster_by_method),
     }
     for path, table in outputs.items():
         table.to_csv(path, index=False)

@@ -59,6 +59,18 @@ for method in "${methods[@]}"; do
         -eo "${SCLC_DOUBLET_METHODS_LOG_DIR}/${job_name}.%J.err" \
         env \
         PYTHONUNBUFFERED=1 \
+        OPENBLAS_NUM_THREADS=1 \
+        GOTO_NUM_THREADS=1 \
+        OMP_NUM_THREADS=1 \
+        OMP_THREAD_LIMIT=1 \
+        MKL_NUM_THREADS=1 \
+        NUMEXPR_NUM_THREADS=1 \
+        VECLIB_MAXIMUM_THREADS=1 \
+        BLIS_NUM_THREADS=1 \
+        NUMBA_NUM_THREADS=1 \
+        LOKY_MAX_CPU_COUNT=1 \
+        OMP_DYNAMIC=FALSE \
+        MKL_DYNAMIC=FALSE \
         SCANPY_PYTHON="$SCANPY_PYTHON" \
         RSCRIPT_BIN="$RSCRIPT_BIN" \
         R_LIBS_USER="$R_LIBS_USER" \
@@ -69,7 +81,7 @@ for method in "${methods[@]}"; do
         SCLC_SCANPY_ROOT="$SCLC_SCANPY_ROOT" \
         SCLC_SCANPY_RESULTS="$method_results" \
         SCLC_DOUBLET_METHOD="$method" \
-        bash "$SCLC_SCANPY_SCRIPTS/02_run_integration.sh"
+        "$SCANPY_PYTHON" "$SCLC_SCANPY_SCRIPTS/02_integration.py"
 done
 
 echo "Both method jobs were submitted. Query active jobs with: djob"

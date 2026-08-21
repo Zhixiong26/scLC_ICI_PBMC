@@ -1,31 +1,22 @@
-# Scanpy 双方法独立分析流程
+# Scanpy 双方法精简流程
 
-当前流程只保留两个完整分析分支：`scrublet` 和 `doubletfinder`。两个分支从原始 counts 独立开始，分别执行 doublet 检测与过滤，随后各自重新进行 QC、HVG、PCA、Harmony、neighbors、UMAP、Leiden、marker 分析、注释和出图。两个方法不共用聚类结果或 cluster 编号。
+当前只保留 Scrublet 和 DoubletFinder 两个独立分支。两者从 raw counts 开始，各自完成 doublet 过滤、QC、HVG、PCA、Harmony、neighbors、UMAP、Leiden 和 marker 分析。人工校对 cluster 后，再分别完成注释与最终出图。
 
-## 脚本顺序
-
-所有可执行脚本都有唯一的两位数编号。
+## 唯一编号与职责
 
 | 编号 | 脚本 | 作用 |
 |---|---|---|
-| 00 | `00_config.sh` | 统一路径、Python 和线程参数 |
-| 01 | `01_submit_doublet_methods.sh` | dsub 提交两个独立整合作业 |
-| 02 | `02_run_integration.sh` | 单方法整合作业包装器 |
-| 03 | `03_integration.py` | QC、doublet 方法、HVG、PCA、Harmony、neighbors、UMAP、Leiden 和 markers |
-| 04 | `04_doubletfinder.R` | DoubletFinder R 实现，仅由 DoubletFinder 分支调用 |
-| 05 | `05_compare_doublet_methods.py` | 比较两方法细胞集合、规模和 cluster |
-| 06 | `06_review_doublet_method_markers.py` | 生成 marker panel 与 cluster crosswalk 审核表 |
-| 07 | `07_annotation_markers.py` | 共用 marker panel 和绘图样式 |
-| 08 | `08_annotation_config_scrublet.py` | Scrublet 分支独立 cluster 注释 |
-| 09 | `09_annotation_config_doubletfinder.py` | DoubletFinder 分支独立 cluster 注释 |
-| 10 | `10_submit_annotations.sh` | dsub 提交两个独立注释作业 |
-| 11 | `11_run_annotation.sh` | 单方法注释作业包装器 |
-| 12 | `12_annotation.py` | 校验 doublet 状态并应用方法特异注释 |
-| 13 | `13_submit_figures.sh` | dsub 提交两个独立出图作业 |
-| 14 | `14_run_export_figures.sh` | 单方法出图作业包装器 |
-| 15 | `15_export_figures.py` | 输出 UMAP、PCA、marker dotplot 和 clean-cell 图片 |
+| 00 | `00_config.sh` | 路径、Python 和通用 Shell 配置 |
+| 01 | `01_submit_integrations.sh` | dsub 提交 Scrublet/DoubletFinder 两个独立整合作业 |
+| 02 | `02_integration.py` | 单方法完整整合：doublet、QC、PCA/Harmony、UMAP、Leiden、markers |
+| 03 | `03_doubletfinder.R` | 02 在 DoubletFinder 分支调用的 R 实现 |
+| 04 | `04_review_and_config.py` | 两方法比较、Top-50、marker UMAP/dotplot、crosswalk、手工注释模板；文件顶部也保存两套待确认映射 |
+| 05 | `05_submit_annotations.sh` | dsub 提交两个注释+出图作业 |
+| 06 | `06_annotation_and_figures.py` | 单方法注释、统计、H5AD/CSV 导出和全部最终图片 |
 
-## 服务器运行顺序
+不能再合并 04 和 05–06：04 之后必须暂停，由人工检查 marker 并修改 04 文件顶部的映射，这是必要的生物学决策点。
+
+## 服务器执行
 
 ```bash
 cd /share/home/rzli/scLC_ICI_PBMC
@@ -33,51 +24,51 @@ export SCANPY_PYTHON=/share/home/rzli/miniconda3/envs/scanpy310/bin/python
 export RSCRIPT_BIN=/share/home/rzli/miniconda3/envs/doubletfinder-r/bin/Rscript
 export R_LIBS_USER=/share/home/rzli/R/scDNAm-library
 
-bash Scanpy/20260815/Scripts/01_submit_doublet_methods.sh
+bash Scanpy/20260815/Scripts/01_submit_integrations.sh
 ```
 
-两个整合作业成功后，生成比较与 marker 审核表：
+两个 integration 作业都成功后，用 dsub 运行 04（该脚本会自行保存 Top-50 文本，不需要 `tee`）：
 
 ```bash
-OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
-"$SCANPY_PYTHON" Scanpy/20260815/Scripts/05_compare_doublet_methods.py
-
-OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
-"$SCANPY_PYTHON" Scanpy/20260815/Scripts/06_review_doublet_method_markers.py
+mkdir -p Scanpy/20260815/Logs/doublet_methods
+dsub \
+  -n scanpy_method_review \
+  -R "cpu=2;mem=24576MB" \
+  --cwd /share/home/rzli/scLC_ICI_PBMC \
+  -oo Scanpy/20260815/Logs/doublet_methods/scanpy_method_review.%J.out \
+  -eo Scanpy/20260815/Logs/doublet_methods/scanpy_method_review.%J.err \
+  env OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+  "$SCANPY_PYTHON" Scanpy/20260815/Scripts/04_review_and_config.py
 ```
 
-第 06 步参考 `S12-2N.ipynb` 的手工注释思路：在终端按方法、cluster 打印前 50 个 marker，并为每个方法生成 Leiden UMAP、经典 marker panel UMAP、按 Leiden 分组的 marker dotplot 和 Top-50 marker 文本。同时生成 `06_manual_annotation_template.csv`。先根据这些证据手工填写 `manual_cell_type` 和 `notes`，再分别校对 `08_annotation_config_scrublet.py` 与 `09_annotation_config_doubletfinder.py`。两个配置中的映射是方法特异的，不应直接相互复制。确认后依次提交：
+根据 `marker_review/` 图片、Top-50 文本和 `04_manual_annotation_template.csv` 分别修改 04 文件顶部的两套映射。确认后：
 
 ```bash
-bash Scanpy/20260815/Scripts/10_submit_annotations.sh
-# 两个注释作业成功后：
-bash Scanpy/20260815/Scripts/13_submit_figures.sh
+bash Scanpy/20260815/Scripts/05_submit_annotations.sh
 ```
 
-## 输出结构
+## 输出
 
 ```text
-Scanpy/20260815/Results/doublet_methods/
-├── scrublet/{integration,annotation,figures}/
-├── doubletfinder/{integration,annotation,figures}/
-├── 05_doublet_method_comparison.csv
-├── 05_doublet_method_cell_set_comparison.csv
-├── 05_doublet_method_cluster_review.csv
-├── 06_doublet_method_top50_markers.csv
-├── 06_manual_annotation_template.csv
-├── 06_doublet_method_marker_gene_summary.csv
-├── 06_doublet_method_marker_panel_summary.csv
-└── 06_doublet_method_cluster_crosswalk.csv
+Results/doublet_methods/
+├── scrublet/
+│   ├── integration/
+│   ├── marker_review/
+│   ├── annotation/
+│   └── figures/
+├── doubletfinder/
+│   ├── integration/
+│   ├── marker_review/
+│   ├── annotation/
+│   └── figures/
+├── 04_method_comparison.csv
+├── 04_cell_set_comparison.csv
+├── 04_cluster_review.csv
+├── 04_top50_markers.csv
+├── 04_manual_annotation_template.csv
+├── 04_marker_gene_summary.csv
+├── 04_marker_panel_summary.csv
+└── 04_cluster_crosswalk.csv
 ```
 
-方法特异的人工注释证据图与文本位于 `doublet_methods/{scrublet,doubletfinder}/marker_review/`。
-
-日志写入 `Scanpy/20260815/Logs/doublet_methods/`。历史的 `Results/doublet_versions/` 和 `Logs/doublet_versions/` 不属于当前入口，但保留用于追溯，本流程不会删除或覆盖它们。
-
-## 参数与重跑保护
-
-`03_integration.py` 中两个方法使用相同的基础 QC 和整合参数，但降维、图构建和聚类都在 doublet 过滤后对各自细胞集重新计算。因此两分支可以有不同的 cluster 数和结构。
-
-可用环境变量覆盖路径与资源，包括 `SCLC_DOUBLET_METHODS_ROOT`、`SCLC_DOUBLET_METHODS_LOG_DIR`、`SCLC_DOUBLET_METHOD_CPU`、`SCLC_DOUBLET_METHOD_MEM`、`SCLC_ANNOTATION_CPU`、`SCLC_ANNOTATION_MEM`、`SCLC_FIGURE_CPU` 和 `SCLC_FIGURE_MEM`。
-
-三个提交器在目标输出已存在时会中止，避免覆盖已有结果。需要重跑时，请先归档对应方法目录，或设置新的 `SCLC_DOUBLET_METHODS_ROOT`。
+历史 `Results/doublet_versions/` 仅保留追溯，不属于当前入口。提交器检测到已有输出时会中止，防止覆盖结果。
