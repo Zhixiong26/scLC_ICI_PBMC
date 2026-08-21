@@ -9,6 +9,8 @@
 
 两个分支都从原始 counts 开始，分别运行 cell/gene QC、doublet 检测与过滤、HVG、PCA、Harmony、neighbors、UMAP、Leiden、marker 分析、人工注释和出图。过滤后的 PCA 和图结构在每个分支内重新计算，所以 cluster 数和 cluster ID 可以不同。
 
+2026-08-22 六组参数扫描后，Scrublet 和 DoubletFinder 两个正式分支均选用 **30 PCs、20 neighbors、Leiden resolution 0.8**。UMAP 继续使用 `min_dist=0.5`、`spread=1.0`。相同参数是对两个方法分别评估后的选择，并不会合并两条分析分支。
+
 主整合脚本为 [Scripts/02_integration.py](Scripts/02_integration.py)，完整编号与运行方式见 [Scripts/README.md](Scripts/README.md)。
 
 ## 输出路径

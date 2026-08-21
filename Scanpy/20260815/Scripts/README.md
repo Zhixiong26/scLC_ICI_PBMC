@@ -2,6 +2,8 @@
 
 当前只保留 Scrublet 和 DoubletFinder 两个独立分支。两者从 raw counts 开始，各自完成 doublet 过滤、QC、HVG、PCA、Harmony、neighbors、UMAP、Leiden 和 marker 分析。人工校对 cluster 后，再分别完成注释与最终出图。
 
+经六组 Harmony 图参数扫描后，两个分支的正式配置均为 **30 PCs、20 neighbors、Leiden resolution 0.8**（UMAP `min_dist=0.5`、`spread=1.0`）。这是两个分支分别评估后选定的参数，两者的细胞过滤、PCA/Harmony 和图结构仍然独立计算。
+
 ## 唯一编号与职责
 
 | 编号 | 脚本 | 作用 |
