@@ -143,6 +143,7 @@ Results/doublet_versions/
 - `doublet_versions/01_doublet_variant_cluster_crosswalk.csv`：每个版本 cluster 到 `consensus`/`union` 参考 cluster 的最佳细胞重叠映射。
 - `doublet_versions/01_doublet_variant_annotation_evidence.csv`：五版本聚类大小、doublet 富集率、marker panel、Top-20 marker 与跨版本对应的合并审核表。
 - `doublet_versions/{mode}/annotation/`：五套独立注释 h5ad、逐细胞注释和统计表。
+- `doublet_versions/{mode}/figures/`：五套独立 UMAP、PCA、marker dotplot 和 clean-cell 图片。
 - `integration/01_global_gene_filter_summary.csv`：合并后全局基因过滤审计。
 - `integration/01_leiden_top_markers.csv`：人工注释依据。
 - `../Report.md`：版本、逐样本过滤、降维参数和 PCA/marker 提取说明。
@@ -190,6 +191,12 @@ Leiden cluster，因此使用五个独立映射。整合完成后批量提交注
 ```bash
 export SCANPY_PYTHON=/share/home/rzli/miniconda3/envs/scanpy310/bin/python
 bash Scanpy/20260815/Scripts/02_submit_doublet_variant_annotations.sh
+```
+
+注释完成后提交五版本导图：
+
+```bash
+bash Scanpy/20260815/Scripts/03_submit_doublet_variant_figures.sh
 ```
 
 | 日期 | Git 提交 | 修改 | 验证 | 服务器状态 |

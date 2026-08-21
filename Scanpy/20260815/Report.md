@@ -352,4 +352,5 @@ bash Scanpy/20260815/Scripts/03_run_export_figures.sh
 - `Results/doublet_versions/01_doublet_variant_cluster_review.csv`：五版本逐 cluster 细胞数、IR/NR、doublet 状态和 Top-20 marker 注释审核表。
 - `Results/doublet_versions/01_doublet_variant_annotation_evidence.csv`：五版本 marker panel、Top-20 marker、doublet 富集率和 cluster crosswalk 合并证据表。
 - `Results/doublet_versions/{mode}/annotation/`：五套独立注释输出。
+- `Results/doublet_versions/{mode}/figures/`：五套独立 UMAP、PCA、marker dotplot 和 clean-cell 图片。
 - `Scanpy/20260815/Logs/doublet_versions/`：五个 dsub 作业的 stdout/stderr 日志。
