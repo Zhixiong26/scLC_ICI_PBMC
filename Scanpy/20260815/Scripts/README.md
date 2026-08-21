@@ -35,6 +35,8 @@ bash Scanpy/20260815/Scripts/03_run_export_figures.sh
 bash Scanpy/20260815/Scripts/01_submit_doublet_variants.sh
 # 五个作业完成后，验证集合关系并生成逐 cluster 注释审核表：
 "$SCANPY_PYTHON" Scanpy/20260815/Scripts/01_compare_doublet_variants.py
+# 完整经典 marker 定量和跨版本 cluster 交叉映射由计算节点运行：
+"$SCANPY_PYTHON" Scanpy/20260815/Scripts/01_review_doublet_variant_markers.py
 ```
 
 ```text
@@ -136,6 +138,9 @@ Results/doublet_versions/
 - `doublet_versions/{none,scrublet,doubletfinder,consensus,union}/integration/`：五种过滤策略的独立整合输出。
 - `doublet_versions/01_doublet_variant_comparison.csv`：五版本整体规模与集合验证表。
 - `doublet_versions/01_doublet_variant_cluster_review.csv`：五版本逐 cluster Top-20 marker、IR/NR 与 doublet 状态审核表。
+- `doublet_versions/01_doublet_variant_marker_gene_summary.csv`：逐 cluster 经典 marker 的平均 log 表达和阳性细胞比例。
+- `doublet_versions/01_doublet_variant_marker_panel_summary.csv`：逐 cluster 的细胞类型 marker panel 汇总。
+- `doublet_versions/01_doublet_variant_cluster_crosswalk.csv`：每个版本 cluster 到 `consensus`/`union` 参考 cluster 的最佳细胞重叠映射。
 - `integration/01_global_gene_filter_summary.csv`：合并后全局基因过滤审计。
 - `integration/01_leiden_top_markers.csv`：人工注释依据。
 - `../Report.md`：版本、逐样本过滤、降维参数和 PCA/marker 提取说明。
