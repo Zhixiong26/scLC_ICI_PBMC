@@ -788,7 +788,7 @@ sce.pp.harmony_integrate(
 neighbors_and_umap(adata, use_rep="X_pca_harmony")
 sc.tl.leiden(
     adata, resolution=LEIDEN_RESOLUTION, random_state=RANDOM_STATE,
-    key_added="leiden_integrated",
+    key_added="leiden_integrated", flavor="leidenalg",
 )
 adata.obs["leiden_integrated"] = adata.obs["leiden_integrated"].astype("category")
 
