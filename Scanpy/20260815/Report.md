@@ -12,10 +12,11 @@
 | 20260815 GEM-X v4 重跑 | `b51c278` | 样本特异，见下表 | 55,277 | 28,792 | 16 |
 | 20260819 全局 gene QC 修正版 | `7bef6b2` | 样本特异，新样本动态计算 | 55,280 | 32,162 | 17 |
 | 20260819 全流程最终重跑 | `fc9fa38` | 样本特异，新样本动态计算 | 55,280 | 32,162 | 17 |
+| 20260821 Scrublet + DoubletFinder 联合重跑 | `8e1935f` / job `167431` | 两法共同待检集合，`consensus` 删除 | 56,212 | 32,224 | 19 |
 
-`fc9fa38` 为当前服务器 HEAD。`4a79636`（UMAP `min_dist=0.3`）与 `e1f366f`（`n_neighbors=20`）的参数调整已被 `9aa4f13` 完整回滚（恢复 `min_dist=0.5`、`n_neighbors=30`），实际生效的是 `a1c4998`（17-cluster 注释）+ `fd36bd5`（终端 Top-50 marker 日志）。逐样本数字与 `7bef6b2` 行相同（聚类划分与 UMAP 参数均未变），本次重跑仅改变注释映射与终端日志。
-
-> 当前本地脚本已升级为 Scrublet + DoubletFinder 联合检测，但尚未在服务器真实数据上重跑。下列 55,280-cell 结果仍是 `fc9fa38` 的单 Scrublet 已部署基线，不应当作联合检测版本的新结果。
+`fc9fa38` 是历史单 Scrublet 基线。当前联合检测结果由服务器 job `167431`
+于 `8e1935f` 上生成，作业 `EXIT_CODE=0`；后续 `74e1091` 仅显式固定
+Leiden `flavor="leidenalg"` 以消除版本警告，不改变本次结果，无需重跑。
 
 `20260810` 为归档流程，参数记录见第 5 节；仓库中没有该归档版本对应的完整 QC 输出，因此不虚构其逐样本细胞数。
 
@@ -73,7 +74,28 @@
 
 合并后全局 gene QC 将 38,606 个输入 gene IDs 过滤为 32,162 个基因（`min_cells=3`）；HVG 为 2,000，Harmony 在第 9 轮收敛，Leiden resolution 0.8 得到 17 个 clusters。
 
-### 2.4 每一步过滤的定义
+### 2.4 20260821 Scrublet + DoubletFinder 联合重跑
+
+| 样本 | 输入 | Scrublet 异常 | DoubletFinder 异常 | 两法均异常/删除 | 最终保留 |
+|---|---:|---:|---:|---:|---:|
+| IR01 | 7,981 | 376 | 227 | 107 | 7,768 |
+| IR02 | 6,070 | 107 | 121 | 59 | 5,568 |
+| IR03 | 7,383 | 306 | 193 | 102 | 7,018 |
+| IR04 | 8,171 | 300 | 233 | 81 | 7,974 |
+| IR05 | 5,392 | 56 | 101 | 12 | 5,242 |
+| NR01 | 4,340 | 81 | 64 | 39 | 4,163 |
+| NR02 | 5,672 | 5 | 112 | 3 | 5,458 |
+| NR03 | 4,285 | 2 | 64 | 1 | 4,225 |
+| NR04 | 7,057 | 228 | 171 | 116 | 6,682 |
+| NR05 | 2,183 | 83 | 17 | 17 | 2,114 |
+| **合计** | **58,534** | **1,544** | **1,303** | **537** | **56,212** |
+
+四个互斥状态为两法均正常、仅 Scrublet 异常、仅 DoubletFinder 异常和两法均异常。
+“任一方法异常”是后三类的并集，共 2,310 个细胞；其中当前 `consensus`
+主分析仅删除两法均异常的 537 个细胞。未进入共同待检集合的细胞单独标记为
+`not_tested`，不归入“两法均正常”。
+
+### 2.5 每一步过滤的定义
 
 当前本地联合检测脚本按以下顺序处理每个样本：
 
@@ -119,7 +141,7 @@
 | Harmony | `key='sample'`，`basis='X_pca'`，输出 `X_pca_harmony` |
 | Harmony 后 neighbors | `n_neighbors=30`，`use_rep='X_pca_harmony'` |
 | Harmony 后 UMAP | `min_dist=0.5`，`spread=1.0`，`random_state=0` |
-| Leiden | `resolution=0.8`，`random_state=0`，输出 `leiden_integrated` |
+| Leiden | `resolution=0.8`，`random_state=0`，`flavor='leidenalg'`，输出 `leiden_integrated` |
 | Marker | `rank_genes_groups(method='wilcoxon', use_raw=True)` |
 
 当前 GEM-X 重跑对象中的主要表征：
@@ -265,6 +287,15 @@ bash Scanpy/20260815/Scripts/03_run_export_figures.sh
 - `Results/integration/01_sample_qc_summary.csv`：样本级输入、联合检测 eligibility、两种算法 call、consensus、QC 和最终保留数。
 - `Results/integration/01_global_gene_filter_summary.csv`：合并后全局 `min_cells=3` 的基因过滤前后计数。
 - `Results/integration/01_doublet_calls.csv`：逐细胞 QC、Scrublet、DoubletFinder、consensus 和最终删除判定。
+- `Results/integration/doublet_cell_lists/01_doublet_both_normal.csv`：两种方法均正常的细胞名单。
+- `Results/integration/doublet_cell_lists/01_doublet_scrublet_only_abnormal.csv`：仅 Scrublet 异常的细胞名单。
+- `Results/integration/doublet_cell_lists/01_doublet_doubletfinder_only_abnormal.csv`：仅 DoubletFinder 异常的细胞名单。
+- `Results/integration/doublet_cell_lists/01_doublet_both_abnormal.csv`：两种方法均异常的细胞名单。
+- `Results/integration/doublet_cell_lists/01_doublet_any_method_abnormal.csv`：任一方法异常的合并名单（上述后三类并集）。
+- `Results/integration/doublet_cell_lists/01_doublet_not_tested.csv`：未进入两种算法共同待检集合的细胞名单。
+- `Results/integration/doublet_cell_lists/01_doublet_status_all_cells.csv`：所有输入细胞的中英文状态总表。
+- `Results/integration/doublet_cell_lists/01_doublet_status_summary.csv`：四个互斥状态及未检测状态的逐样本统计。
+- `Results/integration/doublet_cell_lists/01_doublet_any_method_abnormal_summary.csv`：任一方法异常的逐样本统计。
 - `Results/integration/scrublet_qc/`：每个样本的 Scrublet score histogram。
 - `Results/integration/doubletfinder_qc/`：每个样本的 pK sweep 表和图片。
 - `Results/integration/01_integrated_base.h5ad`：counts、normalized expression、PCA、Harmony、UMAP、Leiden 和 marker 结果。
