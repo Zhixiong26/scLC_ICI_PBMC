@@ -28,7 +28,10 @@ OUTPUT_COUNTS = OUTPUT_DIR / "02_cell_type_counts.csv"
 OUTPUT_COUNTS_BY_SAMPLE = OUTPUT_DIR / "02_cell_type_counts_by_sample.csv"
 OUTPUT_PROPORTIONS_BY_SAMPLE = OUTPUT_DIR / "02_cell_type_proportions_by_sample.csv"
 
-CONFIG_PATH = SCRIPT_DIR / "02_annotation_config.py"
+CONFIG_PATH = Path(os.environ.get(
+    "SCLC_ANNOTATION_CONFIG", SCRIPT_DIR / "02_annotation_config.py",
+))
+DOUBLET_VARIANT = os.environ.get("SCLC_DOUBLET_VARIANT", "").lower()
 STATUS_LABELS = {False: "Keep", True: "Exclude"}
 ANNOTATION_COLUMNS = [
     "cell_id", "sample", "group", "batch",
@@ -39,7 +42,9 @@ ANNOTATION_COLUMNS = [
     "exclude_from_main_analysis", "analysis_status",
 ]
 
-# 动态载入同目录人工注释配置（文件名以数字开头，不能直接 import）
+# 动态载入人工注释配置（文件名可以数字开头）
+if not CONFIG_PATH.is_file():
+    raise FileNotFoundError(f"注释配置不存在：{CONFIG_PATH}")
 spec = importlib.util.spec_from_file_location("annotation_config", CONFIG_PATH)
 annotation_config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(annotation_config)
@@ -62,6 +67,19 @@ if adata.n_obs == 0:
     raise ValueError("基础整合对象不包含任何细胞。")
 if not adata.obs_names.is_unique:
     raise ValueError("基础整合对象的 cell ID 不唯一。")
+
+if DOUBLET_VARIANT:
+    valid_variants = {"none", "scrublet", "doubletfinder", "consensus", "union"}
+    if DOUBLET_VARIANT not in valid_variants:
+        raise ValueError(f"未知 doublet 版本：{DOUBLET_VARIANT!r}")
+    observed_variant = str(
+        adata.uns.get("integration_parameters", {}).get("doublet_filter_mode", "")
+    )
+    if observed_variant != DOUBLET_VARIANT:
+        raise ValueError(
+            f"输入 h5ad 的 doublet_filter_mode={observed_variant!r}，"
+            f"与要求的版本 {DOUBLET_VARIANT!r} 不一致。"
+        )
 
 missing_columns = {
     "leiden_integrated", "sample", "group",
@@ -212,6 +230,7 @@ df.loc[~df["exclude_from_main_analysis"], output_columns].to_csv(OUTPUT_CSV_CLEA
 clean_cell_count = int((~adata.obs["exclude_from_main_analysis"]).sum())
 adata.uns["annotation_metadata"] = {
     "config_file": str(CONFIG_PATH),
+    "doublet_variant": DOUBLET_VARIANT or "default",
     "excluded_cell_types": sorted(EXCLUDE_CELL_TYPES),
     "all_cell_count": int(adata.n_obs),
     "clean_cell_count": clean_cell_count,

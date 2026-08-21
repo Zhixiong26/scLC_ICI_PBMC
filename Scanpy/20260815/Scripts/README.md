@@ -124,9 +124,9 @@ Results/doublet_versions/
 
 ## 注释与绘图参数
 
-- `02_annotation_config.py` 是 Leiden cluster → cell type 映射、marker genes 和绘图样式的唯一权威配置。
-- 当前映射覆盖全局 gene QC 重跑后的 cluster `0–16`。
-- 当前 17 个 cluster 均保留，无 cluster-level 排除类型。
+- `02_annotation_config.py` 是默认整合结果的注释与绘图配置。
+- `02_annotation_configs/{none,scrublet,doubletfinder,consensus,union}.py` 是五个 doublet 版本各自的 Leiden cluster → cell type 映射，不跨版本共用 cluster ID。
+- 五版本注释保留 pDC/cDC1、Platelets 及 `*_mixed`/`Low_quality_*` 群，不在注释阶段额外删除细胞，以保持 doublet 过滤对照的定义。
 - 图片分辨率 `FIGURE_DPI=300`，UMAP 图例位于 `right margin`，dotplot 使用 `Reds` 和 `(16, 7)` 尺寸。
 - 每次人工调整 cluster 映射或 marker 后，必须在下方变更表中记录。
 
@@ -141,6 +141,8 @@ Results/doublet_versions/
 - `doublet_versions/01_doublet_variant_marker_gene_summary.csv`：逐 cluster 经典 marker 的平均 log 表达和阳性细胞比例。
 - `doublet_versions/01_doublet_variant_marker_panel_summary.csv`：逐 cluster 的细胞类型 marker panel 汇总。
 - `doublet_versions/01_doublet_variant_cluster_crosswalk.csv`：每个版本 cluster 到 `consensus`/`union` 参考 cluster 的最佳细胞重叠映射。
+- `doublet_versions/01_doublet_variant_annotation_evidence.csv`：五版本聚类大小、doublet 富集率、marker panel、Top-20 marker 与跨版本对应的合并审核表。
+- `doublet_versions/{mode}/annotation/`：五套独立注释 h5ad、逐细胞注释和统计表。
 - `integration/01_global_gene_filter_summary.csv`：合并后全局基因过滤审计。
 - `integration/01_leiden_top_markers.csv`：人工注释依据。
 - `../Report.md`：版本、逐样本过滤、降维参数和 PCA/marker 提取说明。
@@ -183,7 +185,12 @@ bash Scanpy/20260815/Scripts/01_submit_doublet_variants.sh
 ```
 
 提交器如果发现某个版本的输出目录已非空会直接拒绝提交，防止覆盖已有结果。五个版本会产生不同的
-Leiden cluster，因此不得直接共用旧 `02_annotation_config.py`；必须先逐版本审查 marker 并建立对应注释映射。
+Leiden cluster，因此使用五个独立映射。整合完成后批量提交注释：
+
+```bash
+export SCANPY_PYTHON=/share/home/rzli/miniconda3/envs/scanpy310/bin/python
+bash Scanpy/20260815/Scripts/02_submit_doublet_variant_annotations.sh
+```
 
 | 日期 | Git 提交 | 修改 | 验证 | 服务器状态 |
 |---|---|---|---|---|

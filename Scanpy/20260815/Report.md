@@ -130,7 +130,19 @@ UMAP、Leiden 和 marker 排名。不同版本仅在 doublet 删除规则上不�
 `both_negative`、1,007 个 `scrublet_only`、766 个 `doubletfinder_only` 和 537 个
 `both_positive`；其他四个版本与对应集合的精确子集关系均已验证。
 
-### 2.6 每一步过滤的定义
+### 2.6 五版本 marker 审核与独立注释
+
+五版本共 94 个 Leiden clusters 已通过 Top-20 marker、15 组经典 marker panel
+和到 `consensus`/`union` 的逐细胞交叉映射审核。证据表为
+`Results/doublet_versions/01_doublet_variant_annotation_evidence.csv`，独立映射位于
+`Scripts/02_annotation_configs/`。
+
+注释采取保守原则：保留 marker 明确的 pDC 和 cDC1，即使它们在
+DoubletFinder 单阳性中富集；无法稳定分开的聚类标为 `T_NK_mixed`、
+`NK_Gamma_delta_T_mixed`、`B_Monocyte_mixed` 或 `Low_quality_monocytes`。
+本阶段不额外排除任何类型，因此每个注释对象的细胞集与其 doublet 过滤版本完全一致。
+
+### 2.7 每一步过滤的定义
 
 当前本地联合检测脚本按以下顺序处理每个样本：
 
@@ -338,4 +350,6 @@ bash Scanpy/20260815/Scripts/03_run_export_figures.sh
 - `Results/doublet_versions/{mode}/integration/`：五个完整 doublet 过滤版本的隔离整合输出。
 - `Results/doublet_versions/01_doublet_variant_comparison.csv`：五版本细胞、基因、cluster 和保留 doublet 状态比较。
 - `Results/doublet_versions/01_doublet_variant_cluster_review.csv`：五版本逐 cluster 细胞数、IR/NR、doublet 状态和 Top-20 marker 注释审核表。
+- `Results/doublet_versions/01_doublet_variant_annotation_evidence.csv`：五版本 marker panel、Top-20 marker、doublet 富集率和 cluster crosswalk 合并证据表。
+- `Results/doublet_versions/{mode}/annotation/`：五套独立注释输出。
 - `Scanpy/20260815/Logs/doublet_versions/`：五个 dsub 作业的 stdout/stderr 日志。
