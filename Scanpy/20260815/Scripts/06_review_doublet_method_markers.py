@@ -50,6 +50,51 @@ def numeric_sort(values: set[str]) -> list[str]:
     return sorted(values, key=int)
 
 
+def top_marker_rows(
+    adata: sc.AnnData,
+    method: str,
+    marker_path: Path,
+) -> tuple[list[dict], list[dict]]:
+    """打印每个 cluster 的前 50 个 marker，并构建人工注释模板。"""
+    marker_table = pd.read_csv(marker_path)
+    clusters = adata.obs["leiden_integrated"].astype(str)
+    cluster_ids = numeric_sort(set(clusters))
+    if set(marker_table.columns) != set(cluster_ids):
+        raise ValueError(
+            f"Method {method}: marker table cluster IDs do not match the H5AD."
+        )
+
+    long_rows: list[dict] = []
+    template_rows: list[dict] = []
+    print("\n" + "=" * 80)
+    print(f"{method.upper()}: TOP 50 MARKERS FOR MANUAL ANNOTATION")
+    print("=" * 80)
+    for cluster in cluster_ids:
+        genes = marker_table[cluster].dropna().astype(str).head(50).tolist()
+        if not genes:
+            raise ValueError(f"Method {method}, cluster {cluster}: no marker genes found.")
+        n_cells = int(clusters.eq(cluster).sum())
+        print(f"\n[{method}] cluster {cluster} | n_cells={n_cells}")
+        print(" ".join(genes))
+        template_rows.append({
+            "method": method,
+            "cluster": cluster,
+            "n_cells": n_cells,
+            "top50_markers": " ".join(genes),
+            "manual_cell_type": "",
+            "notes": "",
+        })
+        long_rows.extend({
+            "method": method,
+            "cluster": cluster,
+            "n_cells": n_cells,
+            "rank": rank,
+            "gene": gene,
+        } for rank, gene in enumerate(genes, start=1))
+    print()
+    return long_rows, template_rows
+
+
 def marker_summaries(adata: sc.AnnData, method: str) -> tuple[list[dict], list[dict]]:
     if adata.raw is None:
         raise ValueError(f"Method {method} does not contain adata.raw.")
@@ -131,6 +176,8 @@ def build_crosswalk(cluster_by_method: dict[str, pd.Series]) -> pd.DataFrame:
 
 
 def main() -> None:
+    all_top_marker_rows: list[dict] = []
+    all_template_rows: list[dict] = []
     all_gene_rows: list[dict] = []
     all_panel_rows: list[dict] = []
     cluster_by_method: dict[str, pd.Series] = {}
@@ -144,6 +191,13 @@ def main() -> None:
             adata.obs["leiden_integrated"].astype(str).to_numpy(),
             index=adata.obs_names.astype(str), name=method,
         )
+        top_rows, template_rows = top_marker_rows(
+            adata,
+            method,
+            path.parent / "01_leiden_top_markers.csv",
+        )
+        all_top_marker_rows.extend(top_rows)
+        all_template_rows.extend(template_rows)
         gene_rows, panel_rows = marker_summaries(adata, method)
         all_gene_rows.extend(gene_rows)
         all_panel_rows.extend(panel_rows)
@@ -151,6 +205,8 @@ def main() -> None:
         gc.collect()
 
     outputs = {
+        METHODS_ROOT / "06_doublet_method_top50_markers.csv": pd.DataFrame(all_top_marker_rows),
+        METHODS_ROOT / "06_manual_annotation_template.csv": pd.DataFrame(all_template_rows),
         METHODS_ROOT / "06_doublet_method_marker_gene_summary.csv": pd.DataFrame(all_gene_rows),
         METHODS_ROOT / "06_doublet_method_marker_panel_summary.csv": pd.DataFrame(all_panel_rows),
         METHODS_ROOT / "06_doublet_method_cluster_crosswalk.csv": build_crosswalk(cluster_by_method),

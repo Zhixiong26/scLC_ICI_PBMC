@@ -46,7 +46,7 @@ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
 "$SCANPY_PYTHON" Scanpy/20260815/Scripts/06_review_doublet_method_markers.py
 ```
 
-分别校对 `08_annotation_config_scrublet.py` 与 `09_annotation_config_doubletfinder.py`。两个配置中的映射是方法特异的，不应直接相互复制。确认后依次提交：
+第 06 步会在终端按方法、cluster 打印前 50 个 marker，并生成 `06_manual_annotation_template.csv`。先根据这些 marker 手工填写 `manual_cell_type` 和 `notes`，再分别校对 `08_annotation_config_scrublet.py` 与 `09_annotation_config_doubletfinder.py`。两个配置中的映射是方法特异的，不应直接相互复制。确认后依次提交：
 
 ```bash
 bash Scanpy/20260815/Scripts/10_submit_annotations.sh
@@ -63,6 +63,8 @@ Scanpy/20260815/Results/doublet_methods/
 ├── 05_doublet_method_comparison.csv
 ├── 05_doublet_method_cell_set_comparison.csv
 ├── 05_doublet_method_cluster_review.csv
+├── 06_doublet_method_top50_markers.csv
+├── 06_manual_annotation_template.csv
 ├── 06_doublet_method_marker_gene_summary.csv
 ├── 06_doublet_method_marker_panel_summary.csv
 └── 06_doublet_method_cluster_crosswalk.csv
