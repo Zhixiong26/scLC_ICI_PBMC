@@ -27,6 +27,7 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 from scipy import sparse
+from sklearn.metrics import adjusted_rand_score
 
 if __name__ == "__main__":
     sc.settings.n_jobs = REVIEW_THREADS
@@ -68,6 +69,14 @@ FIGURE_DPI = 300
 UMAP_LEGEND_LOCATION = "right margin"
 DOTPLOT_CMAP = "Reds"
 DOTPLOT_FIGSIZE = (16, 7)
+PARAMETER_SCAN = (
+    (20, 15), (20, 20), (20, 30),
+    (30, 15), (30, 20), (30, 30),
+)
+PARAMETER_SCAN_RESOLUTION = 0.8
+PARAMETER_SCAN_MIN_DIST = 0.5
+PARAMETER_SCAN_SPREAD = 1.0
+PARAMETER_SCAN_RANDOM_STATE = 0
 
 # 运行本脚本生成手工审核证据后，在这里分别修改两套映射。
 CLUSTER_TO_CELLTYPE_BY_METHOD = {
@@ -81,18 +90,29 @@ CLUSTER_TO_CELLTYPE_BY_METHOD = {
     },
     "doubletfinder": {
         "0": "CD8_T_cells", "1": "NK_cells", "2": "Monocytes",
-        "3": "CD4_T_cells", "4": "Monocytes", "5": "Naive_CD4_T_cells",
-        "6": "Monocytes", "7": "B_cells", "8": "Naive_CD4_T_cells",
-        "9": "Gamma_delta_T_cells", "10": "Low_quality_monocytes",
-        "11": "B_cells", "12": "Treg_cells", "13": "cDC2", "14": "MAIT_cells",
-        "15": "Cycling_cells", "16": "Plasma_cells", "17": "T_NK_mixed",
-        "18": "pDC", "19": "Platelets",
+        "3": "CD4_T_cells", "4": "Monocytes", "5": "CD4_T_cells",
+        "6": "Monocytes", "7": "B_cells", "8": "CD8_T_cells",
+        "9": "Gamma_delta_T_cells", "10": "Monocytes",
+        "11": "B_cells", "12": "Treg_cells", "13": "cDCs",
+        "14": "CD4_T_cells", "15": "Cycling_cells",
+        "16": "Plasma_cells", "17": "T_NK_cells", "18": "pDCs",
+        "19": "Platelets",
     },
 }
 EXCLUDE_CELL_TYPES_BY_METHOD = {"scrublet": set(), "doubletfinder": set()}
 
-# 最终出图与手工审核共用同一套 marker，避免两处维护不一致。
-MARKER_GENES = MARKER_PANELS
+# 最终出图沿用审核 marker；下面三个别名对应已确认的 DoubletFinder
+# 大类注释名称，避免 cDC/pDC/T-NK 因名称不同而从最终 dotplot 中缺失。
+MARKER_GENES = dict(MARKER_PANELS)
+MARKER_GENES.update({
+    "cDCs": MARKER_PANELS["cDC2"],
+    "pDCs": MARKER_PANELS["pDC"],
+    "T_NK_cells": sorted(set(
+        MARKER_PANELS["CD4_T_cells"]
+        + MARKER_PANELS["CD8_T_cells"]
+        + MARKER_PANELS["NK_cells"]
+    )),
+})
 
 
 def numeric_sort(values: set[str]) -> list[str]:
@@ -313,6 +333,164 @@ def build_crosswalk(cluster_by_method: dict[str, pd.Series]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def save_parameter_scan(adata: sc.AnnData, method: str) -> Path:
+    """Compare six PC/neighbor combinations without rerunning PCA or Harmony."""
+    representation = "X_pca_harmony"
+    if representation not in adata.obsm:
+        raise ValueError(f"Method {method} does not contain {representation}.")
+    n_available_pcs = int(adata.obsm[representation].shape[1])
+    max_requested_pcs = max(n_pcs for n_pcs, _ in PARAMETER_SCAN)
+    if n_available_pcs < max_requested_pcs:
+        raise ValueError(
+            f"Method {method} contains {n_available_pcs} Harmony PCs, "
+            f"but the scan requires {max_requested_pcs}."
+        )
+
+    output_dir = METHODS_ROOT / method / "parameter_scan"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    original_umap = adata.obsm.get("X_umap")
+    original_umap = None if original_umap is None else original_umap.copy()
+    coordinates: dict[str, np.ndarray] = {}
+    labels_by_config: dict[str, np.ndarray] = {}
+    assignment_table = pd.DataFrame({"cell_id": adata.obs_names.astype(str)})
+    summary_rows: list[dict] = []
+    count_rows: list[dict] = []
+
+    for n_pcs, n_neighbors in PARAMETER_SCAN:
+        config = f"pc{n_pcs}_neighbors{n_neighbors}_res{PARAMETER_SCAN_RESOLUTION:g}"
+        neighbors_key = f"parameter_scan_{config}"
+        cluster_key = f"leiden_{config}"
+        print(f"[{method}] parameter scan: {config}")
+        sc.pp.neighbors(
+            adata,
+            n_neighbors=n_neighbors,
+            n_pcs=n_pcs,
+            use_rep=representation,
+            random_state=PARAMETER_SCAN_RANDOM_STATE,
+            key_added=neighbors_key,
+        )
+        sc.tl.umap(
+            adata,
+            neighbors_key=neighbors_key,
+            min_dist=PARAMETER_SCAN_MIN_DIST,
+            spread=PARAMETER_SCAN_SPREAD,
+            random_state=PARAMETER_SCAN_RANDOM_STATE,
+        )
+        sc.tl.leiden(
+            adata,
+            neighbors_key=neighbors_key,
+            resolution=PARAMETER_SCAN_RESOLUTION,
+            random_state=PARAMETER_SCAN_RANDOM_STATE,
+            key_added=cluster_key,
+            flavor="leidenalg",
+        )
+        labels = adata.obs[cluster_key].astype(str).to_numpy()
+        coords = np.asarray(adata.obsm["X_umap"]).copy()
+        coordinates[config] = coords
+        labels_by_config[config] = labels
+        assignment_table[config] = labels
+        counts = pd.Series(labels).value_counts().sort_index(key=lambda x: x.astype(int))
+        summary_rows.append({
+            "method": method,
+            "n_pcs": n_pcs,
+            "n_neighbors": n_neighbors,
+            "leiden_resolution": PARAMETER_SCAN_RESOLUTION,
+            "n_clusters": int(len(counts)),
+            "smallest_cluster_cells": int(counts.min()),
+            "median_cluster_cells": float(counts.median()),
+            "largest_cluster_cells": int(counts.max()),
+            "smallest_cluster_pct": round(float(counts.min() / adata.n_obs * 100), 4),
+        })
+        count_rows.extend({
+            "method": method,
+            "n_pcs": n_pcs,
+            "n_neighbors": n_neighbors,
+            "leiden_resolution": PARAMETER_SCAN_RESOLUTION,
+            "cluster": str(cluster),
+            "n_cells": int(n_cells),
+        } for cluster, n_cells in counts.items())
+
+        neighbor_metadata = adata.uns.pop(neighbors_key)
+        for graph_key_name in ("connectivities_key", "distances_key"):
+            graph_key = neighbor_metadata.get(graph_key_name)
+            if graph_key is not None:
+                adata.obsp.pop(graph_key, None)
+        del adata.obs[cluster_key]
+
+    if original_umap is None:
+        adata.obsm.pop("X_umap", None)
+    else:
+        adata.obsm["X_umap"] = original_umap
+
+    configs = list(labels_by_config)
+    ari = pd.DataFrame(index=configs, columns=configs, dtype=float)
+    for left in configs:
+        for right in configs:
+            ari.loc[left, right] = adjusted_rand_score(
+                labels_by_config[left], labels_by_config[right]
+            )
+    ari.index.name = "configuration"
+
+    fig, axes = plt.subplots(2, 3, figsize=(18, 11), constrained_layout=True)
+    for axis, (n_pcs, n_neighbors) in zip(axes.flat, PARAMETER_SCAN):
+        config = f"pc{n_pcs}_neighbors{n_neighbors}_res{PARAMETER_SCAN_RESOLUTION:g}"
+        coords = coordinates[config]
+        labels = labels_by_config[config]
+        numeric_labels = np.asarray([int(label) for label in labels])
+        axis.scatter(
+            coords[:, 0], coords[:, 1], c=numeric_labels, cmap="tab20",
+            s=1.2, linewidths=0, alpha=0.8, rasterized=True,
+        )
+        for cluster in numeric_sort(set(labels)):
+            center = np.median(coords[labels == cluster], axis=0)
+            axis.text(
+                center[0], center[1], cluster, ha="center", va="center",
+                fontsize=9, fontweight="bold", color="black",
+            )
+        axis.set_title(
+            f"{n_pcs} PCs | {n_neighbors} neighbors | "
+            f"{len(set(labels))} clusters"
+        )
+        axis.set_xlabel("UMAP1")
+        axis.set_ylabel("UMAP2")
+        axis.set_xticks([])
+        axis.set_yticks([])
+    fig.suptitle(
+        f"{method}: parameter scan (Leiden resolution "
+        f"{PARAMETER_SCAN_RESOLUTION:g})",
+        fontsize=18,
+    )
+
+    figure_path = output_dir / "04_parameter_scan_umap_grid.png"
+    fig.savefig(figure_path, dpi=FIGURE_DPI, bbox_inches="tight")
+    plt.close(fig)
+    pd.DataFrame(summary_rows).to_csv(
+        output_dir / "04_parameter_scan_summary.csv", index=False
+    )
+    pd.DataFrame(count_rows).to_csv(
+        output_dir / "04_parameter_scan_cluster_counts.csv", index=False
+    )
+    assignment_table.to_csv(
+        output_dir / "04_parameter_scan_cell_assignments.csv", index=False
+    )
+    ari.to_csv(output_dir / "04_parameter_scan_ari.csv")
+    print(f"Saved parameter scan: {output_dir}")
+    return output_dir
+
+
+def parameter_scan_main() -> None:
+    print(f"Parameter-scan threads: {REVIEW_THREADS}")
+    for method in METHODS:
+        path = METHODS_ROOT / method / "integration" / "01_integrated_base.h5ad"
+        if not path.is_file() or path.stat().st_size == 0:
+            raise FileNotFoundError(f"Missing or empty input: {path}")
+        print(f"Reading {method}: {path}")
+        adata = sc.read_h5ad(path)
+        save_parameter_scan(adata, method)
+        del adata
+        gc.collect()
+
+
 def main() -> None:
     print(f"Marker-review threads: {REVIEW_THREADS}")
     all_top_marker_rows: list[dict] = []
@@ -422,4 +600,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if os.environ.get("SCLC_PARAMETER_SCAN_ONLY", "FALSE").upper() == "TRUE":
+        parameter_scan_main()
+    else:
+        main()
