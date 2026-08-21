@@ -14,6 +14,9 @@ for _env_var in (
 os.environ["OMP_DYNAMIC"] = "FALSE"
 os.environ["MKL_DYNAMIC"] = "FALSE"
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scanpy as sc
@@ -44,6 +47,7 @@ MARKER_PANELS = {
     "Cycling_cells": ["MKI67", "TOP2A", "STMN1", "CENPF"],
     "Platelets": ["PPBP", "PF4", "NRGN", "TUBB1"],
 }
+FIGURE_DPI = 200
 
 
 def numeric_sort(values: set[str]) -> list[str]:
@@ -93,6 +97,93 @@ def top_marker_rows(
         } for rank, gene in enumerate(genes, start=1))
     print()
     return long_rows, template_rows
+
+
+def save_manual_annotation_review_figures(adata: sc.AnnData, method: str) -> Path:
+    """生成手工注释所需的 Leiden UMAP、marker UMAP 和 dotplot。"""
+    if "X_umap" not in adata.obsm or adata.obsm["X_umap"].shape != (adata.n_obs, 2):
+        raise ValueError(f"Method {method} does not contain a valid two-dimensional UMAP.")
+    if adata.raw is None:
+        raise ValueError(f"Method {method} does not contain adata.raw.")
+
+    review_dir = METHODS_ROOT / method / "marker_review"
+    review_dir.mkdir(parents=True, exist_ok=True)
+    raw_genes = set(adata.raw.var_names.astype(str))
+    available_panels = {
+        panel: [gene for gene in genes if gene in raw_genes]
+        for panel, genes in MARKER_PANELS.items()
+    }
+    available_panels = {panel: genes for panel, genes in available_panels.items() if genes}
+    if not available_panels:
+        raise ValueError(f"Method {method} has no genes from the marker panels.")
+
+    sc.pl.umap(
+        adata,
+        color="leiden_integrated",
+        legend_loc="on data",
+        frameon=False,
+        title=f"{method}: Leiden clusters",
+        show=False,
+    )
+    plt.savefig(
+        review_dir / "06_umap_leiden_clusters.png",
+        dpi=FIGURE_DPI,
+        bbox_inches="tight",
+    )
+    plt.close("all")
+
+    for panel_index, (panel, genes) in enumerate(available_panels.items(), start=1):
+        sc.pl.umap(
+            adata,
+            color=genes,
+            use_raw=True,
+            frameon=False,
+            ncols=min(3, len(genes)),
+            show=False,
+        )
+        plt.suptitle(f"{method}: {panel}", y=1.02)
+        safe_panel = panel.lower().replace(" ", "_")
+        plt.savefig(
+            review_dir / f"06_umap_marker_panel_{panel_index:02d}_{safe_panel}.png",
+            dpi=FIGURE_DPI,
+            bbox_inches="tight",
+        )
+        plt.close("all")
+
+    sc.tl.dendrogram(adata, groupby="leiden_integrated", use_rep="X_pca_harmony")
+    sc.pl.dotplot(
+        adata,
+        available_panels,
+        groupby="leiden_integrated",
+        use_raw=True,
+        dendrogram=True,
+        cmap="Reds",
+        dot_max=0.6,
+        dot_min=0.05,
+        figsize=(18, 8),
+        show=False,
+    )
+    plt.savefig(
+        review_dir / "06_dotplot_marker_panels_by_leiden.png",
+        dpi=FIGURE_DPI,
+        bbox_inches="tight",
+    )
+    plt.close("all")
+    return review_dir
+
+
+def save_top_marker_text(rows: list[dict], method: str, review_dir: Path) -> Path:
+    """保存可直接复制给人工注释者的 Top-50 marker 文本。"""
+    lines: list[str] = []
+    for row in rows:
+        lines.extend([
+            f"[{method}] cluster {row['cluster']} | n_cells={row['n_cells']}",
+            str(row["top50_markers"]),
+            "",
+        ])
+    output = review_dir / "06_top50_markers_for_manual_annotation.txt"
+    output.write_text("\n".join(lines), encoding="utf-8")
+    return output
 
 
 def marker_summaries(adata: sc.AnnData, method: str) -> tuple[list[dict], list[dict]]:
@@ -198,6 +289,10 @@ def main() -> None:
         )
         all_top_marker_rows.extend(top_rows)
         all_template_rows.extend(template_rows)
+        review_dir = save_manual_annotation_review_figures(adata, method)
+        marker_text = save_top_marker_text(template_rows, method, review_dir)
+        print(f"Saved marker-review figures: {review_dir}")
+        print(f"Saved Top-50 marker text:    {marker_text}")
         gene_rows, panel_rows = marker_summaries(adata, method)
         all_gene_rows.extend(gene_rows)
         all_panel_rows.extend(panel_rows)

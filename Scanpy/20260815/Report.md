@@ -21,7 +21,7 @@ Scanpy/20260815/Results/doublet_methods/
 
 日志路径：`Scanpy/20260815/Logs/doublet_methods/`。
 
-每个 integration 目录主要包含 `01_integrated_base.h5ad`、`01_doublet_status_all_cells.csv`、`01_singlets.csv`、`01_predicted_doublets.csv`、`01_not_tested.csv`、`01_sample_qc_summary.csv` 和 `01_leiden_top_markers.csv`。两方法之间的规模、细胞集合、cluster marker 和 crosswalk 比较写入 `Results/doublet_methods/05_*.csv` 和 `06_*.csv`。`06_review_doublet_method_markers.py` 还会在终端逐 cluster 打印 Top-50 marker，并写出可填写的 `06_manual_annotation_template.csv`。
+每个 integration 目录主要包含 `01_integrated_base.h5ad`、`01_doublet_status_all_cells.csv`、`01_singlets.csv`、`01_predicted_doublets.csv`、`01_not_tested.csv`、`01_sample_qc_summary.csv` 和 `01_leiden_top_markers.csv`。两方法之间的规模、细胞集合、cluster marker 和 crosswalk 比较写入 `Results/doublet_methods/05_*.csv` 和 `06_*.csv`。`06_review_doublet_method_markers.py` 参考 `S12-2N.ipynb` 的人工注释顺序，会逐 cluster 打印 Top-50 marker，生成可填写的 `06_manual_annotation_template.csv`，并在每个方法的 `marker_review/` 目录输出 Leiden UMAP、marker feature UMAP、Leiden dotplot 和 Top-50 文本。
 
 ## 注释校对
 

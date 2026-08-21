@@ -46,7 +46,7 @@ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
 "$SCANPY_PYTHON" Scanpy/20260815/Scripts/06_review_doublet_method_markers.py
 ```
 
-第 06 步会在终端按方法、cluster 打印前 50 个 marker，并生成 `06_manual_annotation_template.csv`。先根据这些 marker 手工填写 `manual_cell_type` 和 `notes`，再分别校对 `08_annotation_config_scrublet.py` 与 `09_annotation_config_doubletfinder.py`。两个配置中的映射是方法特异的，不应直接相互复制。确认后依次提交：
+第 06 步参考 `S12-2N.ipynb` 的手工注释思路：在终端按方法、cluster 打印前 50 个 marker，并为每个方法生成 Leiden UMAP、经典 marker panel UMAP、按 Leiden 分组的 marker dotplot 和 Top-50 marker 文本。同时生成 `06_manual_annotation_template.csv`。先根据这些证据手工填写 `manual_cell_type` 和 `notes`，再分别校对 `08_annotation_config_scrublet.py` 与 `09_annotation_config_doubletfinder.py`。两个配置中的映射是方法特异的，不应直接相互复制。确认后依次提交：
 
 ```bash
 bash Scanpy/20260815/Scripts/10_submit_annotations.sh
@@ -69,6 +69,8 @@ Scanpy/20260815/Results/doublet_methods/
 ├── 06_doublet_method_marker_panel_summary.csv
 └── 06_doublet_method_cluster_crosswalk.csv
 ```
+
+方法特异的人工注释证据图与文本位于 `doublet_methods/{scrublet,doubletfinder}/marker_review/`。
 
 日志写入 `Scanpy/20260815/Logs/doublet_methods/`。历史的 `Results/doublet_versions/` 和 `Logs/doublet_versions/` 不属于当前入口，但保留用于追溯，本流程不会删除或覆盖它们。
 
