@@ -46,7 +46,11 @@ Scrublet 与 DoubletFinder 的独立映射统一保存在 [Scripts/04_review_and
 
 对比主要单核细胞群（中位 2,481–2,779 个基因、5,920–7,050 UMI），这两群的 RNA 复杂度仅为其约 1/4至1/9。`pct_counts_mt` 未显著升高，因此不应标为 MT-high；其更合适的工作标记为 `Low_RNA_ambient_Ig_monocytes`。
 
-决策：这两群将从 **clean cells / 主分析 / 主图比例统计** 中排除，但保留在最终 H5AD 和 all-cells CSV 中，并设置可追溯的排除标记。注释配置中应对应为 `Low_RNA_ambient_Ig_monocytes`。此决策尚未写入当前已完成的 167463/167464 输出；待配置更新后重新运行最终注释步骤才会应用。
+决策：这两群将从 **clean cells / 主分析 / 主图比例统计** 中排除，但保留在最终 H5AD 和 all-cells CSV 中，并设置可追溯的排除标记。注释配置中应对应为 `Low_RNA_ambient_Ig_monocytes`。
+
+同时，两分支中的 Platelets 群（Scrublet cluster 17；DoubletFinder cluster 19）以 `PPBP`/`PF4`/`TUBB1`/`NRGN` 表达为特征。它们不纳入 PBMC 免疫细胞主分析，因此也从 clean cells、主图比例统计中排除，但保留在 H5AD 和 all-cells CSV 中。
+
+上述排除决策已写入注释配置；需重新运行最终注释步骤后才会应用到输出文件。
 
 ## 运行状态与历史结果
 

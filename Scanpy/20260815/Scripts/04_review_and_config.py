@@ -84,7 +84,7 @@ CLUSTER_TO_CELLTYPE_BY_METHOD = {
         "0": "NK_cells", "1": "CD8_T_cells", "2": "Naive_CD4_T_cells",
         "3": "Monocytes", "4": "Monocytes", "5": "CD4_T_cells",
         "6": "CD8_T_cells", "7": "Monocytes", "8": "B_cells",
-        "9": "Gamma_delta_T_cells", "10": "Monocytes", "11": "B_cells",
+        "9": "Gamma_delta_T_cells", "10": "Low_RNA_ambient_Ig_monocytes", "11": "B_cells",
         "12": "Treg_cells", "13": "cDCs", "14": "Cycling_cells",
         "15": "Plasma_cells", "16": "pDCs", "17": "Platelets",
         "18": "cDCs",
@@ -94,12 +94,15 @@ CLUSTER_TO_CELLTYPE_BY_METHOD = {
         "3": "CD4_T_cells", "4": "NK_cells", "5": "NK_cells",
         "6": "Monocytes", "7": "Monocytes", "8": "B_cells",
         "9": "Monocytes", "10": "Gamma_delta_T_cells",
-        "11": "Monocytes", "12": "Treg_cells", "13": "cDCs",
+        "11": "Low_RNA_ambient_Ig_monocytes", "12": "Treg_cells", "13": "cDCs",
         "14": "MAIT_cells", "15": "Cycling_cells", "16": "Plasma_cells",
         "17": "T_NK_cells", "18": "pDCs", "19": "Platelets",
     },
 }
-EXCLUDE_CELL_TYPES_BY_METHOD = {"scrublet": set(), "doubletfinder": set()}
+EXCLUDE_CELL_TYPES_BY_METHOD = {
+    "scrublet": {"Low_RNA_ambient_Ig_monocytes", "Platelets"},
+    "doubletfinder": {"Low_RNA_ambient_Ig_monocytes", "Platelets"},
+}
 
 # 最终出图沿用审核 marker；下面三个别名对应最终大类注释名称，
 # 避免 cDC/pDC/T-NK 因名称不同而从最终 dotplot 中缺失。
