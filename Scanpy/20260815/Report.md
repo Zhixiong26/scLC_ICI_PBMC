@@ -35,6 +35,19 @@ Scrublet 与 DoubletFinder 的独立映射统一保存在 [Scripts/04_review_and
 - DoubletFinder：cDC1/cDC2/pDC 等稀有 DC 群是否仍存在，以及是否被错误过滤。
 - 两分支：检查 T/NK mixed、低质量群和可疑跨谱系 marker 共表达。
 
+### 低 RNA 复杂度单核细胞（主分析排除决策）
+
+在 30 PCs / 20 neighbors 的最终聚类中，Scrublet cluster 10（1,250 个细胞）和 DoubletFinder cluster 11（1,258 个细胞）都以 `VCAN`/`LYZ`/`FCN1` 单核细胞标记为主，但同时有免疫球蛋白环境 RNA 信号（`IGKC`/`IGKV`/`IGHG2`）。两群的中位 RNA 复杂度出现同样的明显降低：
+
+| 分支 | Cluster | 中位 n_genes_by_counts | 中位 total_counts | 中位 pct_counts_mt |
+|---|---:|---:|---:|---:|
+| Scrublet | 10 | 587.0 | 783.0 | 2.276% |
+| DoubletFinder | 11 | 573.5 | 763.0 | 2.276% |
+
+对比主要单核细胞群（中位 2,481–2,779 个基因、5,920–7,050 UMI），这两群的 RNA 复杂度仅为其约 1/4至1/9。`pct_counts_mt` 未显著升高，因此不应标为 MT-high；其更合适的工作标记为 `Low_RNA_ambient_Ig_monocytes`。
+
+决策：这两群将从 **clean cells / 主分析 / 主图比例统计** 中排除，但保留在最终 H5AD 和 all-cells CSV 中，并设置可追溯的排除标记。注释配置中应对应为 `Low_RNA_ambient_Ig_monocytes`。此决策尚未写入当前已完成的 167463/167464 输出；待配置更新后重新运行最终注释步骤才会应用。
+
 ## 运行状态与历史结果
 
 新的两方法流程需要在服务器上重新提交后才会产生 `Results/doublet_methods/`。旧五版本结果仍保留在 `Results/doublet_versions/` 中用于追溯，但不再是当前入口，也不应与新输出混用。
