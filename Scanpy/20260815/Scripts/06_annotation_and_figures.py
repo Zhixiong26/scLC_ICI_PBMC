@@ -183,19 +183,21 @@ mapping_table["analysis_status"] = mapping_table["exclude_from_main_analysis"].m
 mapping_table = mapping_table.sort_values("leiden_integrated", key=lambda x: x.astype(int))
 mapping_table.to_csv(OUTPUT_MAPPING, index=False)
 
+analysis_mask = ~adata.obs["exclude_from_main_analysis"].astype(bool)
+analysis_obs = adata.obs.loc[analysis_mask]
+
+# 主分析的数量与比例仅基于 clean cells；被排除细胞仍完整保留在 all-cells CSV 与 H5AD 中。
 cell_type_counts = (
-    adata.obs["cell_type_integrated"].value_counts()
+    analysis_obs["cell_type_integrated"].value_counts()
     .rename_axis("cell_type_integrated").reset_index(name="cell_count")
 )
-cell_type_counts["fraction_all_cells"] = cell_type_counts["cell_count"] / adata.n_obs
-cell_type_counts["percentage_all_cells"] = cell_type_counts["fraction_all_cells"] * 100
-cell_type_counts["exclude_from_main_analysis"] = (
-    cell_type_counts["cell_type_integrated"].isin(EXCLUDE_CELL_TYPES)
-)
+cell_type_counts["fraction_clean_cells"] = cell_type_counts["cell_count"] / analysis_obs.shape[0]
+cell_type_counts["percentage_clean_cells"] = cell_type_counts["fraction_clean_cells"] * 100
+cell_type_counts["exclude_from_main_analysis"] = False
 cell_type_counts.to_csv(OUTPUT_COUNTS, index=False)
 
 counts_by_sample = pd.crosstab(
-    adata.obs["sample"].astype(str), adata.obs["cell_type_integrated"].astype(str)
+    analysis_obs["sample"].astype(str), analysis_obs["cell_type_integrated"].astype(str)
 )
 proportions_by_sample = counts_by_sample.div(counts_by_sample.sum(axis=1), axis=0)
 counts_by_sample.to_csv(OUTPUT_COUNTS_BY_SAMPLE)
