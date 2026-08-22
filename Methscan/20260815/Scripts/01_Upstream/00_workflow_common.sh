@@ -16,19 +16,45 @@ source "$SCLC_PROJECT_CONFIG"
 FILTER_MIN_METH="${FILTER_MIN_METH:-55}"
 FILTER_MAX_METH="${FILTER_MAX_METH:-}"
 FILTER_MAX_SITES="${FILTER_MAX_SITES:-1200000}"
-SCANPY_FILTER_LABEL="${SCANPY_FILTER_LABEL:-scanpy0815gemxclean_v2}"
+SCLC_METHSCAN_SCANPY_METHOD="${SCLC_METHSCAN_SCANPY_METHOD:-}"
+case "$SCLC_METHSCAN_SCANPY_METHOD" in
+    scrublet)
+        _default_annotation_csv="$SCLC_SCANPY_SCRUBLET_ANNOTATION"
+        _default_scanpy_clean_csv="$SCLC_SCANPY_SCRUBLET_CLEAN_ANNOTATION"
+        _default_scanpy_filter_label="scanpy20260815_30pc20nn_scrublet_clean"
+        ;;
+    doubletfinder)
+        _default_annotation_csv="$SCLC_SCANPY_DOUBTFINDER_ANNOTATION"
+        _default_scanpy_clean_csv="$SCLC_SCANPY_DOUBTFINDER_CLEAN_ANNOTATION"
+        _default_scanpy_filter_label="scanpy20260815_30pc20nn_doubletfinder_clean"
+        ;;
+    "")
+        # Preserve the legacy input only when no doublet-method branch was selected.
+        _default_annotation_csv="$SCLC_SCANPY_ANNOTATION"
+        _default_scanpy_clean_csv="$SCLC_SCANPY_CLEAN_ANNOTATION"
+        _default_scanpy_filter_label="scanpy0815gemxclean_v2"
+        ;;
+    *)
+        echo "ERROR: SCLC_METHSCAN_SCANPY_METHOD must be scrublet or doubletfinder (got: $SCLC_METHSCAN_SCANPY_METHOD)" >&2
+        return 1 2>/dev/null || exit 1
+        ;;
+esac
+SCANPY_FILTER_LABEL="${SCANPY_FILTER_LABEL:-$_default_scanpy_filter_label}"
 if [[ -z "${QC_TAG:-}" ]]; then
     QC_TAG="minmeth${FILTER_MIN_METH}_maxmeth${FILTER_MAX_METH:-none}_maxsites${FILTER_MAX_SITES}_${SCANPY_FILTER_LABEL}_covdedupprob"
     QC_TAG="${QC_TAG//./p}"
 fi
 : "${CONDA_INIT:=${SCLC_CONDA_ROOT}/etc/profile.d/conda.sh}"
 : "${CONDA_ENV:=scDNAm}"
-: "${ANNOTATION_CSV:=${SCLC_SCANPY_ANNOTATION}}"
-: "${SCANPY_CLEAN_CSV:=${SCLC_SCANPY_CLEAN_ANNOTATION}}"
+: "${ANNOTATION_CSV:=${_default_annotation_csv}}"
+: "${SCANPY_CLEAN_CSV:=${_default_scanpy_clean_csv}}"
 : "${METHSCAN_RESULTS_DIR:=${SCLC_METHSCAN_RESULTS}/01_Upstream}"
 
 export BASE_DIR CONDA_INIT CONDA_ENV ANNOTATION_CSV SCANPY_CLEAN_CSV QC_TAG
 export METHSCAN_RESULTS_DIR FILTER_MIN_METH FILTER_MAX_METH FILTER_MAX_SITES SCANPY_FILTER_LABEL
+export SCLC_METHSCAN_SCANPY_METHOD
+
+unset _default_annotation_csv _default_scanpy_clean_csv _default_scanpy_filter_label
 
 SAMPLE_SHORTS=(IR01 IR02 IR03 IR04 IR05 NR01 NR02 NR03 NR04 NR05)
 SAMPLE_DIRS=()

@@ -1,5 +1,20 @@
 # Methscan 20260815 upstream filtering report
 
+> 注：️本报告第 1–5 节记录的是 2026-08-18 旧的单分支运行。
+> 2026-08-22 起，MethSCAn QC filter 将按 Scrublet 与 DoubletFinder 两套
+> Scanpy clean-cell 白名单独立运行，不再使用旧的单一注释路径。
+
+## 0. 当前双分支运行设计（2026-08-22）
+
+MethSCAn 对 coverage-filtered cell header 与 Scanpy clean-cell CSV 取交集。两分支独立产生 `QC_TAG`、coverage/Scanpy 筛选结果、smooth 和后续 DMR 结果，不允许混用。
+
+| MethSCAn 分支 | `SCLC_METHSCAN_SCANPY_METHOD` | Scanpy clean cells | 自动标签 |
+|---|---|---:|---|
+| Scrublet | `scrublet` | 53,830 | `scanpy20260815_30pc20nn_scrublet_clean` |
+| DoubletFinder | `doubletfinder` | 54,082 | `scanpy20260815_30pc20nn_doubletfinder_clean` |
+
+两套 Scanpy clean-cell CSV 均已排除 `Low_RNA_ambient_Ig_monocytes` 和 `Platelets`。它们不会进入对应 MethSCAn 分支的细胞白名单，但原始 Scanpy all-cells 记录仍保留供审计。
+
 更新日期：2026-08-18  
 任务：`164510` (`methscan_upstream_gemx_300k`)  
 执行节点：`node-12`  

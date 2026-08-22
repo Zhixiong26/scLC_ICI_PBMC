@@ -12,14 +12,28 @@
 | 当前脚本 | `/share/home/rzli/scLC_ICI_PBMC/Methscan/20260815/Scripts` |
 | MethSCAn 外部数据 | `/share/LCZX_Data/data/allcools` |
 | 参考文件 | `/share/LCZX_Data/ref` |
-| Scanpy 全细胞注释 | `Scanpy/20260815/Results/annotation/02_cell_annotation_all_cells.csv` |
-| Scanpy clean 细胞注释 | `Scanpy/20260815/Results/annotation/02_cell_annotation_clean_cells.csv` |
+| Scrublet 全细胞注释 | `Scanpy/20260815/Results/doublet_methods/scrublet/annotation/02_cell_annotation_all_cells.csv` |
+| Scrublet clean 细胞注释 | `Scanpy/20260815/Results/doublet_methods/scrublet/annotation/02_cell_annotation_clean_cells.csv` |
+| DoubletFinder 全细胞注释 | `Scanpy/20260815/Results/doublet_methods/doubletfinder/annotation/02_cell_annotation_all_cells.csv` |
+| DoubletFinder clean 细胞注释 | `Scanpy/20260815/Results/doublet_methods/doubletfinder/annotation/02_cell_annotation_clean_cells.csv` |
 | 本次 upstream 筛选报告 | [`Methscan/20260815/Report.md`](../Report.md) |
 | 仓库结果 | `Methscan/20260815/Results/01_Upstream` |
 | Conda | `/share/home/rzli/miniconda3` |
 | Conda 环境 | `scDNAm` |
 
 路径由仓库根目录 `project_config.sh` 和 `01_Upstream/00_workflow_common.sh` 统一派生，均可在运行前用同名环境变量覆盖。
+
+## Scrublet / DoubletFinder 双分支 QC filter
+
+必须分别运行两套 MethSCAn 结果：`SCLC_METHSCAN_SCANPY_METHOD` 取
+`scrublet` 或 `doubletfinder`。该选项同时选择对应的 Scanpy all-cells/clean-cells CSV，并自动生成互不重叠的 QC 目录标签：
+
+| 方法 | Scanpy 实际 clean cells | `SCANPY_FILTER_LABEL` |
+|---|---:|---|
+| `scrublet` | 53,830 | `scanpy20260815_30pc20nn_scrublet_clean` |
+| `doubletfinder` | 54,082 | `scanpy20260815_30pc20nn_doubletfinder_clean` |
+
+这两套结果必须分开解读：各自从 coverage-filtered cells 与对应 Scanpy clean-cell 白名单取交集，后续 smooth、DMR、matrix 也会使用各自的 QC tag 和注释表。`Low_RNA_ambient_Ig_monocytes` 和 `Platelets` 已由 Scanpy clean-cell CSV 排除，不会进入 MethSCAn 筛选后的 cell header。
 
 ## 执行顺序
 
@@ -66,14 +80,39 @@ dsub \
   bash 03_run_upstream_pipeline.sh run-to-smooth 300k 10 1 all
 ```
 
-该任务使用默认的 `scanpy0815gemxclean_v2` QC 标签，并读取仓库统一配置指向的当前 Scanpy clean-cell 注释。
+对当前两套分支，使用下面两个互相独立的 dsub 任务：
+
+```bash
+cd /share/home/rzli/scLC_ICI_PBMC/Methscan/20260815/Scripts/01_Upstream
+mkdir -p scheduler_logs
+
+dsub \
+  -n methscan_upstream_scrublet_300k \
+  -R "cpu=32;mem=65536MB" \
+  --cwd /share/home/rzli/scLC_ICI_PBMC/Methscan/20260815/Scripts/01_Upstream \
+  -oo scheduler_logs/methscan_upstream_scrublet_300k.%J.out \
+  -eo scheduler_logs/methscan_upstream_scrublet_300k.%J.err \
+  env SCLC_METHSCAN_SCANPY_METHOD=scrublet \
+  bash 03_run_upstream_pipeline.sh run-to-smooth 300k 10 1 all
+
+dsub \
+  -n methscan_upstream_doubletfinder_300k \
+  -R "cpu=32;mem=65536MB" \
+  --cwd /share/home/rzli/scLC_ICI_PBMC/Methscan/20260815/Scripts/01_Upstream \
+  -oo scheduler_logs/methscan_upstream_doubletfinder_300k.%J.out \
+  -eo scheduler_logs/methscan_upstream_doubletfinder_300k.%J.err \
+  env SCLC_METHSCAN_SCANPY_METHOD=doubletfinder \
+  bash 03_run_upstream_pipeline.sh run-to-smooth 300k 10 1 all
+```
+
+对后续 04–07 也必须在每次命令前显式设置对应的 `SCLC_METHSCAN_SCANPY_METHOD`，因为它们需要读取同一 QC tag 下的结果和注释表。
 
 ## 当前关键参数
 
 | 阶段 | 参数 | 当前值 |
 |---|---|---|
 | 公共 | `THRESHOLD` | `300k`（默认）；`200k` 为 min_sites≥20 万档 |
-| 公共 | `QC_TAG` | 自动派生：`minmeth<X>_maxmeth<Y>_maxsites<Z>_scanpy0815gemxclean_v2_covdedupprob`（默认 = `minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_v2_covdedupprob`） |
+| 公共 | `QC_TAG` | 按 `SCANPY_FILTER_LABEL` 自动派生；当前双分支分别包含 `scrublet_clean` 或 `doubletfinder_clean` 标签 |
 | 03 过滤 | `FILTER_MIN_METH` / `FILTER_MAX_METH` | `55` / 无上限 |
 | 03 过滤 | `FILTER_MAX_SITES` | `1,200,000`（默认，V1/V2）；`1,000,000`（V3/V4） |
 | 03 默认资源 | `DEFAULT_MAX_JOBS` / `DEFAULT_THREADS` | `1` / `20` |
