@@ -201,6 +201,7 @@ unset FILTER_MAX_SITES
 | 2026-08-19 | `993db3b` | 适配 Scanpy 20260819 新 17-cluster 注释：QC 标签从 `scanpy0815gemxclean` 更新为 `scanpy0815gemxclean_v2`，避免复用旧注释结果；`EXCLUDED_CELL_TYPES` 清空（原 `Platelet_erythroid_contamination` 在新注释中已不存在，本轮无整群排除） | Shell 语法检查（`bash -n`）、QC 标签与注释路径审计 | GitHub 已推送，服务器待 `git pull` |
 | 2026-08-19 | `43a07c5` | `01_check_cov_duplicates.sh` 只读性重构（行为不变）：删除重复 `die`、复用 `is_positive_integer`、简化 gzip 管道与 xargs wrapper、合并 per-file cat、注明 chrM 审计口径 | `bash -n`、合成 cov 数据（OK/READ_ERROR/空/坏列/重复/乱序）输出逐字节对比 | GitHub 已推送，服务器待 `git pull` |
 | 2026-08-20 | `3c659de` | 支持 4 个 min_sites/max_sites 过滤版本：`00_workflow_common.sh` 的 `QC_TAG` 默认值改为按 `FILTER_MIN_METH`/`FILTER_MAX_METH`/`FILTER_MAX_SITES`/`SCANPY_FILTER_LABEL` 自动派生（默认输出与旧硬编码值逐字符相同，显式 `QC_TAG` 仍优先）；`03` 的 `VALID_THRESHOLDS` 与 usage 增加 `200k`；`04`（单样本 30k/200k/300k、批处理 200k/300k）、`05`/`06`/`07`（200k/300k）THRESHOLD 保守护栏放宽；`08` 输出路径注释改为 `methdiff_celltype_${THRESHOLD}` | `bash -n` 全部脚本；QC_TAG 派生等价测试（默认=旧值逐字符、`FILTER_MAX_SITES=1000000`→`maxsites1000000`、显式 `QC_TAG` 优先）；03 内部 QC_TAG 与 00 派生目录名一致性核对 | GitHub 已提交，服务器待 `git pull` |
+| 2026-08-22 | `c9f6cc9` | 新增 `SCLC_METHSCAN_SCANPY_METHOD` 选择器，Scrublet 与 DoubletFinder 分别读取各自的 all-cells/clean-cells CSV，生成隔离的 QC tag；补充两分支 dsub 流程和报告 | `bash -n` 上游脚本；两方法路径、label、QC tag 派生测试 | GitHub 已提交，服务器待 `git pull` |
 
 以后每次修改服务器脚本或参数，必须追加一行：
 
@@ -212,6 +213,6 @@ unset FILTER_MAX_SITES
 
 ```bash
 cd /share/home/rzli/scLC_ICI_PBMC
-git pull --ff-only origin main
+git pull --ff-only origin scanpy-pipeline-fixes-20260821
 git rev-parse --short HEAD
 ```
