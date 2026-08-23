@@ -12,7 +12,12 @@ import mudata
 import numpy as np
 import pandas as pd
 
-from mvi_utils import env_path, load_annotations, save_json
+from mvi_utils import (
+    env_path,
+    join_coordinates_and_metrics,
+    load_annotations,
+    save_json,
+)
 
 
 def _weight_tag(weight: float) -> str:
@@ -397,9 +402,9 @@ def main() -> None:
             coordinates.index.astype(str)
         )
 
-        table = coordinates.join(
+        table = join_coordinates_and_metrics(
+            coordinates,
             depth,
-            how="inner",
         )
 
         if len(table) != len(obs_names):

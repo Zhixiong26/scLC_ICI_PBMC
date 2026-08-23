@@ -73,6 +73,49 @@ def _read_table(path: Path) -> pd.DataFrame:
     return pd.read_csv(path, dtype=str)
 
 
+def join_coordinates_and_metrics(
+    coordinates: pd.DataFrame,
+    metrics: pd.DataFrame,
+    shared_metadata: tuple[str, ...] = ("cell_type",),
+) -> pd.DataFrame:
+    """Join cell metrics after validating shared metadata columns.
+
+    Supervised UMAP coordinates and downstream QC tables both carry the
+    refreshed ``cell_type``.  Validate that the two copies agree and retain
+    the coordinate-table copy instead of asking pandas to create suffixes.
+    Any other overlapping column remains a hard error.
+    """
+    overlap = coordinates.columns.intersection(metrics.columns).tolist()
+    unexpected = sorted(set(overlap) - set(shared_metadata))
+    if unexpected:
+        raise ValueError(
+            "Coordinate and metric tables have unexpected overlapping columns: "
+            f"{unexpected}"
+        )
+    for column in overlap:
+        present = coordinates.index.isin(metrics.index)
+        if not present.all():
+            missing = coordinates.index[~present]
+            raise ValueError(
+                f"Metric table lacks {len(missing)} coordinate cells while "
+                f"validating shared column {column!r}"
+            )
+        left = coordinates[column].astype(str)
+        right = metrics[column].reindex(coordinates.index).astype(str)
+        mismatch = left.ne(right)
+        if mismatch.any():
+            examples = coordinates.index[mismatch][:5].astype(str).tolist()
+            raise ValueError(
+                f"Shared metadata column {column!r} differs for "
+                f"{int(mismatch.sum())} cells; examples={examples}"
+            )
+    return coordinates.join(
+        metrics.drop(columns=overlap),
+        how="inner",
+        validate="one_to_one",
+    )
+
+
 def load_sample_metadata(path: Path) -> pd.DataFrame:
     """Read one row per sample with required ``sample_id`` and ``condition``."""
     metadata = _read_table(path).fillna("")

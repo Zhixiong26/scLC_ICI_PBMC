@@ -87,6 +87,9 @@ bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet check 100k
 bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet prepare 100k
 bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet features 100k
 bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet downstream 100k
+
+# 训练和 supervised UMAP 已完成时，仅续跑 depth/mCG 图
+bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet postprocess 100k
 ```
 
 `full` 的顺序为：

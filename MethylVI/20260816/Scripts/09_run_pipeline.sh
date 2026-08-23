@@ -177,8 +177,8 @@ case "$stage" in
     bash "$0" plots
     bash "$0" supervised
     bash "$0" depth
-    bash "$0" mcg-level
-    bash "$0" mean-mcg-level
+    MVI_FILTER_MAX_SITES=none bash "$0" mcg-level
+    MVI_FILTER_MAX_SITES=none bash "$0" mean-mcg-level
     ;;
   *)
     usage

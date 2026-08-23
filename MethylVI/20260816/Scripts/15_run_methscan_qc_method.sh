@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Run one MethylVI branch from the completed Methscan 300k--1.2M QC cells.
-# Usage: bash 15_run_methscan_qc_method.sh {scrublet|doubletfinder} [check|full|prepare|features|downstream] [100k|50k]
+# Usage: bash 15_run_methscan_qc_method.sh {scrublet|doubletfinder} [check|full|prepare|features|downstream|postprocess] [100k|50k]
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 METHOD=${1:-}
@@ -11,11 +11,11 @@ PROFILE=${3:-100k}
 
 case "$METHOD" in
   scrublet|doubletfinder) ;;
-  *) echo "Usage: bash 15_run_methscan_qc_method.sh {scrublet|doubletfinder} [check|full|prepare|features|downstream] [100k|50k]" >&2; exit 2 ;;
+  *) echo "Usage: bash 15_run_methscan_qc_method.sh {scrublet|doubletfinder} [check|full|prepare|features|downstream|postprocess] [100k|50k]" >&2; exit 2 ;;
 esac
 case "$ACTION" in
-  check|full|prepare|features|downstream) ;;
-  *) echo "ERROR: action must be check, full, prepare, features, or downstream" >&2; exit 2 ;;
+  check|full|prepare|features|downstream|postprocess) ;;
+  *) echo "ERROR: action must be check, full, prepare, features, downstream, or postprocess" >&2; exit 2 ;;
 esac
 case "$PROFILE" in
   100k) TARGET_BINS=100000 ;;
@@ -127,12 +127,27 @@ run_downstream() {
   bash "$HERE/09_run_pipeline.sh" all
 }
 
+run_postprocess() {
+  [[ -s "$MVI_RESULTS/methylvi_embedding.h5ad" ]] || {
+    echo "ERROR: trained MethylVI embedding missing: $MVI_RESULTS/methylvi_embedding.h5ad" >&2
+    return 1
+  }
+  [[ -s "$MVI_RESULTS/supervised_umap/supervised_umap_summary.json" ]] || {
+    echo "ERROR: supervised UMAP checkpoint missing" >&2
+    return 1
+  }
+  bash "$HERE/09_run_pipeline.sh" depth
+  MVI_FILTER_MAX_SITES=none bash "$HERE/09_run_pipeline.sh" mcg-level
+  MVI_FILTER_MAX_SITES=none bash "$HERE/09_run_pipeline.sh" mean-mcg-level
+}
+
 echo "method=$METHOD action=$ACTION profile=$PROFILE qc_tag=$QC_TAG expected_cells=$MVI_EXPECTED_CELLS target_bins=$TARGET_BINS"
 case "$ACTION" in
   check) ;;
   prepare) prepare_mcds ;;
   features) compute_features ;;
   downstream) run_downstream ;;
+  postprocess) run_postprocess ;;
   full)
     [[ -d "$MVI_SOURCE_MCDS" && -s "$BASE_OUTPUT/mcds.COMPLETE" ]] || prepare_mcds
     compute_features

@@ -15,6 +15,7 @@ from mvi_utils import (  # noqa: E402
     aggregate_allc,
     canonical_cell_id,
     infer_sample_id,
+    join_coordinates_and_metrics,
     load_annotations,
     load_sample_metadata,
     region_lookup,
@@ -23,6 +24,25 @@ from mvi_utils import (  # noqa: E402
 
 
 class PipelineUtilsTests(unittest.TestCase):
+    def test_join_coordinates_and_metrics_validates_shared_cell_type(self):
+        index = pd.Index(["IR01__A", "NR01__B"])
+        coordinates = pd.DataFrame(
+            {"UMAP1": [0.0, 1.0], "cell_type": ["T", "B"]},
+            index=index,
+        )
+        metrics = pd.DataFrame(
+            {"total_coverage": [10, 20], "cell_type": ["T", "B"]},
+            index=index,
+        )
+        joined = join_coordinates_and_metrics(coordinates, metrics)
+        self.assertEqual(joined.columns.tolist(), ["UMAP1", "cell_type", "total_coverage"])
+        self.assertEqual(joined["cell_type"].tolist(), ["T", "B"])
+
+        conflicting = metrics.copy()
+        conflicting.loc["NR01__B", "cell_type"] = "NK"
+        with self.assertRaisesRegex(ValueError, "differs for 1 cells"):
+            join_coordinates_and_metrics(coordinates, conflicting)
+
     def test_canonical_cell_id_only_changes_first_delimiter(self):
         self.assertEqual(canonical_cell_id("D01-AA-BB"), "D01_AA-BB")
         self.assertEqual(canonical_cell_id("D01_AA-BB"), "D01_AA-BB")
