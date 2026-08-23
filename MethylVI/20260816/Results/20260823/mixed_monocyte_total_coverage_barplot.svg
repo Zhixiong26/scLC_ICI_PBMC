@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">杂色细胞与 Monocytes 的 total coverage 比较</title>
+  <desc id="desc">三组细胞 total coverage 中位数条形图，误差线为四分位距，虚线为全部 Monocytes 中位数。</desc>
+  <rect width="1200" height="720" fill="#ffffff"/>
+
+  <text x="600" y="48" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#222222">Mixed cells vs Monocytes: total coverage</text>
+  <text x="600" y="78" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#555555">Median bars with Q25–Q75 whiskers · Scrublet · 100k profile · target_weight=0.5</text>
+
+  <!-- horizontal grid and y-axis labels -->
+  <g stroke="#e5e5e5" stroke-width="1">
+    <line x1="130" y1="570" x2="1120" y2="570"/>
+    <line x1="130" y1="460" x2="1120" y2="460"/>
+    <line x1="130" y1="350" x2="1120" y2="350"/>
+    <line x1="130" y1="240" x2="1120" y2="240"/>
+    <line x1="130" y1="130" x2="1120" y2="130"/>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#444444" text-anchor="end">
+    <text x="118" y="575">0</text>
+    <text x="118" y="465">100,000</text>
+    <text x="118" y="355">200,000</text>
+    <text x="118" y="245">300,000</text>
+    <text x="118" y="135">400,000</text>
+  </g>
+  <line x1="130" y1="130" x2="130" y2="570" stroke="#333333" stroke-width="1.5"/>
+  <line x1="130" y1="570" x2="1120" y2="570" stroke="#333333" stroke-width="1.5"/>
+  <text x="32" y="350" transform="rotate(-90 32 350)" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#222222">Total coverage</text>
+
+  <!-- all-monocyte reference median: 149,278 -->
+  <line x1="130" y1="405.8" x2="1120" y2="405.8" stroke="#54278f" stroke-width="2.5" stroke-dasharray="10 7"/>
+  <rect x="846" y="374" width="274" height="27" rx="4" fill="#ffffff" opacity="0.92"/>
+  <text x="1110" y="393" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#54278f">All Monocytes median = 149,278</text>
+
+  <!-- median bars -->
+  <rect x="240" y="227.5" width="180" height="342.5" rx="3" fill="#d7301f" stroke="#222222" stroke-width="1"/>
+  <rect x="510" y="337.8" width="180" height="232.2" rx="3" fill="#756bb1" stroke="#222222" stroke-width="1"/>
+  <rect x="780" y="420.8" width="180" height="149.2" rx="3" fill="#bdbdbd" stroke="#222222" stroke-width="1"/>
+
+  <!-- Q25-Q75 whiskers -->
+  <g stroke="#111111" stroke-width="3" fill="none">
+    <line x1="330" y1="154.7" x2="330" y2="315.7"/>
+    <line x1="305" y1="154.7" x2="355" y2="154.7"/>
+    <line x1="305" y1="315.7" x2="355" y2="315.7"/>
+
+    <line x1="600" y1="290.8" x2="600" y2="375.7"/>
+    <line x1="575" y1="290.8" x2="625" y2="290.8"/>
+    <line x1="575" y1="375.7" x2="625" y2="375.7"/>
+
+    <line x1="870" y1="400.0" x2="870" y2="435.9"/>
+    <line x1="845" y1="400.0" x2="895" y2="400.0"/>
+    <line x1="845" y1="435.9" x2="895" y2="435.9"/>
+  </g>
+
+  <!-- median values and sample sizes -->
+  <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle">
+    <text x="330" y="253" font-size="19" font-weight="700" fill="#ffffff">311,361</text>
+    <text x="600" y="363" font-size="19" font-weight="700" fill="#ffffff">211,048</text>
+    <text x="870" y="447" font-size="19" font-weight="700" fill="#222222">135,595</text>
+
+    <text x="330" y="142" font-size="15" fill="#222222">n = 165</text>
+    <text x="600" y="278" font-size="15" fill="#222222">n = 731</text>
+    <text x="870" y="388" font-size="15" fill="#222222">n = 1,624</text>
+  </g>
+
+  <!-- x-axis group labels -->
+  <g font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#222222" text-anchor="middle">
+    <text x="330" y="603">Mixed non-monocytes</text>
+    <text x="330" y="625">in ROI</text>
+    <text x="600" y="603">Monocytes</text>
+    <text x="600" y="625">in ROI</text>
+    <text x="870" y="603">Monocytes</text>
+    <text x="870" y="625">outside ROI</text>
+  </g>
+
+  <!-- statistical annotation and footnote -->
+  <text x="600" y="663" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" fill="#333333">Mann–Whitney: mixed vs ROI Monocytes p = 1.75 × 10⁻²⁴; mixed vs all Monocytes p = 4.09 × 10⁻⁶⁴</text>
+  <text x="600" y="692" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#666666">Bars = median; whiskers = Q25–Q75. “All Monocytes” is shown only as a reference line because it contains both ROI and outside-ROI cells.</text>
+</svg>
