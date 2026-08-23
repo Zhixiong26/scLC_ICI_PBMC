@@ -2,83 +2,75 @@
 
 更新日期：2026-08-23
 
-## 1. 分析范围
+## 1. 当前分析范围
 
-本报告只记录当前项目的 MethylVI 流程、参数、输入构建、训练结果和图形输出，不包含其他流程的比较。
+当前正式分析不再使用单一 Scanpy 白名单或 4 个 Methscan 阈值变体，而是分别使用 **Scrublet** 和 **DoubletFinder** clean-cell 名单运行两套独立 MethylVI 分析。两套结果用于评估 doublet 过滤方法对甲基化潜空间、细胞群结构和下游结论的影响。
 
-当前分析使用 10 个样本（5 IR + 5 NR），输入来自 Methscan 300k QC 和 Scanpy clean-cell 白名单。MethylVI 核心模型不使用 cell type 或 IR/NR 标签进行监督训练；这些字段仅用于结果解释、分组绘图和可选 supervised UMAP。
+分析包含 10 个样本（IR01–IR05、NR01–NR05）。cell type 和 IR/NR condition 不传入 MethylVI 核心模型；这些标签仅用于结果解释、分组绘图和 supervised UMAP。
 
-## 2. 当前流程
+## 2. 两套输入细胞
+
+| 分支 | Scanpy clean 后的定义 | Methscan 300k–1.2M QC 后细胞数 | 样本数 |
+|---|---|---:|---:|
+| Scrublet | 剔除 Scrublet doublets、Low-RNA ambient-Ig monocytes 和 Platelets | **4,942** | 10 |
+| DoubletFinder | 剔除 DoubletFinder doublets、Low-RNA ambient-Ig monocytes 和 Platelets | **5,050** | 10 |
+
+Methscan QC 使用：
 
 ```text
-Methscan 300k QC + Scanpy clean-cell 白名单
-→ ALLCools 5-kb CGN count/hypo-score MCDS
-→ blacklist 过滤、低频 bin 过滤、LSI、ConsensusClustering
-→ 从逐细胞 ALLC 重新构建整数 mc/cov
-→ 构建 H5MU 并合并 sample、condition、cell type 注释
-→ 以 sample_id 为 batch key 训练 MethylVI
-→ 20 维 X_methylVI latent
-→ neighbors=15、UMAP、Leiden resolution=1.0
-→ 普通 UMAP、监督式 UMAP、测序深度和 mCG level 图
+min_sites = 300,000
+max_sites = 1,200,000
+min_meth  = 55
+max_meth  = none
 ```
 
-## 3. 输入和 QC
+两套分支的白名单、MCDS、MethylVI 输入、模型、embedding 和图片目录完全隔离。不同分支的文件不能交叉复用。
 
-| 项目 | 当前值 |
-|---|---:|
-| 原始 ALLC 细胞 | 58,534 |
-| 样本数 | 10（5 IR + 5 NR） |
-| Methscan coverage 阈值 | `min_sites=300000` |
-| Methscan methylation 阈值 | `min_meth=55` |
-| Methscan 最大位点 | `max_sites=1200000` |
-| Scanpy clean-cell 白名单 | 4,998 个细胞 |
-| ALLCools 初始 5-kb bins | 617,665 |
-| blacklist | ENCODE `ENCFF356LFX`，GRCh38 |
-| blacklist overlap fraction | 0.2 |
-| batch key | `MVI_BATCH_KEY=sample_id` |
+## 3. 当前分析流程
 
-## 4. ALLCools 参数
+```text
+方法特异的 Scanpy clean-cell 名单
+→ Methscan QC headers（300k–1.2M）
+→ ALLC staging
+→ 5-kb CGN MCDS
+→ ENCODE GRCh38 blacklist
+→ 方法特异的低频 feature 阈值重算
+→ 约 100k 个 5-kb features
+→ 从逐细胞 ALLC 重建整数 mc/cov
+→ H5MU + sample/condition/cell-type 元数据
+→ sample_id batch 的 MethylVI
+→ 20 维 latent
+→ neighbors=15、UMAP、Leiden resolution=1.0
+→ supervised UMAP
+→ sequencing depth、overall mCG 和 arithmetic-mean mCG
+```
 
-| 参数 | 当前值 |
-|---|---:|
-| methylation context | `CGN` |
-| feature resolution | 5 kb |
-| binarize cutoff | 0.95 |
-| 低频筛选 | `MVI_HYPO_PERCENT`，按版本变化 |
-| LSI | `arpack`，seed 0 |
-| significant PC | `p_cutoff=0.1` |
-| neighbors | 25 |
-| 初始 Leiden resolution | 1.0 |
-| t-SNE | Euclidean，perplexity 30，exaggeration -1 |
-| Consensus repeats | 500 |
-| Consensus resolution | 0.5 |
-| min cluster size | 10 |
-| consensus rate | 0.5 |
-| train fraction | 0.5，最多 500 个细胞 |
-| max iterations | 20 |
+这里的 `100k` 是目标 feature 数，不是 100-kb genomic window；每个输入 feature 仍为 5 kb。实际保留数由当前细胞集的非零分布计算，并由脚本硬检查。
 
-## 5. 当前实际参数版本
+## 4. 输入构建与 ALLCools 参数
 
-当前正式版本使用更新后的 Scanpy clean-cell 白名单，共 4,998 个细胞、10 个样本（5 IR + 5 NR），从 617,665 个初始 5-kb bins 出发。
-
-| 版本/profile | `MVI_HYPO_PERCENT` | blacklist 后 bins | 低频筛选移除 | 最终 bins | H5MU | 训练任务与状态 |
-|---|---:|---:|---:|---:|---:|---|
-| `blacklist_f0p2_scanpy0815gemxclean` | 0.5 | 603,353 | 409,290 | **194,063** | **687M（约 0.67 GiB）** | `164516`；训练日志至少达到 epoch 76，任务在最后 mCG level 绘图阶段失败 |
-
-这里的 5-kb bins 是固定的 5-kb 特征分辨率；`194,063` 是当前 ALLCools 低频过滤后的最终特征数，不是 50 kb 或 100 kb 的 bin 宽度。
-
-## 6. MethylVI 输入构建
-
-不能直接把 ALLCools H5AD 的 `X` 当作 MethylVI 计数，因为 `X` 是处理后的 hypo-score。当前流程从对应逐细胞 ALLC 重新聚合：
+ALLCools H5AD 中的 `X` 是处理后的 hypo-score，不能直接作为 MethylVI 计数。流程从逐细胞 ALLC 重新聚合：
 
 ```text
 mc  = methylated count
 cov = total coverage count
 ```
 
-构建阶段使用每细胞压缩 npz 检查点，验证 `mc ≤ cov`，根据最大 coverage 自动选择整数 dtype，最后写出包含 `mc/cov` 层的 H5MU，并回读检查形状和层是否完整。
+构建时验证 `mc ≤ cov`，根据最大 coverage 选择整数 dtype，写出包含 `mc/cov` layers 的 H5MU，并回读核验形状、细胞顺序和元数据。
 
-## 7. MethylVI 训练参数
+| 参数 | 当前值 |
+|---|---:|
+| genome / context | GRCh38 / `CGN` |
+| feature size | 5 kb |
+| blacklist | ENCODE `ENCFF356LFX` |
+| blacklist overlap fraction | 0.2 |
+| hypo-score binarize cutoff | 0.95 |
+| feature profile | 100k |
+| batch key | `sample_id` |
+
+`MVI_HYPO_PERCENT` 会在每套细胞名单上重新计算，而不是跨分支使用固定值。
+
+## 5. MethylVI 参数
 
 | 参数 | 当前值 |
 |---|---:|
@@ -86,109 +78,152 @@ cov = total coverage count
 | likelihood | `betabinomial` |
 | dispersion | `region` |
 | latent dimension | 20 |
-| hidden dimension | 128 |
-| hidden layers | 1 |
+| hidden dimension / layers | 128 / 1 |
 | batch size | 32 |
 | maximum epochs | 500 |
 | early stopping | 开启 |
 | seed | 0 |
-| batch key | `sample_id` |
 | accelerator | CPU |
 | neighbors | 15 |
 | Leiden resolution | 1.0 |
+| supervised target | `cell_type` |
+| supervised target weights | 0.2、0.5、0.7、0.9 |
+| supervised min_dist | 0.5 |
 
-训练、普通 UMAP 和监督式 UMAP 已运行；任务最终在 mCG level 绘图阶段因 CpG 数超过 1,200,000 上限而退出，模型和 H5MU 已成功生成。
+## 6. 计算资源与完成状态
 
-## 8. 注释和可视化
+两套完整任务各申请 60 CPU 和 184,320 MB（约 180 GiB）内存，并分别运行于独立节点。
 
-cell type、sample 和 IR/NR condition 在输入 H5MU 中作为注释字段保存，不传入核心 MethylVI 模型。普通 UMAP 使用 MethylVI latent；监督式 UMAP 是独立的可选可视化，当前使用 target weights：
+| 分支 | 初次任务 | 结果 | 补跑任务 | 最终状态 |
+|---|---:|---|---:|---|
+| Scrublet | `167490` | 模型、latent、普通和 supervised UMAP 已保存；postprocess 因重复 `cell_type` 列失败 | `167505` | **SUCCEEDED** |
+| DoubletFinder | `167491` | 模型、latent、普通和 supervised UMAP 已保存；postprocess 因重复 `cell_type` 列失败 | `167506` | **SUCCEEDED** |
 
-```text
-0.2、0.5、0.7、0.9
-```
+重复列问题已修复。`167505` 和 `167506` 复用已训练模型和 embedding，仅重新运行 sequencing depth、overall mCG 和 arithmetic-mean mCG，均以退出码 0 完成。最终两套分析均已完成，不需要重新训练。
 
-三个版本的普通和监督式 UMAP 均已生成；230k 版本的普通 UMAP 任务为 `164173`，监督式 UMAP 任务为 `164174`。
+实测 postprocess 峰值内存约 2.5 GB，20 CPU 作业即可完成；完整建模阶段仍保留 60 CPU / 180 GiB 的提交配置。
 
-## 9. 结果位置
+## 7. 输出位置
 
-当前 Scanpy clean + blacklist 版本的 ALLCools 输出：
-
-```text
-/share/LCZX_Data/data/allcools/methylvi_5kb_300k_blacklist_f0p2_scanpy0815gemxclean/
-```
-
-MethylVI 结果根目录：
+Scrublet ALLCools 与 MethylVI 输出：
 
 ```text
-/share/LCZX_Data/data/allcools/methylVI_results_300k_blacklist_f0p2_scanpy0815gemxclean/
+/share/LCZX_Data/data/allcools/methylvi_5kb_300k_blacklist_f0p2_scanpy20260815_30pc20nn_scrublet_clean_300k_1200k_100k/
+/share/LCZX_Data/data/allcools/methylVI_results_300k_blacklist_f0p2_scanpy20260815_30pc20nn_scrublet_clean_300k_1200k_100k/
 ```
 
-训练结果包括 `methylvi_5kbin_input.h5mu`、模型目录、latent、embedding、Leiden、训练历史和运行摘要。图形目录位于仓库的 `MethylVI/20260816/Results/` 下，并按 profile 分目录保存。
+DoubletFinder ALLCools 与 MethylVI 输出：
 
-## 10. 统计注意事项
+```text
+/share/LCZX_Data/data/allcools/methylvi_5kb_300k_blacklist_f0p2_scanpy20260815_30pc20nn_doubletfinder_clean_300k_1200k_100k/
+/share/LCZX_Data/data/allcools/methylVI_results_300k_blacklist_f0p2_scanpy20260815_30pc20nn_doubletfinder_clean_300k_1200k_100k/
+```
 
-当前 `sample_id` 与 IR/NR condition 完全绑定，因此 batch 与 condition 不是独立变量。按 `sample_id` 校正可能同时削弱真实 IR/NR 差异。结果解释应同时检查 sample mixing、cell type 结构、各 cell type 内部的 sample mixing、各 cell type 内部的 IR/NR 差异，以及校正后生物学信号是否仍然存在。
+仓库图片按分支写入：
 
-## 11. Monocyte 岛左侧杂色细胞的测序深度审查
+```text
+MethylVI/20260816/Results/<variant>/01_before_methylvi/
+MethylVI/20260816/Results/<variant>/02_after_methylvi/
+MethylVI/20260816/Results/<variant>/03_supervised_umap/
+```
 
-本节记录 Scrublet clean-cell 分支、100k feature profile、supervised UMAP `target_weight=0.5` 的专项检查。图中 Monocyte 岛左侧的红色细胞在这里称为“杂色细胞”；这是一个基于 UMAP 位置的操作性名称，并不代表新的细胞类型。
+下载到本地的当前图片快照位于 `MethylVI/20260816/Results/20260823/`。
 
-最终 ROI 定义为：
+## 8. 注释与可视化解释
+
+普通 UMAP 完全基于 MethylVI latent。supervised UMAP 是额外的标签引导可视化，不改变 MethylVI 模型、latent 或普通 UMAP。不同 `target_weight` 只改变 supervised UMAP 对 cell-type 标签的依赖强度。
+
+测序深度和 mCG 图包括：
+
+- 每细胞 total coverage 和 covered bins；
+- 各 cell type 的 depth boxplot 和汇总表；
+- overall mCG：`sum(mc)/sum(cov)`；
+- arithmetic-mean mCG：各已覆盖 feature 的 `mc/cov` 算术平均。
+
+postprocess 中设置 `MVI_FILTER_MAX_SITES=none` 只用于避免对已经固定的 Methscan-QC 白名单再次执行上限过滤，不会把未通过 1.2M 上限的细胞重新加入分析。
+
+## 9. Monocyte 岛左侧杂色细胞的测序深度审查
+
+本节记录 Scrublet 分支、100k profile、supervised UMAP `target_weight=0.5` 的专项检查。“杂色细胞”是基于 UMAP 位置的操作性名称，不代表新的细胞类型。
+
+最终 ROI：
 
 ```text
 34.0 ≤ UMAP1 ≤ 39.5
 -3.0 ≤ UMAP2 ≤ 2.0
 ```
 
-分组规则如下：
+分组：
 
-- 杂色细胞：ROI 内且 `cell_type != Monocytes` 的细胞。
-- ROI Monocytes：ROI 内且 `cell_type == Monocytes` 的细胞。
-- 全部 Monocytes：当前 Scrublet MethylVI 数据中的全部 Monocytes。
-- ROI 外 Monocytes：全部 Monocytes 中不在上述 ROI 内的细胞。
+- 杂色细胞：ROI 内且 `cell_type != Monocytes`。
+- ROI Monocytes：ROI 内且 `cell_type == Monocytes`。
+- 全部 Monocytes：Scrublet MethylVI 数据中的全部 Monocytes。
+- ROI 外 Monocytes：全部 Monocytes 中不在 ROI 内的细胞。
 
-### 11.1 杂色细胞（红色）
+### 9.1 杂色细胞（红色）
 
-最终 ROI 内共有 **165 个杂色细胞**。这些细胞来自多个已注释的免疫细胞类型，因此应视为落入 Monocyte 岛左侧区域的异质细胞集合，而不是统一的 Monocyte 亚群。
+ROI 内共有 **165 个杂色细胞**。它们来自多个已注释免疫细胞类型，应视为异质细胞集合。
 
-| 指标 | 杂色细胞（ROI 内非 Monocytes） |
+| 指标 | 数值 |
 |---|---:|
 | 细胞数 | **165** |
-| total coverage，均值 | 306,778.99 |
-| total coverage，中位数 | **311,361** |
-| total coverage，Q25–Q75 | 231,161–377,546 |
-| covered bins，均值 | 47,944.29 |
-| covered bins，中位数 | **48,186** |
-| log1p total coverage，均值 | 12.580610 |
-| log1p total coverage，中位数 | 12.648712 |
+| total coverage 均值 / 中位数 | 306,778.99 / **311,361** |
+| total coverage Q25–Q75 | 231,161–377,546 |
+| covered bins 均值 / 中位数 | 47,944.29 / **48,186** |
+| log1p total coverage 均值 / 中位数 | 12.580610 / 12.648712 |
 
-### 11.2 Monocytes（紫色对照）
+### 9.2 Monocytes（紫色对照）
 
-ROI 内共有 **731 个 Monocytes**；整个数据集中共有 **2,355 个 Monocytes**，其中 ROI 外有 **1,624 个**。
-
-| 分组 | 细胞数 | total coverage 均值 | total coverage 中位数 | Q25–Q75 | covered bins 均值 | covered bins 中位数 |
+| 分组 | 细胞数 | total coverage 均值 | 中位数 | Q25–Q75 | covered bins 均值 | 中位数 |
 |---|---:|---:|---:|---:|---:|---:|
 | ROI 内 Monocytes | **731** | 225,263.50 | **211,048** | 176,614.5–253,861 | 38,832.51 | **37,760** |
 | 全部 Monocytes | **2,355** | 168,238.15 | **149,278** | 127,705–188,235 | 31,046.26 | **28,735** |
 | ROI 外 Monocytes | **1,624** | 142,569.73 | **135,594.5** | 121,909.75–154,556.25 | 27,541.49 | **26,630.5** |
 
-### 11.3 杂色细胞与 Monocytes 的比较
+### 9.3 统计比较
 
 | 比较 | Mann–Whitney U | 双侧 P 值 |
 |---|---:|---:|
 | 杂色细胞 vs ROI 内 Monocytes | 90,971.5 | 1.7502 × 10^-24 |
 | 杂色细胞 vs 全部 Monocytes | 347,032.5 | 4.0866 × 10^-64 |
 
-杂色细胞的 total coverage 中位数比 ROI 内 Monocytes 高约 **47.5%**（311,361 vs 211,048），covered bins 中位数高约 **27.6%**（48,186 vs 37,760）；其 total coverage 中位数约为全部 Monocytes 的 **2.09 倍**。
+杂色细胞的 total coverage 中位数比 ROI 内 Monocytes 高约 **47.5%**，covered bins 中位数高约 **27.6%**；其 total coverage 中位数约为全部 Monocytes 的 **2.09 倍**。
 
-因此，这些红色杂色细胞不是低测序深度造成的低质量细胞。相反，它们整体具有更高的 feature coverage。该比较仍受到细胞类型组成影响，不能单独证明测序深度导致其位于该 UMAP 区域，也不应仅依据 UMAP 位置或深度删除这些细胞。后续若要检验深度效应，应在同一种细胞类型内部、并按样本分层，比较 ROI 内外细胞。
+这些红色细胞不是低测序深度造成的低质量细胞。相反，它们整体具有更高的 feature coverage。但该比较受细胞类型组成影响，不能证明测序深度导致其 UMAP 位置，也不支持仅依据位置或深度删除这些细胞。进一步检验应在相同 cell type 内、按样本分层比较 ROI 内外细胞。
 
-这里的 `total coverage` 是 MethylVI 最终保留的 100k 个 5-kb 输入特征上的 coverage 总和，不等同于原始 FASTQ reads 数量。
+这里的 `total coverage` 是最终约 100k 个 5-kb MethylVI 输入 features 上的 coverage 总和，不等同于原始 FASTQ reads。
 
-专项结果目录：
+专项结果：
 
 ```text
 /share/home/rzli/scLC_ICI_PBMC/MethylVI/20260816/Results/blacklist_f0p2_scanpy20260815_30pc20nn_scrublet_clean_300k_1200k_100k/03_supervised_umap/mixed_monocyte_depth_target_weight_0p5/
 ```
 
-其中 `mixed_non_monocyte_cells.tsv.gz` 是 165 个红色杂色细胞的逐细胞名单与深度数据，`all_cells_in_roi.tsv.gz` 包含 ROI 内杂色细胞和 Monocytes，`sequencing_depth_summary.tsv` 与 `sequencing_depth_tests.tsv` 分别保存汇总统计和检验结果。
+`mixed_non_monocyte_cells.tsv.gz` 保存 165 个红色细胞的逐细胞名单；`all_cells_in_roi.tsv.gz` 保存 ROI 内杂色细胞和 Monocytes；`sequencing_depth_summary.tsv` 和 `sequencing_depth_tests.tsv` 保存汇总统计与检验。
+
+## 10. 统计注意事项与当前结论
+
+1. `sample_id` 与 IR/NR condition 完全绑定。以 `sample_id` 做 batch correction 可能同时削弱真实 IR/NR 信号。
+2. supervised UMAP 是解释性图形，不是额外训练模型，也不应用于独立证明细胞类型。
+3. 两套分支的细胞数量和 feature 集不同；比较时应同时报告分支、细胞数、profile 和参数。
+4. 当前两套 MethylVI 分析均已完成。主结果应以 Scrublet 与 DoubletFinder 的 100k 分支为准。
+5. 旧的 4,998/5,014-cell 单白名单结果及 4 变体试验只作历史参考，不应混入当前结论。
+
+## 11. 可复现入口
+
+```bash
+cd /share/home/rzli/scLC_ICI_PBMC
+
+# 同时提交两套完整分析
+bash MethylVI/20260816/Scripts/16_submit_methscan_qc_methods.sh
+
+# 输入检查
+bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet check 100k
+bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh doubletfinder check 100k
+
+# 已训练结果的后处理补跑
+bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet postprocess 100k
+bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh doubletfinder postprocess 100k
+```
+
+脚本细节、作业查询和文件说明见 [Scripts README](Scripts/README.md)。
