@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+from pathlib import Path
 
 import anndata as ad
 
@@ -14,6 +15,7 @@ from mvi_utils import (
     index_allc_files,
     load_annotations,
     load_sample_metadata,
+    regions_from_bed,
     regions_from_var,
     save_json,
 )
@@ -28,6 +30,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sample-id-regex", default=os.environ.get("MVI_SAMPLE_ID_REGEX", r"^([^_]+_[^_]+)_"))
     parser.add_argument("--output", default=os.environ.get("MVI_AUDIT"))
     parser.add_argument("--bin-size", type=int, default=int(os.environ.get("MVI_BIN_SIZE", "5000")))
+    parser.add_argument("--regions-bed", default=os.environ.get("MVI_REGIONS_BED"))
+    parser.add_argument("--cell-whitelist", default=os.environ.get("MVI_CELL_WHITELIST"))
     return parser.parse_args()
 
 
@@ -65,7 +69,37 @@ def main() -> None:
 
     adata = ad.read_h5ad(h5ad, backed="r")
     cells = adata.obs_names.astype(str)
-    regions = regions_from_var(adata.var, bin_size=args.bin_size)
+    whitelist_path = (
+        Path(args.cell_whitelist).expanduser().resolve()
+        if args.cell_whitelist else None
+    )
+    whitelist_missing: list[str] = []
+    whitelist_extra: list[str] = []
+    if whitelist_path is not None:
+        if not whitelist_path.is_file():
+            raise FileNotFoundError(whitelist_path)
+        whitelist = [
+            canonical_cell_id(line.strip())
+            for line in whitelist_path.read_text().splitlines()
+            if line.strip()
+        ]
+        if len(whitelist) != len(set(whitelist)):
+            raise ValueError(f"Cell whitelist contains duplicate IDs: {whitelist_path}")
+        selected_set = {canonical_cell_id(cell) for cell in cells}
+        whitelist_set = set(whitelist)
+        whitelist_missing = sorted(selected_set - whitelist_set)
+        whitelist_extra = sorted(whitelist_set - selected_set)
+    regions_bed = (
+        env_path("MVI_REGIONS_BED", args.regions_bed) if args.regions_bed else None
+    )
+    if regions_bed is not None:
+        if not regions_bed.is_file():
+            raise FileNotFoundError(regions_bed)
+        regions = regions_from_bed(regions_bed)
+        feature_mode = "variable-region"
+    else:
+        regions = regions_from_var(adata.var, bin_size=args.bin_size)
+        feature_mode = "fixed-bin"
     annotations, annotation_stats = load_annotations(
         cells, annotation, sample_metadata, args.sample_id_regex
     )
@@ -78,7 +112,19 @@ def main() -> None:
     audit = {
         "h5ad": str(h5ad),
         "cells": int(adata.n_obs),
-        "retained_5kb_bins": int(adata.n_vars),
+        "cell_whitelist": str(whitelist_path) if whitelist_path else None,
+        "cell_whitelist_missing_count": len(whitelist_missing),
+        "cell_whitelist_extra_count": len(whitelist_extra),
+        "cell_whitelist_missing_examples": whitelist_missing[:10],
+        "cell_whitelist_extra_examples": whitelist_extra[:10],
+        "feature_mode": feature_mode,
+        "source_h5ad_features": int(adata.n_vars),
+        "selected_features": int(len(regions)),
+        "retained_5kb_bins": int(adata.n_vars) if feature_mode == "fixed-bin" else None,
+        "selected_variable_regions": (
+            int(len(regions)) if feature_mode == "variable-region" else None
+        ),
+        "regions_bed": str(regions_bed) if regions_bed else None,
         "parsed_regions": int(len(regions)),
         "h5ad_layers": list(adata.layers.keys()),
         "h5ad_x_role": "ALLCools clustering score only; never used as MethylVI counts",
@@ -103,7 +149,7 @@ def main() -> None:
         "bin_size": args.bin_size,
         "methylation_context": os.environ.get("MVI_MC_CONTEXT", "CGN"),
         "projected_dense_uint16_mc_cov_gib": round(
-            adata.n_obs * adata.n_vars * 2 * 2 / 2**30, 2
+            adata.n_obs * len(regions) * 2 * 2 / 2**30, 2
         ),
     }
     save_json(output, audit)
@@ -111,6 +157,11 @@ def main() -> None:
     adata.file.close()
     if missing_allc:
         raise ValueError(f"Input audit failed: {len(missing_allc)} selected cells lack ALLC files")
+    if whitelist_missing or whitelist_extra:
+        raise ValueError(
+            "Input audit failed: H5AD and joint Methscan cell whitelist differ: "
+            f"missing={len(whitelist_missing)}, extra={len(whitelist_extra)}"
+        )
     if extra_allc:
         raise ValueError(f"Input audit failed: ALLC directory contains {len(extra_allc)} extra cells")
     if audit["unknown_sample_cells"] or audit["unknown_condition_cells"]:

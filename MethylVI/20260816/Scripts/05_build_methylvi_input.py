@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild raw mCG mc/cov counts for retained ALLCools 5-kb features."""
+"""Rebuild raw mCG mc/cov counts for fixed bins or variable-length VMRs."""
 
 from __future__ import annotations
 
@@ -17,12 +17,15 @@ import numpy as np
 
 from mvi_utils import (
     aggregate_allc,
+    aggregate_allc_intervals,
     canonical_cell_id,
     checkpoint_path,
     env_path,
     index_allc_files,
+    interval_region_lookup,
     load_annotations,
     region_lookup,
+    regions_from_bed,
     regions_from_var,
     save_json,
 )
@@ -32,14 +35,19 @@ _WORKER_LOOKUP = None
 _WORKER_N_FEATURES = 0
 _WORKER_BIN_SIZE = 5000
 _WORKER_CONTEXT = "CGN"
+_WORKER_FEATURE_MODE = "fixed-bin"
 
 
-def _init_worker(lookup, n_features: int, bin_size: int, context: str) -> None:
-    global _WORKER_LOOKUP, _WORKER_N_FEATURES, _WORKER_BIN_SIZE, _WORKER_CONTEXT
+def _init_worker(
+    lookup, n_features: int, bin_size: int, context: str, feature_mode: str
+) -> None:
+    global _WORKER_LOOKUP, _WORKER_N_FEATURES, _WORKER_BIN_SIZE
+    global _WORKER_CONTEXT, _WORKER_FEATURE_MODE
     _WORKER_LOOKUP = lookup
     _WORKER_N_FEATURES = n_features
     _WORKER_BIN_SIZE = bin_size
     _WORKER_CONTEXT = context
+    _WORKER_FEATURE_MODE = feature_mode
 
 
 def _checkpoint_valid(path: Path, cell_id: str) -> bool:
@@ -67,13 +75,21 @@ def _build_one(task: tuple[int, str, str, str]) -> dict[str, object]:
     if _checkpoint_valid(output, cell_id):
         return {"row": row_index, "cell_id": cell_id, "status": "reused"}
 
-    indices, mc, cov, stats = aggregate_allc(
-        Path(allc_string),
-        _WORKER_LOOKUP,
-        _WORKER_N_FEATURES,
-        bin_size=_WORKER_BIN_SIZE,
-        context=_WORKER_CONTEXT,
-    )
+    if _WORKER_FEATURE_MODE == "variable-region":
+        indices, mc, cov, stats = aggregate_allc_intervals(
+            Path(allc_string),
+            _WORKER_LOOKUP,
+            _WORKER_N_FEATURES,
+            context=_WORKER_CONTEXT,
+        )
+    else:
+        indices, mc, cov, stats = aggregate_allc(
+            Path(allc_string),
+            _WORKER_LOOKUP,
+            _WORKER_N_FEATURES,
+            bin_size=_WORKER_BIN_SIZE,
+            context=_WORKER_CONTEXT,
+        )
     temporary = output.with_suffix(".tmp.npz")
     np.savez_compressed(
         temporary,
@@ -95,6 +111,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--threads", type=int, default=int(os.environ.get("MVI_THREADS", "4")))
     parser.add_argument("--bin-size", type=int, default=int(os.environ.get("MVI_BIN_SIZE", "5000")))
     parser.add_argument("--context", default=os.environ.get("MVI_MC_CONTEXT", "CGN"))
+    parser.add_argument("--regions-bed", default=os.environ.get("MVI_REGIONS_BED"))
     parser.add_argument("--dtype", choices=("auto", "uint16", "uint32", "uint64"), default="auto")
     parser.add_argument("--force-assemble", action="store_true")
     return parser.parse_args()
@@ -117,7 +134,15 @@ def _choose_dtype(row_paths: list[Path], requested: str) -> tuple[np.dtype, int,
     return dtype, max_mc, max_cov
 
 
-def _input_manifest(cells, regions, h5ad: Path, context: str, bin_size: int) -> dict[str, object]:
+def _input_manifest(
+    cells,
+    regions,
+    h5ad: Path,
+    context: str,
+    bin_size: int,
+    feature_mode: str,
+    regions_bed: Path | None,
+) -> dict[str, object]:
     cell_digest = hashlib.sha256()
     for cell in cells:
         cell_digest.update(str(cell).encode())
@@ -135,6 +160,12 @@ def _input_manifest(cells, regions, h5ad: Path, context: str, bin_size: int) -> 
         "region_sha256": region_digest.hexdigest(),
         "context": context,
         "bin_size": bin_size,
+        "feature_mode": feature_mode,
+        "regions_bed": str(regions_bed) if regions_bed else None,
+        "regions_bed_sha256": (
+            hashlib.sha256(regions_bed.read_bytes()).hexdigest()
+            if regions_bed else None
+        ),
     }
 
 
@@ -184,7 +215,17 @@ def main() -> None:
 
     source = ad.read_h5ad(h5ad, backed="r")
     cells = source.obs_names.astype(str)
-    regions = regions_from_var(source.var, bin_size=args.bin_size)
+    regions_bed = (
+        Path(args.regions_bed).expanduser().resolve() if args.regions_bed else None
+    )
+    if regions_bed is not None:
+        if not regions_bed.is_file():
+            raise FileNotFoundError(regions_bed)
+        regions = regions_from_bed(regions_bed)
+        feature_mode = "variable-region"
+    else:
+        regions = regions_from_var(source.var, bin_size=args.bin_size)
+        feature_mode = "fixed-bin"
     if output.exists() and not args.force_assemble:
         reopened = mudata.read_h5mu(output, backed="r")
         expected = (len(cells), len(regions))
@@ -200,7 +241,15 @@ def main() -> None:
         print(f"existing verified H5MU detected; skipping build: {output}")
         return
 
-    manifest = _input_manifest(cells, regions, h5ad, args.context, args.bin_size)
+    manifest = _input_manifest(
+        cells,
+        regions,
+        h5ad,
+        args.context,
+        args.bin_size,
+        feature_mode,
+        regions_bed,
+    )
     manifest_path = row_dir / "manifest.json"
     existing_rows = list(row_dir.glob("*.npz"))
     if manifest_path.exists():
@@ -217,7 +266,11 @@ def main() -> None:
         )
     else:
         save_json(manifest_path, manifest)
-    lookup = region_lookup(regions)
+    lookup = (
+        interval_region_lookup(regions)
+        if feature_mode == "variable-region"
+        else region_lookup(regions)
+    )
     allc_index = index_allc_files(allc_dir)
     annotations, annotation_stats = load_annotations(
         cells, annotation, sample_metadata, sample_id_regex
@@ -233,7 +286,7 @@ def main() -> None:
         tasks.append((row_index, cell_id, str(allc_index[normalized]), str(row_path)))
 
     print(
-        f"aggregating {len(cells):,} cells x {len(regions):,} retained regions "
+        f"aggregating {len(cells):,} cells x {len(regions):,} {feature_mode} features "
         f"with {args.threads} workers",
         flush=True,
     )
@@ -241,7 +294,7 @@ def main() -> None:
     with concurrent.futures.ProcessPoolExecutor(
         max_workers=args.threads,
         initializer=_init_worker,
-        initargs=(lookup, len(regions), args.bin_size, args.context),
+        initargs=(lookup, len(regions), args.bin_size, args.context, feature_mode),
     ) as executor:
         futures = [executor.submit(_build_one, task) for task in tasks]
         for completed, future in enumerate(concurrent.futures.as_completed(futures), start=1):
@@ -267,10 +320,13 @@ def main() -> None:
     obs.index = cells
     for column in annotations.columns:
         obs[column] = annotations[column].to_numpy()
-    var = source.var.copy()
-    var["chrom"] = regions["chrom"].to_numpy()
-    var["start"] = regions["start"].to_numpy()
-    var["end"] = regions["end"].to_numpy()
+    if feature_mode == "variable-region":
+        var = regions.loc[:, ["chrom", "start", "end"]].copy()
+    else:
+        var = source.var.copy()
+        var["chrom"] = regions["chrom"].to_numpy()
+        var["start"] = regions["start"].to_numpy()
+        var["end"] = regions["end"].to_numpy()
     count_adata = ad.AnnData(X=None, obs=obs, var=var)
     # AnnData 可以在内存中持有 np.memmap，但当前 anndata I/O 注册器
     # 没有为 np.memmap 子类注册 HDF5 写入方法。np.asarray 只创建
@@ -301,6 +357,8 @@ def main() -> None:
         "features": len(regions),
         "context": args.context,
         "bin_size": args.bin_size,
+        "feature_mode": feature_mode,
+        "regions_bed": str(regions_bed) if regions_bed else None,
         "dtype": dtype.name,
         "maximum_mc_per_cell_region": max_mc,
         "maximum_cov_per_cell_region": max_cov,

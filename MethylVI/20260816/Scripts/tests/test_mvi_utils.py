@@ -13,12 +13,15 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from mvi_utils import (  # noqa: E402
     aggregate_allc,
+    aggregate_allc_intervals,
     canonical_cell_id,
     infer_sample_id,
     join_coordinates_and_metrics,
     load_annotations,
     load_sample_metadata,
     region_lookup,
+    interval_region_lookup,
+    regions_from_bed,
     regions_from_var,
 )
 
@@ -89,6 +92,34 @@ class PipelineUtilsTests(unittest.TestCase):
         self.assertEqual(mc.tolist(), [3, 4])
         self.assertEqual(cov.tolist(), [5, 5])
         self.assertEqual(stats["selected_sites"], 3)
+
+    def test_variable_bed_regions_and_allc_aggregation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bed = root / "VMRs.bed"
+            bed.write_text("chr1\t10\t20\t0.5\nchr1\t30\t35\t0.5\n")
+            regions = regions_from_bed(bed)
+            self.assertEqual(regions.index.tolist(), ["chr1:10-20", "chr1:30-35"])
+            lookup = interval_region_lookup(regions)
+            allc = root / "cell.allc.tsv.gz"
+            with gzip.open(allc, "wt") as handle:
+                handle.write("chr1\t10\t+\tCGN\t9\t9\t1\n")   # BED position 9: outside
+                handle.write("chr1\t11\t+\tCGN\t1\t2\t1\n")   # BED position 10: inside
+                handle.write("chr1\t20\t+\tCGN\t2\t3\t1\n")   # BED position 19: inside
+                handle.write("chr1\t21\t+\tCGN\t7\t8\t1\n")   # BED position 20: outside
+                handle.write("chr1\t31\t+\tCGN\t4\t5\t1\n")
+            indices, mc, cov, stats = aggregate_allc_intervals(allc, lookup, 2)
+            self.assertEqual(indices.tolist(), [0, 1])
+            self.assertEqual(mc.tolist(), [3, 4])
+            self.assertEqual(cov.tolist(), [5, 5])
+            self.assertEqual(stats["selected_sites"], 3)
+
+    def test_variable_bed_rejects_overlaps(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bed = Path(directory) / "overlap.bed"
+            bed.write_text("chr1\t10\t20\nchr1\t19\t30\n")
+            with self.assertRaisesRegex(ValueError, "overlap"):
+                regions_from_bed(bed)
 
     def test_sample_metadata_and_annotation_merge(self):
         with tempfile.TemporaryDirectory() as directory:

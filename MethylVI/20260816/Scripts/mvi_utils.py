@@ -314,6 +314,56 @@ def regions_from_var(var: pd.DataFrame, bin_size: int = 5000) -> pd.DataFrame:
     return regions
 
 
+def regions_from_bed(path: Path) -> pd.DataFrame:
+    """Read a sorted, non-overlapping BED file as variable-length features."""
+    records: list[tuple[str, int, int, str]] = []
+    opener = gzip.open if str(path).endswith(".gz") else open
+    with opener(path, "rt") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            stripped = line.strip()
+            if not stripped or stripped.startswith(("#", "track ", "browser ")):
+                continue
+            fields = stripped.split()
+            if len(fields) < 3:
+                raise ValueError(f"{path}:{line_number}: expected at least 3 BED columns")
+            try:
+                start = int(fields[1])
+                end = int(fields[2])
+            except ValueError as exc:
+                raise ValueError(
+                    f"{path}:{line_number}: BED start/end must be integers"
+                ) from exc
+            chrom = fields[0].strip()
+            if not chrom or start < 0 or end <= start:
+                raise ValueError(f"{path}:{line_number}: invalid BED interval")
+            # MethSCAn BED column 4 is not guaranteed to be a unique feature
+            # name (some versions write a score). Coordinates are the stable
+            # identifier used by the count matrix and provenance manifest.
+            feature = f"{chrom}:{start}-{end}"
+            records.append((chrom, start, end, feature))
+    if not records:
+        raise ValueError(f"No genomic intervals found in {path}")
+
+    regions = pd.DataFrame(records, columns=["chrom", "start", "end", "feature"])
+    if regions["feature"].duplicated().any():
+        raise ValueError(f"BED feature names are not unique: {path}")
+    regions["feature_index"] = np.arange(len(regions), dtype=np.int64)
+    previous_end: dict[str, int] = {}
+    seen_chromosomes: set[str] = set()
+    current_chromosome: str | None = None
+    for row in regions.itertuples(index=False):
+        chrom = str(row.chrom)
+        if chrom != current_chromosome:
+            if chrom in seen_chromosomes:
+                raise ValueError(f"BED chromosome blocks are not contiguous: {path}")
+            seen_chromosomes.add(chrom)
+            current_chromosome = chrom
+        if int(row.start) < previous_end.get(chrom, -1):
+            raise ValueError(f"BED intervals overlap on {row.chrom}: {path}")
+        previous_end[chrom] = int(row.end)
+    return regions.set_index("feature", drop=True)
+
+
 def region_lookup(regions: pd.DataFrame) -> dict[str, dict[int, tuple[int, int, int]]]:
     lookup: dict[str, dict[int, tuple[int, int, int]]] = {}
     for row in regions.itertuples(index=False):
@@ -322,6 +372,22 @@ def region_lookup(regions: pd.DataFrame) -> dict[str, dict[int, tuple[int, int, 
             int(row.start),
             int(row.end),
         )
+    return lookup
+
+
+def interval_region_lookup(
+    regions: pd.DataFrame,
+) -> dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """Build a chromosome lookup for sorted, non-overlapping intervals."""
+    lookup: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
+    for chrom, group in regions.groupby("chrom", sort=False):
+        ordered = group.sort_values(["start", "end"])
+        starts = ordered["start"].to_numpy(dtype=np.int64)
+        ends = ordered["end"].to_numpy(dtype=np.int64)
+        indices = ordered["feature_index"].to_numpy(dtype=np.int64)
+        if len(starts) > 1 and np.any(starts[1:] < ends[:-1]):
+            raise ValueError(f"Variable-length features overlap on {chrom}")
+        lookup[str(chrom)] = (starts, ends, indices)
     return lookup
 
 
@@ -375,6 +441,60 @@ def aggregate_allc(
             feature_index, start, end = region
             if not (start <= position0 < end):
                 continue
+            mc[feature_index] += methylated
+            cov[feature_index] += coverage
+            selected_sites += 1
+
+    nonzero = np.flatnonzero(cov)
+    if np.any(mc[nonzero] > cov[nonzero]):
+        raise AssertionError(f"Aggregated mc exceeds cov for {allc_path}")
+    stats = {
+        "input_sites": sites,
+        "selected_sites": selected_sites,
+        "nonzero_regions": int(nonzero.size),
+        "max_mc": int(mc.max(initial=0)),
+        "max_cov": int(cov.max(initial=0)),
+    }
+    return nonzero, mc[nonzero], cov[nonzero], stats
+
+
+def aggregate_allc_intervals(
+    allc_path: Path,
+    lookup: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]],
+    n_features: int,
+    context: str = "CGN",
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, int]]:
+    """Aggregate one ALLC file into variable-length, non-overlapping regions."""
+    mc = np.zeros(n_features, dtype=np.uint64)
+    cov = np.zeros(n_features, dtype=np.uint64)
+    opener = gzip.open if str(allc_path).endswith(".gz") else open
+    sites = selected_sites = 0
+    with opener(allc_path, "rt") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line or line.startswith("#"):
+                continue
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) < 6:
+                raise ValueError(f"{allc_path}:{line_number}: expected at least 6 columns")
+            sites += 1
+            if not context_matches(fields[3], context):
+                continue
+            chrom_intervals = lookup.get(fields[0])
+            if chrom_intervals is None:
+                continue
+            try:
+                position0 = int(fields[1]) - 1
+                methylated = int(fields[4])
+                coverage = int(fields[5])
+            except ValueError as exc:
+                raise ValueError(f"{allc_path}:{line_number}: non-integer count/position") from exc
+            if position0 < 0 or methylated < 0 or coverage < 0 or methylated > coverage:
+                raise ValueError(f"{allc_path}:{line_number}: invalid mc/cov values")
+            starts, ends, feature_indices = chrom_intervals
+            interval_index = int(np.searchsorted(starts, position0, side="right") - 1)
+            if interval_index < 0 or position0 >= int(ends[interval_index]):
+                continue
+            feature_index = int(feature_indices[interval_index])
             mc[feature_index] += methylated
             cov[feature_index] += coverage
             selected_sites += 1

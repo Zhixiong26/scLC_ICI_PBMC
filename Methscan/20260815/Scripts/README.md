@@ -64,6 +64,44 @@ bash Methscan/20260815/Scripts/01_Upstream/07_plot_all_top200_heatmaps.sh links
 
 `03 ... run-to-smooth` 已可为 `04` 准备 DMR 输入；只有需要独立 VMR scan/matrix 结果时才使用 `03 ... run`。
 
+### 10 样本联合 VMR scan/matrix
+
+`03_run_upstream_pipeline.sh ... all` 中最后的 `all` 仅表示遍历全部样本，
+仍然对每个样本独立执行 smooth/scan/matrix。它不会创建 10 样本联合矩阵。
+
+若要将 Methscan 发现的联合 VMR 作为 MethylVI features，必须使用：
+
+```text
+09_run_merged_vmr_pipeline.sh
+  10份 method-specific filtered_data_single_300k/column_header.txt
+  → 建立联合 cov 链接
+  → methscan prepare
+  → methscan smooth
+  → methscan scan（联合 VMRs.bed）
+  → methscan matrix（联合 cell × VMR matrix）
+```
+
+两套分支同时提交：
+
+```bash
+cd /share/home/rzli/scLC_ICI_PBMC
+bash Methscan/20260815/Scripts/01_Upstream/10_submit_merged_vmr_methods.sh
+```
+
+默认每套申请 `60 CPU / 184320 MB`，输出互相隔离在：
+
+```text
+/share/LCZX_Data/data/allcools/merged_10samples_scanpy20260815_30pc20nn_scrublet_clean_covdedupprob/
+/share/LCZX_Data/data/allcools/merged_10samples_scanpy20260815_30pc20nn_doubletfinder_clean_covdedupprob/
+```
+
+只检查状态：
+
+```bash
+bash Methscan/20260815/Scripts/01_Upstream/09_run_merged_vmr_pipeline.sh scrublet status 60
+bash Methscan/20260815/Scripts/01_Upstream/09_run_merged_vmr_pipeline.sh doubletfinder status 60
+```
+
 ### dsub 提交 upstream
 
 `run-to-smooth` 应提交到计算节点，不要在登录节点前台运行。服务器上执行：

@@ -76,6 +76,30 @@ Scanpy method-specific clean-cell 名单
 
 `MVI_HYPO_PERCENT` 不是固定经验值。脚本使用当前方法的细胞集重新计算阈值，并通过 `feature_filter_summary.json` 硬检查实际保留 feature 数与计算结果一致。`100k` 表示目标 feature 数，不是 100-kb genomic bin；每个 feature 仍为 5 kb。
 
+### Methscan 联合 VMR feature 分支
+
+除上述 5-kb/100k 基线流程外，新增联合 VMR 流程。它不合并 10 份单样本
+`VMRs.bed`，而是读取 Methscan 的 10 样本联合 `scan_results_merged_300k/VMRs.bed`。
+VMR 仅定义可变长度 genomic features；MethylVI 所需的整数 `mc/cov` 仍从每个
+细胞的 ALLC 重新聚合，绝不把 Methscan 百分比矩阵当作计数。
+
+联合 Methscan 成功后提交两套 VMR-MethylVI：
+
+```bash
+cd /share/home/rzli/scLC_ICI_PBMC
+bash MethylVI/20260816/Scripts/19_submit_methscan_vmr_methods.sh
+```
+
+单分支检查：
+
+```bash
+bash MethylVI/20260816/Scripts/18_run_methscan_vmr_method.sh scrublet check
+bash MethylVI/20260816/Scripts/18_run_methscan_vmr_method.sh doubletfinder check
+```
+
+输入审计会硬检查：联合 VMR BED 非空、区间无重叠、联合 Methscan cell header
+与基线 H5AD 细胞名单完全一致、每个细胞均有 ALLC、10 个样本和 IR/NR 元数据完整。
+
 ## 4. 推荐提交方式
 
 同时提交两套 100k 主分析：

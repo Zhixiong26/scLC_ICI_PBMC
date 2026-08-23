@@ -233,3 +233,28 @@ bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh doubletfinder postpr
 ```
 
 脚本细节、作业查询和文件说明见 [Scripts README](Scripts/README.md)。
+
+## 12. Methscan 10 样本联合 VMR 分支（待运行）
+
+新增分析不会将 10 份单样本 `VMRs.bed` 直接合并。每个 doublet 方法先将
+10 个样本中已经通过 300k–1.2M QC 的细胞重新建立为一个联合 Methscan 数据集，
+然后依次执行 `prepare → smooth → scan → matrix`。联合 `scan` 产生的
+`scan_results_merged_300k/VMRs.bed` 才是后续 MethylVI 的 feature 定义。
+
+MethylVI 不直接使用 Methscan matrix 中的甲基化百分比。脚本按联合 VMR 区间从
+逐细胞 ALLC 重新聚合整数 `mc/cov`，并在训练前检查 VMR 区间不重叠、联合
+Methscan cell header 与 H5AD 细胞名单完全一致、10 个样本元数据和 ALLC 完整。
+
+执行顺序：
+
+```bash
+# 1. 两套 10 样本联合 Methscan VMR scan/matrix
+bash Methscan/20260815/Scripts/01_Upstream/10_submit_merged_vmr_methods.sh
+
+# 2. 第一步两项任务均成功后，提交两套 VMR-MethylVI
+bash MethylVI/20260816/Scripts/19_submit_methscan_vmr_methods.sh
+```
+
+本节当前仅记录已实现且已通过本地语法/边界计数测试的流程；服务器联合 VMR
+数量、模型结果和图形必须等两阶段 dsub 实际完成后补充，不能与已完成的
+5-kb/100k 基线结果混写。
