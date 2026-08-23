@@ -1,6 +1,6 @@
 # MethylVI 20260816 当前流程报告
 
-更新日期：2026-08-18
+更新日期：2026-08-23
 
 ## 1. 分析范围
 
@@ -128,3 +128,67 @@ MethylVI 结果根目录：
 ## 10. 统计注意事项
 
 当前 `sample_id` 与 IR/NR condition 完全绑定，因此 batch 与 condition 不是独立变量。按 `sample_id` 校正可能同时削弱真实 IR/NR 差异。结果解释应同时检查 sample mixing、cell type 结构、各 cell type 内部的 sample mixing、各 cell type 内部的 IR/NR 差异，以及校正后生物学信号是否仍然存在。
+
+## 11. Monocyte 岛左侧杂色细胞的测序深度审查
+
+本节记录 Scrublet clean-cell 分支、100k feature profile、supervised UMAP `target_weight=0.5` 的专项检查。图中 Monocyte 岛左侧的红色细胞在这里称为“杂色细胞”；这是一个基于 UMAP 位置的操作性名称，并不代表新的细胞类型。
+
+最终 ROI 定义为：
+
+```text
+34.0 ≤ UMAP1 ≤ 39.5
+-3.0 ≤ UMAP2 ≤ 2.0
+```
+
+分组规则如下：
+
+- 杂色细胞：ROI 内且 `cell_type != Monocytes` 的细胞。
+- ROI Monocytes：ROI 内且 `cell_type == Monocytes` 的细胞。
+- 全部 Monocytes：当前 Scrublet MethylVI 数据中的全部 Monocytes。
+- ROI 外 Monocytes：全部 Monocytes 中不在上述 ROI 内的细胞。
+
+### 11.1 杂色细胞（红色）
+
+最终 ROI 内共有 **165 个杂色细胞**。这些细胞来自多个已注释的免疫细胞类型，因此应视为落入 Monocyte 岛左侧区域的异质细胞集合，而不是统一的 Monocyte 亚群。
+
+| 指标 | 杂色细胞（ROI 内非 Monocytes） |
+|---|---:|
+| 细胞数 | **165** |
+| total coverage，均值 | 306,778.99 |
+| total coverage，中位数 | **311,361** |
+| total coverage，Q25–Q75 | 231,161–377,546 |
+| covered bins，均值 | 47,944.29 |
+| covered bins，中位数 | **48,186** |
+| log1p total coverage，均值 | 12.580610 |
+| log1p total coverage，中位数 | 12.648712 |
+
+### 11.2 Monocytes（紫色对照）
+
+ROI 内共有 **731 个 Monocytes**；整个数据集中共有 **2,355 个 Monocytes**，其中 ROI 外有 **1,624 个**。
+
+| 分组 | 细胞数 | total coverage 均值 | total coverage 中位数 | Q25–Q75 | covered bins 均值 | covered bins 中位数 |
+|---|---:|---:|---:|---:|---:|---:|
+| ROI 内 Monocytes | **731** | 225,263.50 | **211,048** | 176,614.5–253,861 | 38,832.51 | **37,760** |
+| 全部 Monocytes | **2,355** | 168,238.15 | **149,278** | 127,705–188,235 | 31,046.26 | **28,735** |
+| ROI 外 Monocytes | **1,624** | 142,569.73 | **135,594.5** | 121,909.75–154,556.25 | 27,541.49 | **26,630.5** |
+
+### 11.3 杂色细胞与 Monocytes 的比较
+
+| 比较 | Mann–Whitney U | 双侧 P 值 |
+|---|---:|---:|
+| 杂色细胞 vs ROI 内 Monocytes | 90,971.5 | 1.7502 × 10^-24 |
+| 杂色细胞 vs 全部 Monocytes | 347,032.5 | 4.0866 × 10^-64 |
+
+杂色细胞的 total coverage 中位数比 ROI 内 Monocytes 高约 **47.5%**（311,361 vs 211,048），covered bins 中位数高约 **27.6%**（48,186 vs 37,760）；其 total coverage 中位数约为全部 Monocytes 的 **2.09 倍**。
+
+因此，这些红色杂色细胞不是低测序深度造成的低质量细胞。相反，它们整体具有更高的 feature coverage。该比较仍受到细胞类型组成影响，不能单独证明测序深度导致其位于该 UMAP 区域，也不应仅依据 UMAP 位置或深度删除这些细胞。后续若要检验深度效应，应在同一种细胞类型内部、并按样本分层，比较 ROI 内外细胞。
+
+这里的 `total coverage` 是 MethylVI 最终保留的 100k 个 5-kb 输入特征上的 coverage 总和，不等同于原始 FASTQ reads 数量。
+
+专项结果目录：
+
+```text
+/share/home/rzli/scLC_ICI_PBMC/MethylVI/20260816/Results/blacklist_f0p2_scanpy20260815_30pc20nn_scrublet_clean_300k_1200k_100k/03_supervised_umap/mixed_monocyte_depth_target_weight_0p5/
+```
+
+其中 `mixed_non_monocyte_cells.tsv.gz` 是 165 个红色杂色细胞的逐细胞名单与深度数据，`all_cells_in_roi.tsv.gz` 包含 ROI 内杂色细胞和 Monocytes，`sequencing_depth_summary.tsv` 与 `sequencing_depth_tests.tsv` 分别保存汇总统计和检验结果。
