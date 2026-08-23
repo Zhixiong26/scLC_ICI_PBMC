@@ -26,9 +26,34 @@ QC_TAG="minmeth55_maxmethnone_maxsites1200000_${QC_LABEL}_covdedupprob"
 MERGED_ROOT="${SCLC_ALLCOOLS_ROOT}/merged_10samples_${QC_LABEL}_covdedupprob"
 MVI_REGIONS_BED="$MERGED_ROOT/qc_${QC_TAG}/scan_results_merged_300k/VMRs.bed"
 JOINT_HEADER="$MERGED_ROOT/qc_${QC_TAG}/filtered_data_merged_300k/column_header.txt"
+JOINT_MATRIX_OK="$MERGED_ROOT/qc_${QC_TAG}/logs_merged_300k/matrix.ok"
 SOURCE_VARIANT="blacklist_f0p2_${QC_LABEL}_300k_1200k_100k"
 SOURCE_OUTPUT="${SCLC_ALLCOOLS_ROOT}/methylvi_5kb_300k_${SOURCE_VARIANT}"
 VMR_VARIANT="methscan_joint_vmrs_${QC_LABEL}_300k_1200k"
+
+wait_for_joint_methscan() {
+    local timeout_seconds="${MVI_VMR_WAIT_TIMEOUT:-86400}"
+    local interval_seconds="${MVI_VMR_WAIT_INTERVAL:-60}"
+    local elapsed=0
+    [[ "$timeout_seconds" =~ ^[0-9]+$ && "$interval_seconds" =~ ^[1-9][0-9]*$ ]] || {
+        echo "ERROR: invalid MVI_VMR_WAIT_TIMEOUT/MVI_VMR_WAIT_INTERVAL" >&2
+        exit 2
+    }
+    while [[ ! -s "$JOINT_HEADER" || ! -s "$MVI_REGIONS_BED" || ! -s "$JOINT_MATRIX_OK" ]]; do
+        if [[ "$ACTION" != full || "$elapsed" -ge "$timeout_seconds" ]]; then
+            echo "ERROR: joint Methscan prerequisites are incomplete after ${elapsed}s" >&2
+            echo "  header: $JOINT_HEADER" >&2
+            echo "  VMR BED: $MVI_REGIONS_BED" >&2
+            echo "  matrix marker: $JOINT_MATRIX_OK" >&2
+            exit 1
+        fi
+        echo "Waiting for joint Methscan $METHOD prerequisites: elapsed=${elapsed}s"
+        sleep "$interval_seconds"
+        elapsed=$((elapsed + interval_seconds))
+    done
+}
+
+wait_for_joint_methscan
 
 case "$METHOD" in
     scrublet)
@@ -41,8 +66,6 @@ case "$METHOD" in
         ;;
 esac
 
-[[ -s "$JOINT_HEADER" ]] || { echo "ERROR: joint Methscan header missing: $JOINT_HEADER" >&2; exit 1; }
-[[ -s "$MVI_REGIONS_BED" ]] || { echo "ERROR: joint Methscan VMR BED missing: $MVI_REGIONS_BED" >&2; exit 1; }
 [[ -s "$SOURCE_OUTPUT/mcg_5kb.clustered.h5ad" ]] || { echo "ERROR: source H5AD missing: $SOURCE_OUTPUT/mcg_5kb.clustered.h5ad" >&2; exit 1; }
 [[ -d "$SOURCE_OUTPUT/input_allc" ]] || { echo "ERROR: source ALLC directory missing: $SOURCE_OUTPUT/input_allc" >&2; exit 1; }
 

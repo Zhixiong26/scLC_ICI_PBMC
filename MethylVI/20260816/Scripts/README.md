@@ -93,6 +93,11 @@ cd /share/home/rzli/scLC_ICI_PBMC
 bash MethylVI/20260816/Scripts/19_submit_methscan_vmr_methods.sh
 ```
 
+`full` 任务默认最多等待对应联合 Methscan header/VMR BED/matrix 完成标记 24 小时，每 60 秒检查
+一次；因此可以提前进入调度队列。可用 `MVI_VMR_WAIT_TIMEOUT` 和
+`MVI_VMR_WAIT_INTERVAL`（秒）覆盖。其他 action 仍要求输入已存在并立即失败，
+避免手工检查命令意外长期占用节点。
+
 单分支检查：
 
 ```bash
