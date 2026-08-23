@@ -403,7 +403,7 @@ run_samples() {
     echo "=== threshold=$threshold jobs=$max_jobs threads=$threads qc_tag=$QC_TAG ==="
     run_sample_batches "$max_jobs" run_one_sample "$threshold" "$threads" ||
         die "$BATCH_FAILURES sample(s) failed"
-    echo "[8/8 OK] ALL SAMPLES COMPLETE"
+    echo "[${#SAMPLE_DIRS[@]}/${#SAMPLE_DIRS[@]} OK] ALL SAMPLES COMPLETE"
 }
 
 main() {

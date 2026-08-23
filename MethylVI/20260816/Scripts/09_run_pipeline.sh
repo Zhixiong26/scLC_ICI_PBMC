@@ -16,7 +16,9 @@ export OPENBLAS_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 export NUMBA_NUM_THREADS=1
 export MPLBACKEND=Agg
-mkdir -p "$HERE/logs" "$MVI_ROOT" "$MVI_RESULTS"
+MVI_LOG_DIR="${MVI_LOG_DIR:-$HERE/logs}"
+export MVI_LOG_DIR
+mkdir -p "$MVI_LOG_DIR" "$MVI_ROOT" "$MVI_RESULTS"
 
 usage() {
     cat <<'EOF'
@@ -76,7 +78,7 @@ case "$stage" in
     # 02 脚本直接调用 MVI_ALLCOOLS_ENV，不激活 MethylVI 环境。
     bash "$HERE/02_prepare_allcools.sh" \
       "$MVI_DATA_ROOT" "$MVI_ALLCOOLS_OUTPUT" "$MVI_CHROM_SIZES" \
-      2>&1 | tee "$HERE/logs/02_prepare_allcools.log"
+      2>&1 | tee "$MVI_LOG_DIR/02_prepare_allcools.log"
     ;;
   blacklist)
     [[ "$MVI_USE_BLACKLIST" == 1 ]] || {
@@ -108,65 +110,65 @@ case "$stage" in
       --blacklist-fraction "$MVI_BLACKLIST_FRACTION" \
       --binarize-cutoff "$MVI_HYPO_SCORE_CUTOFF" \
       --hypo-percent "$MVI_HYPO_PERCENT" \
-      2>&1 | tee "$HERE/logs/03_cluster_allcools_blacklist.log"
+      2>&1 | tee "$MVI_LOG_DIR/03_cluster_allcools_blacklist.log"
     ;;
   verify)
     ensure_reused_allc_dir
     activate_methylvi
     python "$HERE/04_verify_inputs.py" \
-      2>&1 | tee "$HERE/logs/04_verify_inputs.log"
+      2>&1 | tee "$MVI_LOG_DIR/04_verify_inputs.log"
     ;;
   build)
     ensure_reused_allc_dir
     activate_methylvi
     python "$HERE/05_build_methylvi_input.py" --threads "$MVI_THREADS" \
-      2>&1 | tee "$HERE/logs/05_build_methylvi_input.log"
+      2>&1 | tee "$MVI_LOG_DIR/05_build_methylvi_input.log"
     ;;
   train)
     activate_methylvi
     NUMBA_NUM_THREADS="$MVI_THREADS" python "$HERE/06_train_methylvi.py" \
       --threads "$MVI_THREADS" --epochs "$MVI_MAX_EPOCHS" \
       --batch-size "$MVI_BATCH_SIZE" --accelerator "$MVI_ACCELERATOR" \
-      2>&1 | tee "$HERE/logs/06_train_methylvi.log"
+      2>&1 | tee "$MVI_LOG_DIR/06_train_methylvi.log"
     ;;
   plots)
     activate_methylvi
     python "$HERE/07_plot_embeddings.py" --stage all \
-      2>&1 | tee "$HERE/logs/07_plot_embeddings.log"
+      2>&1 | tee "$MVI_LOG_DIR/07_plot_embeddings.log"
     ;;
   supervised)
     activate_methylvi
     NUMBA_NUM_THREADS="$MVI_THREADS" python "$HERE/08_plot_supervised_umap.py" \
       --threads "$MVI_THREADS" \
-      2>&1 | tee "$HERE/logs/08_plot_supervised_umap.log"
+      2>&1 | tee "$MVI_LOG_DIR/08_plot_supervised_umap.log"
     ;;
   depth)
     activate_methylvi
     python "$HERE/10_plot_sequencing_depth.py" \
-      2>&1 | tee "$HERE/logs/10_plot_sequencing_depth.log"
+      2>&1 | tee "$MVI_LOG_DIR/10_plot_sequencing_depth.log"
     ;;
   mcg-level|cpg-level|cpg-sites)
     activate_methylvi
     python "$HERE/12_plot_cpg_sites.py" \
-      2>&1 | tee "$HERE/logs/12_plot_overall_mcg_level.log"
+      2>&1 | tee "$MVI_LOG_DIR/12_plot_overall_mcg_level.log"
     ;;
   mean-mcg-level)
     activate_methylvi
     python "$HERE/12_plot_cpg_sites.py" --metric mean-site \
-      2>&1 | tee "$HERE/logs/12_plot_mean_site_mcg_level.log"
+      2>&1 | tee "$MVI_LOG_DIR/12_plot_mean_site_mcg_level.log"
     ;;
   qc-compare)
     activate_methylvi
     python "$HERE/11_compare_qc_cell_sets.py" \
-      2>&1 | tee "$HERE/logs/11_compare_qc_cell_sets.log"
+      2>&1 | tee "$MVI_LOG_DIR/11_compare_qc_cell_sets.log"
     ;;
   test)
     activate_methylvi
     PYTHONPATH="$HERE${PYTHONPATH:+:$PYTHONPATH}" \
       python "$HERE/tests/test_mvi_utils.py" \
-      2>&1 | tee "$HERE/logs/test_mvi_utils.log"
+      2>&1 | tee "$MVI_LOG_DIR/test_mvi_utils.log"
     python "$HERE/tests/test_methylvi_smoke.py" \
-      2>&1 | tee "$HERE/logs/test_methylvi_smoke.log"
+      2>&1 | tee "$MVI_LOG_DIR/test_methylvi_smoke.log"
     ;;
   all)
     bash "$0" verify

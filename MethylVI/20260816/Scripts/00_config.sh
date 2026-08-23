@@ -49,10 +49,35 @@ export MVI_SOURCE_MCDS="${MVI_SOURCE_MCDS:-${MVI_BASE_ALLCOOLS_OUTPUT}/mcg_5kb.m
 # MethSCAn 上游脚本和流程说明所在目录，仅用于记录数据来源。
 export MVI_METHSCAN_UPSTREAM="${MVI_METHSCAN_UPSTREAM:-${SCLC_METHSCAN_SCRIPTS}/01_Upstream}"
 
+# 可选择与 Methscan 一致的 doublet 分支。留空时仅为了兼容
+# 已有的旧版 MethylVI 结果；新分析应显式使用 scrublet 或 doubletfinder。
+export MVI_METHSCAN_METHOD="${MVI_METHSCAN_METHOD:-${SCLC_METHSCAN_SCANPY_METHOD:-}}"
+case "$MVI_METHSCAN_METHOD" in
+    scrublet)
+        _mvi_default_annotation="$SCLC_SCANPY_SCRUBLET_ANNOTATION"
+        _mvi_default_clean_annotation="$SCLC_SCANPY_SCRUBLET_CLEAN_ANNOTATION"
+        _mvi_default_qc_label="scanpy20260815_30pc20nn_scrublet_clean"
+        ;;
+    doubletfinder)
+        _mvi_default_annotation="$SCLC_SCANPY_DOUBTFINDER_ANNOTATION"
+        _mvi_default_clean_annotation="$SCLC_SCANPY_DOUBTFINDER_CLEAN_ANNOTATION"
+        _mvi_default_qc_label="scanpy20260815_30pc20nn_doubletfinder_clean"
+        ;;
+    "")
+        _mvi_default_annotation="$SCLC_SCANPY_ANNOTATION"
+        _mvi_default_clean_annotation="$SCLC_SCANPY_CLEAN_ANNOTATION"
+        _mvi_default_qc_label="scanpy0815gemxclean_v2"
+        ;;
+    *)
+        echo "ERROR：MVI_METHSCAN_METHOD必须为scrublet或doubletfinder" >&2
+        return 1 2>/dev/null || exit 1
+        ;;
+esac
+
 # 通过MethSCAn 300k细胞QC后的ALLCools 5-kb输出目录。
 # 启用blacklist后默认切换到独立目录，防止覆盖当前231,648-bin版本。
 if [[ "$MVI_USE_BLACKLIST" == 1 ]]; then
-    export MVI_VARIANT_ID="${MVI_VARIANT_ID:-blacklist_f0p2_scanpy0815gemxclean_v2}"
+    export MVI_VARIANT_ID="${MVI_VARIANT_ID:-blacklist_f0p2_${_mvi_default_qc_label}}"
     export MVI_ALLCOOLS_OUTPUT="${MVI_ALLCOOLS_OUTPUT:-${MVI_DATA_ROOT}/methylvi_5kb_300k_${MVI_VARIANT_ID}}"
 else
     export MVI_VARIANT_ID="${MVI_VARIANT_ID:-current_no_blacklist}"
@@ -71,11 +96,11 @@ export MVI_ALLC_DIR="${MVI_ALLC_DIR:-${MVI_ALLCOOLS_OUTPUT}/input_allc}"
 
 # SCANPY 导出的全细胞注释表。公共读取器会将其 sample、group 和
 # cell_type_integrated 标准化为 sample_id、condition 和 cell_type。
-export MVI_ANNOTATION="${MVI_ANNOTATION:-${SCLC_SCANPY_ANNOTATION}}"
+export MVI_ANNOTATION="${MVI_ANNOTATION:-${_mvi_default_annotation}}"
 
 # Scanpy clean 细胞名单；QC 对比图用它区分“Scanpy clean 筛除”
 # 和“通过 Scanpy clean 后又被 MethSCAn QC 筛除”的细胞。
-export MVI_SCANPY_CLEAN_ANNOTATION="${MVI_SCANPY_CLEAN_ANNOTATION:-${SCLC_SCANPY_CLEAN_ANNOTATION}}"
+export MVI_SCANPY_CLEAN_ANNOTATION="${MVI_SCANPY_CLEAN_ANNOTATION:-${_mvi_default_clean_annotation}}"
 
 # 10 个样本的 sample_id/condition 元数据表。
 export MVI_SAMPLE_METADATA="${MVI_SAMPLE_METADATA:-${SCLC_METHYLVI_SUPPLEMENTARY}/01_sample_metadata.tsv}"
@@ -161,14 +186,15 @@ export MVI_EXPECTED_NR="${MVI_EXPECTED_NR:-5}"
 export MVI_EXPECTED_CELLS="${MVI_EXPECTED_CELLS:-5014}"
 
 # MethSCAn 细胞 QC 白名单设置。300k 表示每个细胞至少覆盖 300,000 个
-# CpG 位点；同时要求最多 10,000,000 个位点和 min_meth=55。
+# CpG 位点；同时要求最多 1,200,000 个位点和 min_meth=55。
 export MVI_USE_FILTERED_CELLS="${MVI_USE_FILTERED_CELLS:-1}"
-export MVI_QC_TAG="${MVI_QC_TAG:-minmeth55_maxmethnone_maxsites1200000_scanpy0815gemxclean_v2_covdedupprob}"
+export MVI_QC_TAG="${MVI_QC_TAG:-minmeth55_maxmethnone_maxsites1200000_${_mvi_default_qc_label}_covdedupprob}"
 export MVI_FILTER_THRESHOLD="${MVI_FILTER_THRESHOLD:-300k}"
 export MVI_FILTER_MIN_SITES="${MVI_FILTER_MIN_SITES:-300000}"
 export MVI_FILTER_MAX_SITES="${MVI_FILTER_MAX_SITES:-1200000}"
 export MVI_FILTER_MIN_METH="${MVI_FILTER_MIN_METH:-55}"
 export MVI_FILTER_MAX_METH="${MVI_FILTER_MAX_METH:-none}"
+unset _mvi_default_annotation _mvi_default_clean_annotation _mvi_default_qc_label
 
 # ----------------------------------------------------------------------------
 # 4. 批次校正设置

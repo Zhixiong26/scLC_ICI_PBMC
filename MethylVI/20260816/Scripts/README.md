@@ -50,6 +50,53 @@ bash 09_run_pipeline.sh all
 
 `all` 依次执行 `verify → build → train → plots → supervised → depth → mcg-level → mean-mcg-level`，不包含 `prepare`、`blacklist`、`test` 和 `qc-compare`。`cpg-level` 和 `cpg-sites` 仅作为旧命令别名保留。
 
+## Scrublet / DoubletFinder 两套 Methscan-QC MethylVI 分析
+
+`15_run_methscan_qc_method.sh` 直接读取 Methscan 已完成的 `300k–1.2M`
+QC 目录，不再使用旧的 `scanpy0815gemxclean_v2` 白名单。它会：
+
+1. 分别读取 `scrublet_clean` 或 `doubletfinder_clean` 的 10 个
+   `filtered_data_single_300k/column_header.txt`。
+2. 自动汇总实际 QC 后细胞数，不使用历史固定值 `5014`。
+3. 为每个方法生成独立的 MCDS、MethylVI 输入、模型、日志和图片。
+4. 更换细胞白名单后，重新计算 100k/50k 特征所需的
+   `MVI_HYPO_PERCENT`；主分析默认使用 100k profile。
+
+两套主分析同时提交（每套 60 CPU、180 GB）：
+
+```bash
+cd /share/home/rzli/scLC_ICI_PBMC
+bash MethylVI/20260816/Scripts/16_submit_methscan_qc_methods.sh
+```
+
+对应的 QC tags 为：
+
+```text
+minmeth55_maxmethnone_maxsites1200000_scanpy20260815_30pc20nn_scrublet_clean_covdedupprob
+minmeth55_maxmethnone_maxsites1200000_scanpy20260815_30pc20nn_doubletfinder_clean_covdedupprob
+```
+
+如需单独运行或断点续跑：
+
+```bash
+bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet full 100k
+bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh doubletfinder full 100k
+
+# 可选阶段：prepare → features → downstream
+bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet check 100k
+bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet prepare 100k
+bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet features 100k
+bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet downstream 100k
+```
+
+`full` 的顺序为：
+
+```text
+Methscan QC headers → ALLC staging → MCDS → blacklist
+→ 5-kb feature selection → input audit → H5MU build
+→ MethylVI training → UMAP/Leiden → supervised UMAP/QC figures
+```
+
 ### 4 变体 × 100k/50k profile 统一入口
 
 `13_run_target_bin_profile.sh` 是 4 个 Methscan QC 变体 × 2 个目标 bins 的统一入口。每个变体对应一个 QC 标签（threshold × max_sites），输出目录按 `blacklist_f0p2_scanpy0815gemxclean_v2_<threshold>_<maxsites>_<profile>` 完全隔离，全部可并行：
