@@ -90,6 +90,9 @@ bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet downstream 
 
 # 训练和 supervised UMAP 已完成时，仅续跑 depth/mCG 图
 bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet postprocess 100k
+
+# target_weight=0.5右侧Monocyte岛左缘杂色细胞深度统计
+bash MethylVI/20260816/Scripts/15_run_methscan_qc_method.sh scrublet mixed-depth 100k
 ```
 
 `full` 的顺序为：

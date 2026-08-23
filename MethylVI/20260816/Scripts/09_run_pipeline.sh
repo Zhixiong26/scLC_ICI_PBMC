@@ -22,7 +22,7 @@ mkdir -p "$MVI_LOG_DIR" "$MVI_ROOT" "$MVI_RESULTS"
 
 usage() {
     cat <<'EOF'
-用法：bash 09_run_pipeline.sh {prepare|blacklist|verify|build|train|plots|supervised|depth|mcg-level|mean-mcg-level|qc-compare|test|all}
+用法：bash 09_run_pipeline.sh {prepare|blacklist|verify|build|train|plots|supervised|depth|mixed-depth|mcg-level|mean-mcg-level|qc-compare|test|all}
 
   prepare      正式从头复现：整理ALLC、生成MCDS、blacklist过滤及5-kb聚类
   blacklist    快捷复用历史MCDS，只重做blacklist过滤及5-kb聚类
@@ -32,6 +32,7 @@ usage() {
   plots        同时重画校正前和校正后的普通嵌入图
   supervised   生成 target_weight=0.2、0.5、0.7、0.9 的监督式 UMAP
   depth        在每个监督式UMAP上绘制基于cov总覆盖量的测序深度
+  mixed-depth  统计target_weight=0.5右侧Monocyte岛左缘杂色细胞的测序深度
   mcg-level    在每个监督式UMAP上绘制每细胞的overall mCG level
   mean-mcg-level 绘制每细胞内各CpG位点mCG比例的算术平均
   qc-compare   将新版QC剔除的细胞标记回旧版监督式UMAP
@@ -146,6 +147,11 @@ case "$stage" in
     activate_methylvi
     python "$HERE/10_plot_sequencing_depth.py" \
       2>&1 | tee "$MVI_LOG_DIR/10_plot_sequencing_depth.log"
+    ;;
+  mixed-depth)
+    activate_methylvi
+    python "$HERE/17_analyze_mixed_monocyte_depth.py" \
+      2>&1 | tee "$MVI_LOG_DIR/17_analyze_mixed_monocyte_depth.log"
     ;;
   mcg-level|cpg-level|cpg-sites)
     activate_methylvi

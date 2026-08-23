@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Run one MethylVI branch from the completed Methscan 300k--1.2M QC cells.
-# Usage: bash 15_run_methscan_qc_method.sh {scrublet|doubletfinder} [check|full|prepare|features|downstream|postprocess] [100k|50k]
+# Usage: bash 15_run_methscan_qc_method.sh {scrublet|doubletfinder} [check|full|prepare|features|downstream|postprocess|mixed-depth] [100k|50k]
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 METHOD=${1:-}
@@ -11,11 +11,11 @@ PROFILE=${3:-100k}
 
 case "$METHOD" in
   scrublet|doubletfinder) ;;
-  *) echo "Usage: bash 15_run_methscan_qc_method.sh {scrublet|doubletfinder} [check|full|prepare|features|downstream|postprocess] [100k|50k]" >&2; exit 2 ;;
+  *) echo "Usage: bash 15_run_methscan_qc_method.sh {scrublet|doubletfinder} [check|full|prepare|features|downstream|postprocess|mixed-depth] [100k|50k]" >&2; exit 2 ;;
 esac
 case "$ACTION" in
-  check|full|prepare|features|downstream|postprocess) ;;
-  *) echo "ERROR: action must be check, full, prepare, features, downstream, or postprocess" >&2; exit 2 ;;
+  check|full|prepare|features|downstream|postprocess|mixed-depth) ;;
+  *) echo "ERROR: unsupported action: $ACTION" >&2; exit 2 ;;
 esac
 case "$PROFILE" in
   100k) TARGET_BINS=100000 ;;
@@ -148,6 +148,7 @@ case "$ACTION" in
   features) compute_features ;;
   downstream) run_downstream ;;
   postprocess) run_postprocess ;;
+  mixed-depth) bash "$HERE/09_run_pipeline.sh" mixed-depth ;;
   full)
     [[ -d "$MVI_SOURCE_MCDS" && -s "$BASE_OUTPUT/mcds.COMPLETE" ]] || prepare_mcds
     compute_features
