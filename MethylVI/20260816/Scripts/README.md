@@ -56,6 +56,9 @@ git -c http.version=HTTP/1.1 pull --ff-only \
 git rev-parse --short HEAD
 ```
 
+终端中续行符输入一个普通反斜杠 `\`，不要输入 Markdown 转义后的 `\\`；必须
+等待 `git pull` 返回 Shell 提示符后再执行下一条命令。
+
 ## 3. 当前流程
 
 ```text

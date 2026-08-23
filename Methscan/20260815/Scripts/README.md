@@ -85,8 +85,17 @@ bash Methscan/20260815/Scripts/01_Upstream/07_plot_all_top200_heatmaps.sh links
 
 ```bash
 cd /share/home/rzli/scLC_ICI_PBMC
+
+git -c http.version=HTTP/1.1 pull --ff-only \
+  origin scanpy-pipeline-fixes-20260821
+
+git rev-parse --short HEAD
+
 bash Methscan/20260815/Scripts/01_Upstream/10_submit_merged_vmr_methods.sh
 ```
+
+提交联合任务前，`git rev-parse` 应显示包含该流程的提交 `025a0a3` 或其后续提交。
+终端中续行符输入一个普通反斜杠 `\`；不要输入 Markdown 转义后的两个反斜杠。
 
 默认每套申请 `60 CPU / 184320 MB`，输出互相隔离在：
 
@@ -251,6 +260,12 @@ unset FILTER_MAX_SITES
 
 ```bash
 cd /share/home/rzli/scLC_ICI_PBMC
-git pull --ff-only origin scanpy-pipeline-fixes-20260821
+
+git -c http.version=HTTP/1.1 pull --ff-only \
+  origin scanpy-pipeline-fixes-20260821
+
 git rev-parse --short HEAD
 ```
+
+服务器只使用 HTTPS；`http.version=HTTP/1.1` 用于避免该集群上曾出现的 HTTP/2
+framing 错误。应等待 `git pull` 返回 Shell 提示符后，再执行版本检查或提交任务。
