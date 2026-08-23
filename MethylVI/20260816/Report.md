@@ -189,11 +189,11 @@ ROI 内共有 **165 个杂色细胞**。它们来自多个已注释免疫细胞�
 
 杂色细胞的 total coverage 中位数比 ROI 内 Monocytes 高约 **47.5%**，covered bins 中位数高约 **27.6%**；其 total coverage 中位数约为全部 Monocytes 的 **2.09 倍**。
 
-### 9.4 Total coverage 条形统计图
+### 9.4 各项指标的双柱对比图
 
-![杂色细胞与 Monocytes 的 total coverage 条形统计图](Results/20260823/mixed_monocyte_total_coverage_barplot.svg)
+![杂色细胞与 ROI 内 Monocytes 的多指标双柱对比图](Results/20260823/mixed_monocyte_total_coverage_barplot.svg)
 
-图中柱高为 total coverage 中位数，误差线为 Q25–Q75。为避免把存在包含关系的分组误作相互独立的柱子，三根柱只展示互斥的 ROI 杂色细胞、ROI 内 Monocytes 和 ROI 外 Monocytes；全部 Monocytes 的中位数以紫色虚线作为参考。Mann–Whitney 检验仍基于逐细胞数值，而不是基于三根柱进行计算。
+每项指标均使用两根并排柱：红色为 ROI 内 165 个杂色细胞，紫色为同一 ROI 内 731 个 Monocytes。四个面板依次比较细胞数、total coverage 的均值/中位数/Q25/Q75、covered bins 的均值/中位数，以及 log1p total coverage 的均值/中位数。细胞数只是两组样本量，不代表 QC 优劣；log1p 面板为显示较小差异使用了明确标注的截断纵轴。Mann–Whitney 检验基于逐细胞 total coverage，而不是基于汇总柱高计算。
 
 这些红色细胞不是低测序深度造成的低质量细胞。相反，它们整体具有更高的 feature coverage。但该比较受细胞类型组成影响，不能证明测序深度导致其 UMAP 位置，也不支持仅依据位置或深度删除这些细胞。进一步检验应在相同 cell type 内、按样本分层比较 ROI 内外细胞。
 
