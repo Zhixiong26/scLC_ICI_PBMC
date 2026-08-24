@@ -27,8 +27,10 @@ MERGED_ROOT="${SCLC_ALLCOOLS_ROOT}/merged_10samples_${QC_LABEL}_covdedupprob"
 MVI_REGIONS_BED="$MERGED_ROOT/qc_${QC_TAG}/scan_results_merged_300k/VMRs.bed"
 JOINT_HEADER="$MERGED_ROOT/qc_${QC_TAG}/filtered_data_merged_300k/column_header.txt"
 JOINT_MATRIX_OK="$MERGED_ROOT/qc_${QC_TAG}/logs_merged_300k/matrix.ok"
-SOURCE_VARIANT="blacklist_f0p2_${QC_LABEL}_300k_1200k_100k"
-SOURCE_OUTPUT="${SCLC_ALLCOOLS_ROOT}/methylvi_5kb_300k_${SOURCE_VARIANT}"
+SOURCE_BASE_VARIANT="blacklist_f0p2_${QC_LABEL}_300k_1200k"
+SOURCE_PROFILE_VARIANT="${SOURCE_BASE_VARIANT}_100k"
+SOURCE_BASE_OUTPUT="${SCLC_ALLCOOLS_ROOT}/methylvi_5kb_300k_${SOURCE_BASE_VARIANT}"
+SOURCE_PROFILE_OUTPUT="${SCLC_ALLCOOLS_ROOT}/methylvi_5kb_300k_${SOURCE_PROFILE_VARIANT}"
 VMR_VARIANT="methscan_joint_vmrs_${QC_LABEL}_300k_1200k"
 
 wait_for_joint_methscan() {
@@ -66,8 +68,8 @@ case "$METHOD" in
         ;;
 esac
 
-[[ -s "$SOURCE_OUTPUT/mcg_5kb.clustered.h5ad" ]] || { echo "ERROR: source H5AD missing: $SOURCE_OUTPUT/mcg_5kb.clustered.h5ad" >&2; exit 1; }
-[[ -d "$SOURCE_OUTPUT/input_allc" ]] || { echo "ERROR: source ALLC directory missing: $SOURCE_OUTPUT/input_allc" >&2; exit 1; }
+[[ -s "$SOURCE_PROFILE_OUTPUT/mcg_5kb.clustered.h5ad" ]] || { echo "ERROR: source H5AD missing: $SOURCE_PROFILE_OUTPUT/mcg_5kb.clustered.h5ad" >&2; exit 1; }
+[[ -d "$SOURCE_BASE_OUTPUT/input_allc" ]] || { echo "ERROR: source ALLC directory missing: $SOURCE_BASE_OUTPUT/input_allc" >&2; exit 1; }
 
 MVI_EXPECTED_CELLS=$(awk 'NF {n++} END {print n+0}' "$JOINT_HEADER")
 MVI_THREADS="${MVI_THREADS:-60}"
@@ -75,8 +77,8 @@ MVI_MEMORY_GB="${MVI_MEMORY_GB:-180}"
 MVI_ACCELERATOR="${MVI_ACCELERATOR:-cpu}"
 MVI_METHSCAN_METHOD="$METHOD"
 MVI_VARIANT_ID="$VMR_VARIANT"
-MVI_H5AD="$SOURCE_OUTPUT/mcg_5kb.clustered.h5ad"
-MVI_ALLC_DIR="$SOURCE_OUTPUT/input_allc"
+MVI_H5AD="$SOURCE_PROFILE_OUTPUT/mcg_5kb.clustered.h5ad"
+MVI_ALLC_DIR="$SOURCE_BASE_OUTPUT/input_allc"
 MVI_ROOT="${SCLC_ALLCOOLS_ROOT}/methylVI_results_300k_${VMR_VARIANT}"
 MVI_RESULTS="$MVI_ROOT/results_ir_nr"
 MVI_INPUT="$MVI_ROOT/methylvi_methscan_vmr_input.h5mu"

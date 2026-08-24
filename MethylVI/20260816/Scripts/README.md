@@ -86,6 +86,10 @@ Scanpy method-specific clean-cell 名单
 VMR 仅定义可变长度 genomic features；MethylVI 所需的整数 `mc/cov` 仍从每个
 细胞的 ALLC 重新聚合，绝不把 Methscan 百分比矩阵当作计数。
 
+其中细胞顺序和元数据读取对应方法的 `_100k/mcg_5kb.clustered.h5ad`；逐细胞
+ALLC 则读取不带 `_100k` 后缀的基础 profile `input_allc/`。两者用途不同，
+输入审计会验证规范化后的细胞集合完全一致。
+
 联合 Methscan 成功后提交两套 VMR-MethylVI：
 
 ```bash
